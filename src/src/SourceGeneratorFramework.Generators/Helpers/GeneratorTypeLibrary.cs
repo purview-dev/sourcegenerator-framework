@@ -8,6 +8,8 @@ static class GeneratorTypeLibrary
 
 	public static readonly TypeIdentity TypeReferenceValueObject = TypeIdentity.Create<TypeReference>();
 
+	public static readonly TypeIdentity EnumValueDefinitionValueObject = TypeIdentity.Create<EnumValueDefinition>();
+
 	public static class Attirbutes
 	{
 		public static readonly TypeIdentity GenerateAttribute = new(nameof(GenerateAttribute), GeneratorsNamespace);
@@ -34,28 +36,7 @@ static class GeneratorTypeLibrary
 		);
 
 		public static readonly TypeIdentity TypeRefAttribute = new(nameof(TypeRefAttribute), GeneratorsNamespace);
-	}
 
-	public static class System
-	{
-		public static readonly TypeIdentity Action = TypeIdentity.Create<Action>();
-
-		public static readonly TypeIdentity Object = TypeIdentity.Create<object>();
-
-		public static readonly TypeIdentity String = TypeIdentity.Create<string>();
-
-		public static readonly TypeIdentity Int32 = TypeIdentity.Create<int>();
-	}
-
-	public static class CodeAnalysis
-	{
-		public static readonly TypeIdentity IIncrementalGenerator =
-			TypeIdentity.Create<Microsoft.CodeAnalysis.IIncrementalGenerator>();
-
-		public static readonly TypeIdentity ISourceGenerator =
-			TypeIdentity.Create<Microsoft.CodeAnalysis.ISourceGenerator>();
-
-		public static readonly TypeIdentity EmbeddedAttribute =
-			TypeIdentity.Create<Microsoft.CodeAnalysis.EmbeddedAttribute>();
+		public static readonly TypeIdentity EnumValueAttribute = new(nameof(EnumValueAttribute), GeneratorsNamespace);
 	}
 }

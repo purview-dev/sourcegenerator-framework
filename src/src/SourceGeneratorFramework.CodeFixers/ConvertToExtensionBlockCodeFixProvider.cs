@@ -139,6 +139,7 @@ public sealed class ConvertToExtensionBlockCodeFixProvider : CodeFixProvider
 		if (!firstParameter.Modifiers.Any(SyntaxKind.ThisKeyword))
 			return false;
 
+		// The method is static and has a receiver parameter, but it may not be an extension method if the
 		return semanticModel.GetDeclaredSymbol(method, cancellationToken) is { IsExtensionMethod: true };
 	}
 

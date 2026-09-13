@@ -4,6 +4,6 @@ public sealed record TypeLibraryTestOptions : SourceGeneratorTestOptions
 {
 	public TypeLibraryTestOptions()
 	{
-		AdditionalAssemblyTypes = AdditionalAssemblyTypes.Add(typeof(TypeIdentity));
+		AdditionalAssemblyTypes = AdditionalAssemblyTypes.Add(typeof(TypeIdentity)).Add(typeof(EnumValueDefinition));
 	}
 }

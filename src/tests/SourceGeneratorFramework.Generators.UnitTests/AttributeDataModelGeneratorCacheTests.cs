@@ -38,6 +38,7 @@ public class AttributeDataModelGeneratorCacheTests
 		// ForAttributeWithMetadataName steps can report Modified on rerun because the post-initialization
 		// attribute source is regenerated as a new tree.)
 		await Assert.That(result.Runs[1]).StepIsCached("GetAttributeDataTargets");
+		await Assert.That(result.Runs[1]).StepIsCached("GetTypeLibrarySpecClassNames");
 		await Assert.That(result.Runs[1]).StepIsCached("GetGenerationConfiguration");
 		await Assert.That(result.Runs[1]).StepIsCached("GetGenerationContext_EmptyCapabilities");
 	}
@@ -66,6 +67,7 @@ public class AttributeDataModelGeneratorCacheTests
 
 		await Assert.That(result.Runs[1]).StepIsModified("GetGenerationConfiguration");
 		await Assert.That(result.Runs[1]).StepIsCached("GetAttributeDataTargets");
+		await Assert.That(result.Runs[1]).StepIsCached("GetTypeLibrarySpecClassNames");
 	}
 
 	[Test]
@@ -88,6 +90,81 @@ public class AttributeDataModelGeneratorCacheTests
 		);
 
 		await Assert.That(result.Runs[1]).StepIsModified("GetAttributeDataTargets");
+		await Assert.That(result.Runs[1]).StepIsCached("GetTypeLibrarySpecClassNames");
 		await Assert.That(result.Runs[1]).StepIsCached("GetGenerationConfiguration");
+	}
+
+	const string SpecAwareSource = """
+		using Purview.SourceGeneratorFramework;
+		using Purview.SourceGeneratorFramework.Generators;
+
+		namespace Purview.SourceGeneratorFramework.Generators
+		{
+			[global::System.AttributeUsage(global::System.AttributeTargets.Class)]
+			public sealed class GenerateTypeLibraryAttribute : global::System.Attribute
+			{
+				public string? ClassName { get; set; }
+			}
+
+			[global::System.AttributeUsage(global::System.AttributeTargets.Field)]
+			public sealed class TypeRefAttribute : global::System.Attribute { }
+		}
+
+		namespace Test
+		{
+			[GenerateTypeLibrary]
+			static partial class TypeLibrarySpec
+			{
+				[TypeRef]
+				static readonly TypeIdentity MyAttribute = default;
+			}
+
+			[Generate(typeof(global::System.Attribute))]
+			public readonly partial record struct AttributeData(bool Enabled);
+		}
+		""";
+
+	const string ChangedSpecSource = """
+		using Purview.SourceGeneratorFramework;
+		using Purview.SourceGeneratorFramework.Generators;
+
+		namespace Purview.SourceGeneratorFramework.Generators
+		{
+			[global::System.AttributeUsage(global::System.AttributeTargets.Class)]
+			public sealed class GenerateTypeLibraryAttribute : global::System.Attribute
+			{
+				public string? ClassName { get; set; }
+			}
+
+			[global::System.AttributeUsage(global::System.AttributeTargets.Field)]
+			public sealed class TypeRefAttribute : global::System.Attribute { }
+		}
+
+		namespace Test
+		{
+			[GenerateTypeLibrary(ClassName = "MyLibrary")]
+			static partial class TypeLibrarySpec
+			{
+				[TypeRef]
+				static readonly TypeIdentity MyAttribute = default;
+			}
+
+			[Generate(typeof(global::System.Attribute))]
+			public readonly partial record struct AttributeData(bool Enabled);
+		}
+		""";
+
+	[Test]
+	public async Task SpecChange_MarksSpecClassNamesStageModified_TargetStageStaysCached(
+		CancellationToken cancellationToken
+	)
+	{
+		var result = await GenerateIncrementalAsync(
+			[new IncrementalRunInput([SpecAwareSource]), new IncrementalRunInput([ChangedSpecSource])],
+			cancellationToken: cancellationToken
+		);
+
+		await Assert.That(result.Runs[1]).StepIsModified("GetTypeLibrarySpecClassNames");
+		await Assert.That(result.Runs[1]).StepIsCached("GetAttributeDataTargets");
 	}
 }

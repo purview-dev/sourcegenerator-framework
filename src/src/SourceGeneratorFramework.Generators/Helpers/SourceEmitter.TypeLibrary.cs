@@ -64,6 +64,10 @@ partial class SourceEmitter
 							"includeInGetTypes",
 							"Whether the member is included in the namespace's generated GetTypes() call."
 						)
+						.XmlParam(
+							"generateFullNameConst",
+							"Whether the member generates a full name constant; useful for compile-time usage, such as in Attribute Data Model generation."
+						)
 						.Constructor(
 							new(GeneratorTypeLibrary.Attirbutes.TypeRefAttribute, TypeDeclarationAccessibility.Public)
 							{
@@ -75,6 +79,10 @@ partial class SourceEmitter
 									{
 										DefaultValue = "false",
 									},
+									new("generateFullNameConst", PurviewTypeLibrary.System.Boolean)
+									{
+										DefaultValue = "false",
+									},
 								],
 							},
 							constructorWriter =>
@@ -82,6 +90,7 @@ partial class SourceEmitter
 									.Assignment("Namespace", "@namespace")
 									.Assignment("Arity", "arity")
 									.Assignment("IncludeInGetTypes", "includeInGetTypes")
+									.Assignment("GenerateFullNameConst", "generateFullNameConst")
 						);
 
 					bodyWriter
@@ -95,6 +104,10 @@ partial class SourceEmitter
 						.XmlParam(
 							"includeInGetTypes",
 							"Whether the member is included in the namespace's generated GetTypes() call."
+						)
+						.XmlParam(
+							"generateFullNameConst",
+							"Whether the member generates a full name constant; useful for compile-time usage, such as in Attribute Data Model generation."
 						)
 						.Constructor(
 							new(GeneratorTypeLibrary.Attirbutes.TypeRefAttribute, TypeDeclarationAccessibility.Public)
@@ -111,6 +124,10 @@ partial class SourceEmitter
 									{
 										DefaultValue = "false",
 									},
+									new("generateFullNameConst", PurviewTypeLibrary.System.Boolean)
+									{
+										DefaultValue = "false",
+									},
 								],
 							},
 							constructorWriter =>
@@ -119,6 +136,7 @@ partial class SourceEmitter
 									.Assignment("Namespace", "@namespace")
 									.Assignment("Arity", "arity")
 									.Assignment("IncludeInGetTypes", "includeInGetTypes")
+									.Assignment("GenerateFullNameConst", "generateFullNameConst")
 						);
 
 					bodyWriter
@@ -167,6 +185,139 @@ partial class SourceEmitter
 								IsInitOnly = true,
 							}
 						);
+
+					bodyWriter
+						.XmlSummary("Gets or sets whether the member generates a full name constant.")
+						.XmlRemarks(
+							"This can be useful for compile-time usage, such as in Attribute Data Model generation."
+						)
+						.Property(
+							new(
+								"GenerateFullNameConst",
+								PurviewTypeLibrary.System.Boolean,
+								TypeDeclarationAccessibility.Public
+							)
+							{
+								IsInitOnly = true,
+							}
+						);
+				}
+			);
+	}
+
+	static SourceText EnumValueAttribute()
+	{
+		var writer = CreateTypeLibraryWriter(GeneratorTypeLibrary.Attirbutes.EnumValueAttribute);
+
+		return writer
+			.XmlSummary("Declares an enum value member for a generated type library.")
+			.AttributeClass(
+				new(GeneratorTypeLibrary.Attirbutes.EnumValueAttribute),
+				AttributeTargets.Field,
+				bodyWriter =>
+				{
+					bodyWriter
+						.XmlSummary("Declares an enum value by its enum type name and namespace.")
+						.XmlParam(
+							"enumName",
+							"The name of the enum type; must match a [TypeRef] member name in the same namespace."
+						)
+						.XmlParam("namespace", "The namespace of the enum type.")
+						.XmlParam(
+							"value",
+							"The numeric value of the enum member, typed as byte, sbyte, short, ushort, int, uint, long or ulong."
+						)
+						.XmlParam(
+							"aliases",
+							"Optional alternate names used when matching, such as for registry-style enums."
+						)
+						.Constructor(
+							new(GeneratorTypeLibrary.Attirbutes.EnumValueAttribute, TypeDeclarationAccessibility.Public)
+							{
+								Parameters =
+								[
+									new("enumName", PurviewTypeLibrary.System.String),
+									new("@namespace", PurviewTypeLibrary.System.String),
+									new("value", PurviewTypeLibrary.System.Object),
+									new("aliases", StringArrayReference.Nullable()) { DefaultValue = "null" },
+								],
+							},
+							constructorWriter =>
+								constructorWriter
+									.Assignment("EnumName", "enumName")
+									.Assignment("Namespace", "@namespace")
+									.Assignment("Value", "value")
+									.Assignment("Aliases", "aliases")
+						);
+
+					bodyWriter
+						.XmlSummary("Declares an enum value by the enum type's fully qualified name.")
+						.XmlParam(
+							"enumFullName",
+							"The fully qualified name of the enum type, such as 'Namespace.EnumName'."
+						)
+						.XmlParam(
+							"value",
+							"The numeric value of the enum member, typed as byte, sbyte, short, ushort, int, uint, long or ulong."
+						)
+						.XmlParam(
+							"aliases",
+							"Optional alternate names used when matching, such as for registry-style enums."
+						)
+						.Constructor(
+							new(GeneratorTypeLibrary.Attirbutes.EnumValueAttribute, TypeDeclarationAccessibility.Public)
+							{
+								Parameters =
+								[
+									new("enumFullName", PurviewTypeLibrary.System.String),
+									new("value", PurviewTypeLibrary.System.Object),
+									new("aliases", StringArrayReference.Nullable()) { DefaultValue = "null" },
+								],
+							},
+							constructorWriter =>
+								constructorWriter
+									.Assignment("EnumName", "enumFullName")
+									.Assignment("Value", "value")
+									.Assignment("Aliases", "aliases")
+						);
+
+					bodyWriter
+						.XmlSummary(
+							"Gets the name of the enum type, or the fully qualified type name when declared by full name."
+						)
+						.Property(
+							new(
+								"EnumName",
+								PurviewTypeLibrary.System.String.MakeNullable(),
+								TypeDeclarationAccessibility.Public
+							)
+						);
+
+					bodyWriter
+						.XmlSummary("Gets the namespace of the enum type, or null when declared by full name.")
+						.Property(
+							new(
+								"Namespace",
+								PurviewTypeLibrary.System.String.MakeNullable(),
+								TypeDeclarationAccessibility.Public
+							)
+						);
+
+					bodyWriter
+						.XmlSummary(
+							"Gets the numeric value of the enum member, typed as byte, sbyte, short, ushort, int, uint, long or ulong."
+						)
+						.Property(
+							new(
+								"Value",
+								PurviewTypeLibrary.System.Object.MakeNullable(),
+								TypeDeclarationAccessibility.Public
+							)
+						);
+
+					bodyWriter
+						.XmlSummary("Gets the optional alternate names used when matching.")
+						.Property(new("Aliases", StringArrayReference.Nullable(), TypeDeclarationAccessibility.Public));
 				}
 			);
 	}
@@ -224,6 +375,9 @@ partial class SourceEmitter
 			foreach (var member in node.Members)
 				PublicMember(writer, member);
 
+			foreach (var group in node.EnumGroups)
+				EnumValuesGroup(writer, group);
+
 			GetTypesMethod(writer, node);
 
 			foreach (var child in node.Children)
@@ -243,6 +397,103 @@ partial class SourceEmitter
 				IsStatic = true,
 				ExpressionBody = $"[{string.Join(", ", included.Select(static m => m.MemberName))}]",
 				IncludeGeneratedAttributes = true,
+			}
+		);
+	}
+
+	static void EnumValuesGroup(CodeWriter writer, TypeLibraryEnumGroupModel group)
+	{
+		TypeDeclarationOptions options = new($"{group.EnumName}Values", TypeDeclarationAccessibility.Public)
+		{
+			IsStatic = true,
+			IncludeGeneratedAttributes = true,
+		};
+
+		using (
+			writer
+				.XmlSummary($"Represents the enum values of the {XmlCommentWriter.XmlInlineCode(group.EnumName)} enum.")
+				.ClassScope(options)
+		)
+		{
+			foreach (var value in group.Values)
+				EnumValue(writer, group, value);
+
+			GetMethod(writer, group);
+		}
+	}
+
+	static void EnumValue(CodeWriter writer, TypeLibraryEnumGroupModel group, TypeLibraryEnumValueModel value)
+	{
+		if (group.EnumGeneratesFullNameConstant)
+		{
+			writer
+				.XmlSummary(
+					$"Represents the full name of the {XmlCommentWriter.XmlInlineCode(value.MemberName)} enum value."
+				)
+				.Field(
+					new($"{value.MemberName}FullName", StringReference, TypeDeclarationAccessibility.Public)
+					{
+						IsConst = true,
+						Initializer = $"{group.EnumName}FullName + \".\" + \"{value.MemberName}\"",
+						IncludeGeneratedAttributes = true,
+					}
+				);
+		}
+
+		WriteDocumentation(
+			writer,
+			value.Documentation ?? $"Represents the {XmlCommentWriter.XmlInlineCode(value.MemberName)} enum value."
+		);
+
+		writer.Field(
+			new(value.MemberName, EnumValueDefinitionReference, TypeDeclarationAccessibility.Public)
+			{
+				IsStatic = true,
+				IsReadOnly = true,
+				Initializer = EnumValueInitializer(group, value),
+				IncludeGeneratedAttributes = true,
+			}
+		);
+	}
+
+	static string EnumValueInitializer(TypeLibraryEnumGroupModel group, TypeLibraryEnumValueModel value)
+	{
+		var hasAliases = !value.Aliases.AsImmutableArray().IsDefaultOrEmpty;
+		var hasUnderlyingType = value.UnderlyingType != EnumUnderlyingType.Int32;
+
+		var arguments = $"{group.EnumName}, \"{value.MemberName}\", {value.Value}";
+		if (hasAliases)
+			arguments += $", [{string.Join(", ", value.Aliases.Select(static alias => $"\"{alias}\""))}]";
+		if (hasUnderlyingType)
+		{
+			var underlyingType = $"EnumUnderlyingType.{value.UnderlyingType}";
+			arguments += hasAliases ? $", {underlyingType}" : $", underlyingType: {underlyingType}";
+		}
+
+		return $"new({arguments})";
+	}
+
+	static void GetMethod(CodeWriter writer, TypeLibraryEnumGroupModel group)
+	{
+		writer.Method(
+			new("Get", EnumValueDefinitionReference, TypeDeclarationAccessibility.Public)
+			{
+				IsStatic = true,
+				Parameters = [new("name", StringReference)],
+				IncludeGeneratedAttributes = true,
+			},
+			body =>
+			{
+				foreach (var value in group.Values)
+				{
+					body.IfElse(
+						$"{value.MemberName}.Matches(name)",
+						valueBody => valueBody.Return(value.MemberName),
+						elseBody: null
+					);
+				}
+
+				body.Return("global::Purview.SourceGeneratorFramework.EnumValueDefinition.Empty");
 			}
 		);
 	}
@@ -267,6 +518,22 @@ partial class SourceEmitter
 
 	static void PublicMember(CodeWriter writer, TypeLibraryMemberModel member)
 	{
+		if (member.GenerateFullNameConstant)
+		{
+			writer
+				.XmlSummary(
+					$"Represents the full name of the {XmlCommentWriter.XmlInlineCode(member.MemberName)} member."
+				)
+				.Field(
+					new($"{member.MemberName}FullName", StringReference, TypeDeclarationAccessibility.Public)
+					{
+						IsConst = true,
+						Initializer = $"\"{member.Namespace}.{member.TypeName}\"",
+						IncludeGeneratedAttributes = true,
+					}
+				);
+		}
+
 		WriteDocumentation(
 			writer,
 			member.Documentation ?? $"Represents the {XmlCommentWriter.XmlInlineCode(member.MemberName)} member."
@@ -303,6 +570,11 @@ partial class SourceEmitter
 	}
 
 	static TypeReference StringReference => PurviewTypeLibrary.System.String.AsTypeReference();
+
+	static TypeReference StringArrayReference => PurviewTypeLibrary.System.String.MakeArray();
+
+	static TypeReference EnumValueDefinitionReference =>
+		GeneratorTypeLibrary.EnumValueDefinitionValueObject.AsTypeReference();
 
 	static TypeReference ImmutableArrayOfTypeReference =>
 		PurviewTypeLibrary
@@ -370,6 +642,12 @@ partial class SourceEmitter
 	{
 		foreach (var member in node.Members.Where(static m => !m.IsReference))
 			yield return member.MemberName;
+
+		foreach (var group in node.EnumGroups)
+		{
+			foreach (var value in group.Values)
+				yield return value.MemberName;
+		}
 
 		foreach (var child in node.Children)
 		{

@@ -165,9 +165,40 @@ writer.Enum("Status", TypeDeclarationAccessibility.Public,
 // {
 //     None = 0,
 //
-//     /// <summary>The service is ready.</summary>
+//     /// <summary>
+//     /// The service is ready.
+//     /// </summary>
 //     Ready = 1,
 // }
+```
+
+`XmlSummary` is always written over multiple lines, so single-line summaries are emitted as a
+`<summary>` block:
+
+```csharp
+writer.XmlSummary("Gets the value.");
+// /// <summary>
+// /// Gets the value.
+// /// </summary>
+```
+
+### Field spacing
+
+Consecutive `Field` declarations are emitted without a blank line between them when they carry no
+decoration. A blank line is inserted before a field when it (or the preceding field) has a generated or
+user attribute, an XML summary, or a comment — so generated attributes keep consecutive fields readable:
+
+```csharp
+writer.Field("_first", TypeReference.Create<int>());
+writer.Field("_second", TypeReference.Create<int>());
+
+// [global::System.Runtime.CompilerServices.CompilerGenerated]
+// [global::System.CodeDom.Compiler.GeneratedCode("TestGenerator", "1.0.0")]
+// private int _first;
+//
+// [global::System.Runtime.CompilerServices.CompilerGenerated]
+// [global::System.CodeDom.Compiler.GeneratedCode("TestGenerator", "1.0.0")]
+// private int _second;
 ```
 
 ## Statements

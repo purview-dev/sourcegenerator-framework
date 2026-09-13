@@ -131,7 +131,7 @@ public class EquatableArrayTests
 	{
 		EquatableArray<int> array = default;
 
-		await Assert.That(() => array.GetHashCode()).ThrowsNothing();
+		await Assert.That(array.GetHashCode).ThrowsNothing();
 	}
 
 	[Test]
@@ -141,7 +141,7 @@ public class EquatableArrayTests
 		// incremental driver hashes the containing record.
 		Model model = default;
 
-		await Assert.That(() => model.GetHashCode()).ThrowsNothing();
+		await Assert.That(model.GetHashCode).ThrowsNothing();
 	}
 
 	[Test]
@@ -152,7 +152,7 @@ public class EquatableArrayTests
 		Nested[] items = [new(default, "value")];
 		EquatableArray<Nested> array = new(ImmutableArray.Create(items));
 
-		await Assert.That(() => array.GetHashCode()).ThrowsNothing();
+		await Assert.That(array.GetHashCode).ThrowsNothing();
 	}
 
 	readonly record struct Model(EquatableArray<string> Values, string Name);

@@ -32,7 +32,11 @@ public static partial class TypeLibrary
 ```
 
 No `extension(...)` blocks are emitted. The generated types are `public static partial` so you can expand
-them with your own methods in a separate partial file. The framework's own library is
+them with your own methods in a separate partial file — but the extension partial must be declared
+`public static partial` in the **same** namespace as the generated type. The generated type is emitted in
+the namespace given by the `Namespace` argument, or the **global namespace** when it is omitted, so a
+partial declared inside your project namespace will not merge with it (it silently shadows the generated
+type instead). `TLB0014` and `TLB0015` flag these mistakes. The framework's own library is
 `PurviewTypeLibrary` (the two never collide, and composed members reference it directly).
 
 The generated class **inherits the full `PurviewTypeLibrary` shape**: every nested namespace class and
@@ -135,6 +139,116 @@ The generated nested class then exposes
 fully-qualified `PurviewTypeLibrary.System...` form in initializers so the spec compiles regardless of
 local `TypeLibrary` names.
 
+### Enum values
+
+Use `[EnumValue]` to declare the members of an enum type that the generator emits. The enum type itself
+must be declared by a sibling `[TypeRef]` marker in the same namespace (`TLB0017` flags a missing
+declaration). Each value is a private marker field whose name becomes the enum member name:
+
+```csharp
+[GenerateTypeLibrary(ClassName = "TypeLibrary", Namespace = "MyGenerator")]
+static partial class TypeLibraryModel
+{
+    [TypeRef("LikeC4Severity", "Aspire.Hosting.AspireC4", GenerateFullNameConst = true)]
+    static readonly TypeIdentity LikeC4Severity = default;
+
+    // Explicit enum name + namespace form.
+    [EnumValue("LikeC4Severity", "Aspire.Hosting.AspireC4", 0)]
+    static readonly TypeIdentity Inherit = default;
+
+    // Single fully-qualified enum type name form.
+    [EnumValue("Aspire.Hosting.AspireC4.LikeC4Severity", 3)]
+    static readonly TypeIdentity Warning = default;
+}
+```
+
+`[EnumValue]` offers the same two declaration forms as `[TypeRef]` — an explicit `enumName` + `namespace`
++ `value`, or a single fully-qualified enum type name + `value` — plus an optional `aliases` argument
+(array of alternate names used when matching). The value is a numeric literal of any enum underlying
+type — `byte`, `sbyte`, `short`, `ushort`, `int` (default), `uint`, `long` or `ulong` — written as
+`(byte)5`, `5`, `5L`, `5UL`, and so on. The literal's type drives the generated
+`EnumValueDefinition.UnderlyingType`, and `EnumValueDefinition.Value` is stored as a `decimal` so every
+underlying type (including `ulong.MaxValue`) is represented exactly.
+
+The generator emits a nested `public static partial class {EnumName}Values` alongside the enum's `TypeIdentity`:
+
+```csharp
+public static partial class AspireC4
+{
+    public static readonly TypeIdentity LikeC4Severity = new("LikeC4Severity", "Aspire.Hosting.AspireC4");
+    public const string LikeC4SeverityFullName = "Aspire.Hosting.AspireC4.LikeC4Severity"; // GenerateFullNameConst
+
+    public static partial class LikeC4SeverityValues
+    {
+        public const string InheritFullName = LikeC4SeverityFullName + "." + "Inherit";   // when the enum's [TypeRef] sets GenerateFullNameConst
+        public static readonly EnumValueDefinition Inherit = new(LikeC4Severity, "Inherit", 0);
+
+        public static EnumValueDefinition Get(string name)
+        {
+            if (Inherit.Matches(name))
+                return Inherit;
+            return EnumValueDefinition.Empty;
+        }
+    }
+}
+```
+
+`EnumValueDefinition` exposes `Name`, `Value` (a `decimal` that represents every underlying type
+exactly), `UnderlyingType`, `FullName` (`Namespace.Enum.Member`), `Aliases`, and a `Matches(string)`
+matcher that accepts the member name, its full name, a trailing `Enum.Member` form, or any alias. Use the
+generated values to emit the enum itself via `writer.Enum(...)` and to reference members as attribute
+defaults:
+
+```csharp
+writer.Enum("LikeC4Severity", TypeDeclarationAccessibility.Public, options => options with { IsPartial = false },
+    ew =>
+    {
+        ew.EnumField(Inherit.Name, Inherit.Value);
+        ew.EnumField(Warning.Name, Warning.Value);
+    });
+
+// Attribute default referencing a value:
+new("severity", TypeLibrary.Aspire.Hosting.AspireC4.LikeC4Severity)
+{
+    DefaultValue = TypeLibrary.Aspire.Hosting.AspireC4.LikeC4SeverityValues.Warning.FullName,
+};
+```
+
+Enum value marker fields must be declared `private static readonly` (`TLB0008`), with an optional explicit
+`= default` (`TLB0010`), and use a `TypeIdentity` or `EnumValueDefinition` field type (`TLB0016`). Duplicate
+member names in a group are `TLB0018`; duplicate numeric values are flagged as `TLB0019`.
+
+### Using full-name constants as attribute-data model targets
+
+A `[TypeRef]` member declared with `GenerateFullNameConst` produces a `public const string {Member}FullName`
+holding the member's fully-qualified type name (`"Aspire.Hosting.AspireC4.SeverityAttribute"`). That constant
+can be used as the `[Generate]` target of an attribute-data model instead of a `typeof(...)` value:
+
+```csharp
+[TypeRef("Aspire.Hosting.AspireC4", GenerateFullNameConst = true)]
+static readonly TypeIdentity SeverityAttribute = default;
+
+[Generate(TypeLibrary.Aspire.Hosting.AspireC4.SeverityAttributeFullName)]
+public readonly partial record struct SeverityAttributeData(
+    [Argument(IsEnum = true, Name = "severity", DefaultValue = "Inherit")] string Severity,
+    [Property(IsEnum = true, DefaultValue = "Inherit")] string Level
+);
+```
+
+Because the `TypeLibrary` class is emitted through `TypeLibraryGenerator`'s main pipeline, its constants are
+**not** present in the compilation that `AttributeDataModelGenerator`'s `ForAttributeWithMetadataName` pipeline
+sees (only post-initialization output is shared between generators in a single pass). `AttributeDataModelGenerator`
+therefore reassembles the target from the argument's member-access expression — guarded so the root identifier
+must match a `[GenerateTypeLibrary]` spec's `ClassName` — and resolves it against the compilation. The target
+attribute itself (here `SeverityAttribute`) is typically declared by the consumer's own generator as
+post-initialization output, which is resolvable.
+
+For `[Argument]`/`[Property]` members marked `IsEnum = true`, a `DefaultValue` supplied as a **bare member name**
+(for example `"Inherit"`) is expanded to the fully-qualified `"{EnumFullName}.{Member}"` form
+(`"Aspire.Hosting.AspireC4.LikeC4Severity.Inherit"`) using the enum type of the target attribute's matching
+constructor parameter (for `[Argument]`) or property (for `[Property]`). Fully-qualified defaults and defaults
+whose enum type cannot be resolved are emitted unchanged.
+
 ### Including types in `GetTypes()`
 
 Mark a member with `includeInGetTypes: true` to include it in its namespace's generated `GetTypes()`
@@ -170,13 +284,17 @@ Set the MSBuild property `DisablePurviewTypeLibraryGenerator` to `true` to disab
 
 ## Validation
 
-`TypeLibraryValidationAnalyzer` reports `TLB0001`–`TLB0013` for invalid specs
-(non-static class, member type that is not `TypeIdentity`/`TypeReference`, unresolvable type/namespace,
-duplicate members, invalid class name, invalid namespace, invalid member accessibility, value members
-without an initializer, marker members without an explicit `= default`, a spec that is not declared
-`partial`, and a spec class whose name collides with the generated type library class — `TLB0012` when
-they share a namespace, `TLB0013` when they do not). `TLB0002`, `TLB0008`, `TLB0010`, `TLB0011`,
-`TLB0012`, and `TLB0013` have code fixes.
+`TypeLibraryValidationAnalyzer` reports `TLB0001`–`TLB0019` for invalid specs, enum value members, and
+type library partial extensions (non-static class, member type that is not `TypeIdentity`/`TypeReference`,
+unresolvable type/namespace, duplicate members, invalid class name, invalid namespace, invalid member
+accessibility, value members without an initializer, marker members without an explicit `= default`, a spec
+that is not declared `partial`, and a spec class whose name collides with the generated type library class —
+`TLB0012` when they share a namespace, `TLB0013` when they do not). It also reports `TLB0014` when a
+source partial class shares the generated library's name but is declared in a different namespace
+(so it will not merge), `TLB0015` when a same-namespace partial does not match the generated
+`public static partial` modifiers, and `TLB0016`–`TLB0019` for invalid `[EnumValue]` members (member type,
+a missing sibling enum declaration, and duplicate members/values). `TLB0002`, `TLB0008`, `TLB0010`,
+`TLB0011`, `TLB0012`, and `TLB0013` have code fixes.
 
 The generator carries these same diagnostics on its `GeneratorResult` and gates generation on
 `ShouldProcess`. Most are blocking (`IsBlocking: true`) and stop generation, but the non-blocking rules —

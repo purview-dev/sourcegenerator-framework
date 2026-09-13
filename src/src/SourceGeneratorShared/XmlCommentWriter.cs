@@ -399,12 +399,12 @@ public static class XmlCommentWriter
 			XmlCore(writer, startTag: tag, endTag: tag, content: content);
 
 		/// <summary>
-		/// Writes an XML <c>summary</c> documentation block.
+		/// Writes an XML <c>summary</c> documentation block, always on multiple lines.
 		/// </summary>
 		/// <param name="summary">The summary lines.</param>
 		/// <returns>The current writer.</returns>
 		public CodeWriter XmlSummary(params string[] summary) =>
-			XmlCore(writer, startTag: "summary", endTag: "summary", content: summary);
+			XmlCore(writer, startTag: "summary", endTag: "summary", content: summary, compactSingleLine: false);
 	}
 
 	extension(CodeWriter)

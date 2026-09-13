@@ -142,6 +142,6 @@ public class GeneratorResultTests
 		// throw (regression: default ImmutableArray enumeration throws NullReferenceException).
 		GeneratorResult<int> result = default;
 
-		await Assert.That(() => result.GetHashCode()).ThrowsNothing();
+		await Assert.That(result.GetHashCode).ThrowsNothing();
 	}
 }

@@ -44,6 +44,22 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 	public static DiagnosticDescriptor SpecClassNameCollidesAcrossNamespaces =>
 		TypeLibraryDiagnosticRules.SpecClassNameCollidesAcrossNamespaces;
 
+	public static DiagnosticDescriptor GeneratedTypeLibraryPartialInDifferentNamespace =>
+		TypeLibraryDiagnosticRules.GeneratedTypeLibraryPartialInDifferentNamespace;
+
+	public static DiagnosticDescriptor GeneratedTypeLibraryPartialModifierMismatch =>
+		TypeLibraryDiagnosticRules.GeneratedTypeLibraryPartialModifierMismatch;
+
+	public static DiagnosticDescriptor EnumValueMemberTypeInvalid =>
+		TypeLibraryDiagnosticRules.EnumValueMemberTypeInvalid;
+
+	public static DiagnosticDescriptor EnumValueEnumTypeNotDeclared =>
+		TypeLibraryDiagnosticRules.EnumValueEnumTypeNotDeclared;
+
+	public static DiagnosticDescriptor EnumValueDuplicateMember => TypeLibraryDiagnosticRules.EnumValueDuplicateMember;
+
+	public static DiagnosticDescriptor EnumValueDuplicateValue => TypeLibraryDiagnosticRules.EnumValueDuplicateValue;
+
 	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
 		[
 			SpecNotStaticClass,
@@ -58,6 +74,12 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 			SpecMustBePartial,
 			SpecClassNameClashesWithGeneratedClass,
 			SpecClassNameCollidesAcrossNamespaces,
+			GeneratedTypeLibraryPartialInDifferentNamespace,
+			GeneratedTypeLibraryPartialModifierMismatch,
+			EnumValueMemberTypeInvalid,
+			EnumValueEnumTypeNotDeclared,
+			EnumValueDuplicateMember,
+			EnumValueDuplicateValue,
 		];
 
 	public override void Initialize(AnalysisContext context)
@@ -82,6 +104,19 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 			var typeReferenceType = context.Compilation.GetTypeByMetadataName(
 				"Purview.SourceGeneratorFramework.TypeReference"
 			);
+			var enumValueAttributeType = context.Compilation.GetTypeByMetadataName(
+				"Purview.SourceGeneratorFramework.Generators.EnumValueAttribute"
+			);
+			var enumValueDefinitionType = context.Compilation.GetTypeByMetadataName(
+				"Purview.SourceGeneratorFramework.EnumValueDefinition"
+			);
+
+			// The generated type library shape is derived from the specs once per compilation, so the
+			// per-symbol action can detect source partial declarations that fail to merge with it.
+			var generatedTypeLibraries = CollectGeneratedTypeLibraries(
+				context.Compilation,
+				generateTypeLibraryAttributeType
+			);
 
 			context.RegisterSymbolAction(
 				context =>
@@ -90,7 +125,10 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 						generateTypeLibraryAttributeType,
 						typeRefAttributeType,
 						typeIdentityType,
-						typeReferenceType
+						typeReferenceType,
+						enumValueAttributeType,
+						enumValueDefinitionType,
+						generatedTypeLibraries
 					),
 				SymbolKind.NamedType
 			);
@@ -102,7 +140,10 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		INamedTypeSymbol? generateTypeLibraryAttributeType,
 		INamedTypeSymbol? typeRefAttributeType,
 		INamedTypeSymbol? typeIdentityType,
-		INamedTypeSymbol? typeReferenceType
+		INamedTypeSymbol? typeReferenceType,
+		INamedTypeSymbol? enumValueAttributeType,
+		INamedTypeSymbol? enumValueDefinitionType,
+		IReadOnlyList<GeneratedTypeLibraryInfo> generatedTypeLibraries
 	)
 	{
 		if (context.Symbol is not INamedTypeSymbol typeSymbol)
@@ -111,14 +152,16 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		if (typeSymbol.TypeKind != TypeKind.Class)
 			return;
 
+		var typeLocation = typeSymbol.Locations.FirstOrDefault(static location => location.IsInSource) ?? Location.None;
+
+		AnalyzeGeneratedTypeLibraryPartial(context, typeSymbol, typeLocation, generatedTypeLibraries);
+
 		if (generateTypeLibraryAttributeType is null)
 			return;
 
 		var generateAttribute = GetAttribute(typeSymbol, generateTypeLibraryAttributeType);
 		if (generateAttribute is null)
 			return;
-
-		var typeLocation = typeSymbol.Locations.FirstOrDefault(static location => location.IsInSource) ?? Location.None;
 
 		if (!typeSymbol.IsStatic)
 			context.ReportDiagnostic(Diagnostic.Create(SpecNotStaticClass, typeLocation));
@@ -153,6 +196,25 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 			context.ReportDiagnostic(Diagnostic.Create(InvalidNamespace, typeLocation, outputNamespace));
 
 		Dictionary<string, HashSet<string>> memberNamesByPath = new(StringComparer.Ordinal);
+		Dictionary<string, HashSet<string>> enumMemberNamesByGroup = new(StringComparer.Ordinal);
+		Dictionary<string, HashSet<decimal>> enumValuesByGroup = new(StringComparer.Ordinal);
+
+		// Plain [TypeRef] TypeIdentity markers declare the enum types that [EnumValue] members reference.
+		HashSet<string> typeRefMarkersByPath = new(StringComparer.Ordinal);
+		foreach (var field in typeSymbol.GetMembers().OfType<IFieldSymbol>())
+		{
+			var typeRef = GetAttribute(field, typeRefAttributeType);
+			if (typeRef is null)
+				continue;
+
+			if (typeIdentityType is null || !SymbolEqualityComparer.Default.Equals(field.Type, typeIdentityType))
+				continue;
+
+			if (!TryResolveTypeRef(typeRef, field.Name, out _, out var placementNamespace))
+				continue;
+
+			typeRefMarkersByPath.Add((placementNamespace ?? string.Empty) + "\0" + field.Name);
+		}
 
 		foreach (var field in typeSymbol.GetMembers().OfType<IFieldSymbol>())
 		{
@@ -162,7 +224,12 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 				typeRefAttributeType,
 				typeIdentityType,
 				typeReferenceType,
+				enumValueAttributeType,
+				enumValueDefinitionType,
 				memberNamesByPath,
+				enumMemberNamesByGroup,
+				enumValuesByGroup,
+				typeRefMarkersByPath,
 				typeLocation
 			);
 		}
@@ -174,10 +241,31 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		INamedTypeSymbol? typeRefAttributeType,
 		INamedTypeSymbol? typeIdentityType,
 		INamedTypeSymbol? typeReferenceType,
+		INamedTypeSymbol? enumValueAttributeType,
+		INamedTypeSymbol? enumValueDefinitionType,
 		Dictionary<string, HashSet<string>> memberNamesByPath,
+		Dictionary<string, HashSet<string>> enumMemberNamesByGroup,
+		Dictionary<string, HashSet<decimal>> enumValuesByGroup,
+		HashSet<string> typeRefMarkersByPath,
 		Location typeLocation
 	)
 	{
+		var enumValue = GetAttribute(field, enumValueAttributeType);
+		if (enumValue is not null)
+		{
+			AnalyzeEnumValueMember(
+				context,
+				field,
+				enumValue,
+				enumValueDefinitionType,
+				enumMemberNamesByGroup,
+				enumValuesByGroup,
+				typeRefMarkersByPath,
+				typeLocation
+			);
+			return;
+		}
+
 		var typeRef = GetAttribute(field, typeRefAttributeType);
 		if (typeRef is null)
 			return;
@@ -248,6 +336,297 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		if (!names.Add(field.Name))
 			context.ReportDiagnostic(Diagnostic.Create(DuplicateMember, memberLocation, field.Name));
 	}
+
+	/// <summary>
+	/// Validates an <c>[EnumValue]</c> marker field: member type, accessibility, the referenced enum
+	/// type, and duplicate detection within the enum's value group.
+	/// </summary>
+	static void AnalyzeEnumValueMember(
+		SymbolAnalysisContext context,
+		IFieldSymbol field,
+		AttributeData enumValue,
+		INamedTypeSymbol? enumValueDefinitionType,
+		Dictionary<string, HashSet<string>> enumMemberNamesByGroup,
+		Dictionary<string, HashSet<decimal>> enumValuesByGroup,
+		HashSet<string> typeRefMarkersByPath,
+		Location typeLocation
+	)
+	{
+		var memberLocation = field.Locations.FirstOrDefault(static location => location.IsInSource) ?? typeLocation;
+
+		var isTypeIdentity =
+			field.Type.Name == "TypeIdentity"
+			|| (
+				enumValueDefinitionType is not null
+				&& SymbolEqualityComparer.Default.Equals(field.Type, enumValueDefinitionType)
+			);
+		if (!isTypeIdentity)
+		{
+			context.ReportDiagnostic(
+				Diagnostic.Create(EnumValueMemberTypeInvalid, memberLocation, field.Name, field.Type)
+			);
+			return;
+		}
+
+		if (field.DeclaredAccessibility != Accessibility.Private)
+		{
+			context.ReportDiagnostic(Diagnostic.Create(MemberAccessibilityInvalid, memberLocation, field.Name));
+			return;
+		}
+
+		if (HasNoInitializer(field, context.CancellationToken))
+			context.ReportDiagnostic(Diagnostic.Create(MarkerMissingDefaultInitializer, memberLocation, field.Name));
+
+		var (enumName, enumNamespace, value) = ReadEnumValue(enumValue);
+		if (enumName is null)
+		{
+			context.ReportDiagnostic(
+				Diagnostic.Create(EnumValueEnumTypeNotDeclared, memberLocation, field.Name, string.Empty, string.Empty)
+			);
+			return;
+		}
+
+		if (!typeRefMarkersByPath.Contains((enumNamespace ?? string.Empty) + "\0" + enumName))
+		{
+			context.ReportDiagnostic(
+				Diagnostic.Create(
+					EnumValueEnumTypeNotDeclared,
+					memberLocation,
+					field.Name,
+					enumName,
+					enumNamespace ?? string.Empty
+				)
+			);
+			return;
+		}
+
+		var groupKey = (enumNamespace ?? string.Empty) + "\0" + enumName;
+
+		if (!enumMemberNamesByGroup.TryGetValue(groupKey, out var memberNames))
+		{
+			memberNames = new(StringComparer.Ordinal);
+			enumMemberNamesByGroup[groupKey] = memberNames;
+		}
+
+		if (!memberNames.Add(field.Name))
+		{
+			context.ReportDiagnostic(Diagnostic.Create(EnumValueDuplicateMember, memberLocation, field.Name, enumName));
+			return;
+		}
+
+		if (!enumValuesByGroup.TryGetValue(groupKey, out var values))
+		{
+			values = new();
+			enumValuesByGroup[groupKey] = values;
+		}
+
+		if (!values.Add(value))
+			context.ReportDiagnostic(Diagnostic.Create(EnumValueDuplicateValue, memberLocation, field.Name, enumName));
+	}
+
+	/// <summary>
+	/// Reads an <c>[EnumValue]</c> attribute, supporting the explicit enum-name/namespace form and the
+	/// single fully-qualified enum type name form. The value is normalized to a <see cref="decimal"/> so
+	/// every enum underlying type (<c>byte</c> through <c>ulong</c>) is compared exactly.
+	/// </summary>
+	static (string? EnumName, string? Namespace, decimal Value) ReadEnumValue(AttributeData enumValue)
+	{
+		var constructor = enumValue.AttributeConstructor;
+		var isFullNameForm =
+			constructor is { Parameters.Length: > 0 } && constructor.Parameters[0].Name == "enumFullName";
+
+		if (isFullNameForm)
+		{
+			var fullName = GetConstructorArgument(enumValue, 0, (string?)null);
+			if (string.IsNullOrWhiteSpace(fullName))
+				return (null, null, 0);
+
+			var lastDot = fullName!.LastIndexOf('.');
+			return (
+				lastDot < 0 ? fullName : fullName.Substring(lastDot + 1),
+				lastDot < 0 ? null : fullName.Substring(0, lastDot),
+				ReadEnumValueConstant(enumValue, 1)
+			);
+		}
+
+		return (
+			GetConstructorArgument(enumValue, 0, (string?)null),
+			GetConstructorArgument(enumValue, 1, (string?)null),
+			ReadEnumValueConstant(enumValue, 2)
+		);
+	}
+
+	/// <summary>
+	/// Reads an enum value constructor argument, preserving the declared numeric type and normalizing
+	/// it to a <see cref="decimal"/>.
+	/// </summary>
+	static decimal ReadEnumValueConstant(AttributeData attributeData, int index)
+	{
+		if (index < 0 || index >= attributeData.ConstructorArguments.Length)
+			return 0;
+
+		return attributeData.ConstructorArguments[index].Value switch
+		{
+			byte b => b,
+			sbyte sb => sb,
+			short s => s,
+			ushort us => us,
+			int i => i,
+			uint ui => ui,
+			long l => l,
+			ulong ul => ul,
+			_ => Convert.ToDecimal(
+				attributeData.ConstructorArguments[index].Value,
+				System.Globalization.CultureInfo.InvariantCulture
+			),
+		};
+	}
+
+	/// <summary>
+	/// Collects the generated type library shapes derived from every <c>[GenerateTypeLibrary]</c> spec in
+	/// the compilation, deduplicated by generated class name and namespace.
+	/// </summary>
+	static List<GeneratedTypeLibraryInfo> CollectGeneratedTypeLibraries(
+		Compilation compilation,
+		INamedTypeSymbol? generateTypeLibraryAttributeType
+	)
+	{
+		if (generateTypeLibraryAttributeType is null)
+			return [];
+
+		List<GeneratedTypeLibraryInfo> libraries = [];
+		HashSet<string> seen = new(StringComparer.Ordinal);
+
+		foreach (var spec in GetNamedTypes(compilation.Assembly.GlobalNamespace))
+		{
+			if (spec.TypeKind != TypeKind.Class)
+				continue;
+
+			var generateAttribute = GetAttribute(spec, generateTypeLibraryAttributeType);
+			if (generateAttribute is null)
+				continue;
+
+			var generatedName = GetNamedArgument(generateAttribute, "ClassName", (string?)null) ?? "TypeLibrary";
+			var generatedNamespace = GetNamedArgument(generateAttribute, "Namespace", (string?)null);
+			if (string.IsNullOrWhiteSpace(generatedNamespace))
+				generatedNamespace = null;
+
+			// Deduplicate so a user type that collides with several specs reporting the same shape is
+			// flagged only once.
+			var key = generatedNamespace is null ? generatedName : generatedName + "\0" + generatedNamespace;
+			if (!seen.Add(key))
+				continue;
+
+			libraries.Add(new GeneratedTypeLibraryInfo(generatedName, generatedNamespace, spec));
+		}
+
+		return libraries;
+	}
+
+	static IEnumerable<INamedTypeSymbol> GetNamedTypes(INamespaceSymbol @namespace)
+	{
+		foreach (var member in @namespace.GetMembers())
+		{
+			switch (member)
+			{
+				case INamespaceSymbol nestedNamespace:
+					foreach (var nestedType in GetNamedTypes(nestedNamespace))
+						yield return nestedType;
+					break;
+				case INamedTypeSymbol type:
+					yield return type;
+					foreach (var nestedType in GetNamedTypes(type))
+						yield return nestedType;
+					break;
+				default:
+					break;
+			}
+		}
+	}
+
+	static IEnumerable<INamedTypeSymbol> GetNamedTypes(INamedTypeSymbol type)
+	{
+		foreach (var member in type.GetTypeMembers())
+		{
+			yield return member;
+			foreach (var nestedType in GetNamedTypes(member))
+				yield return nestedType;
+		}
+	}
+
+	/// <summary>
+	/// Reports <c>TLB0014</c>/<c>TLB0015</c> when a source class shares the name of a generated type
+	/// library but its declaration would not merge with it: a different namespace, or modifiers that
+	/// differ from <c>public static partial</c>.
+	/// </summary>
+	static void AnalyzeGeneratedTypeLibraryPartial(
+		SymbolAnalysisContext context,
+		INamedTypeSymbol typeSymbol,
+		Location typeLocation,
+		IReadOnlyList<GeneratedTypeLibraryInfo> generatedTypeLibraries
+	)
+	{
+		if (generatedTypeLibraries.Count == 0)
+			return;
+
+		// Only top-level types can merge with the generated library; a nested type of the same name is
+		// a distinct type.
+		if (typeSymbol.ContainingType is not null)
+			return;
+
+		foreach (var library in generatedTypeLibraries)
+		{
+			if (library.GeneratedName != typeSymbol.Name)
+				continue;
+
+			// The spec itself is validated against the generated class by TLB0012/TLB0013.
+			if (SymbolEqualityComparer.Default.Equals(library.Spec, typeSymbol))
+				continue;
+
+			var sameNamespace = library.GeneratedNamespace is null
+				? typeSymbol.ContainingNamespace.IsGlobalNamespace
+				: !typeSymbol.ContainingNamespace.IsGlobalNamespace
+					&& string.Equals(
+						typeSymbol.ContainingNamespace.ToDisplayString(),
+						library.GeneratedNamespace,
+						StringComparison.Ordinal
+					);
+
+			if (sameNamespace)
+			{
+				if (
+					IsPartial(typeSymbol, context.CancellationToken)
+					&& typeSymbol.IsStatic
+					&& typeSymbol.DeclaredAccessibility == Accessibility.Public
+				)
+					continue;
+
+				context.ReportDiagnostic(
+					Diagnostic.Create(
+						GeneratedTypeLibraryPartialModifierMismatch,
+						typeLocation,
+						typeSymbol.Name,
+						library.GeneratedName
+					)
+				);
+			}
+			else if (IsPartial(typeSymbol, context.CancellationToken))
+			{
+				context.ReportDiagnostic(
+					Diagnostic.Create(
+						GeneratedTypeLibraryPartialInDifferentNamespace,
+						typeLocation,
+						typeSymbol.Name,
+						library.GeneratedName,
+						DescribeNamespace(library.GeneratedNamespace)
+					)
+				);
+			}
+		}
+	}
+
+	static string DescribeNamespace(string? @namespace) =>
+		string.IsNullOrWhiteSpace(@namespace) ? "the global namespace" : $"the '{@namespace}' namespace";
 
 	/// <summary>
 	/// Resolves the placement namespace for a value member from the <c>[TypeRef]</c> namespace argument
@@ -454,5 +833,25 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 			}
 		}
 		return defaultValue;
+	}
+
+	/// <summary>
+	/// Describes the shape of the type library class a <c>[GenerateTypeLibrary]</c> spec generates, so
+	/// the analyzer can detect source partial declarations that would not merge with it.
+	/// </summary>
+	sealed class GeneratedTypeLibraryInfo
+	{
+		public GeneratedTypeLibraryInfo(string generatedName, string? generatedNamespace, INamedTypeSymbol spec)
+		{
+			GeneratedName = generatedName;
+			GeneratedNamespace = generatedNamespace;
+			Spec = spec;
+		}
+
+		public string GeneratedName { get; }
+
+		public string? GeneratedNamespace { get; }
+
+		public INamedTypeSymbol Spec { get; }
 	}
 }

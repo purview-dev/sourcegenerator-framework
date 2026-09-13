@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Globalization;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Purview.SourceGeneratorFramework.Analyzers;
@@ -81,10 +82,15 @@ public sealed class AttributeDataModelValidationAnalyzer : DiagnosticAnalyzer
 			var typeArgumentAttributeType = context.Compilation.GetTypeByMetadataName(
 				"Purview.SourceGeneratorFramework.Generators.GenericTypeArgumentAttribute"
 			);
+			var generateTypeLibraryAttributeType = context.Compilation.GetTypeByMetadataName(
+				"Purview.SourceGeneratorFramework.Generators.GenerateTypeLibraryAttribute"
+			);
 			var typeIdentityType = context.Compilation.GetTypeByMetadataName(
 				"Purview.SourceGeneratorFramework.TypeIdentity"
 			);
 			var typedConstantType = context.Compilation.GetTypeByMetadataName("Microsoft.CodeAnalysis.TypedConstant");
+
+			var typeLibrarySpecData = CollectTypeLibrarySpecData(context.Compilation, generateTypeLibraryAttributeType);
 
 			context.RegisterSymbolAction(
 				context =>
@@ -97,7 +103,8 @@ public sealed class AttributeDataModelValidationAnalyzer : DiagnosticAnalyzer
 						excludeAttributeType,
 						typeArgumentAttributeType,
 						typeIdentityType,
-						typedConstantType
+						typedConstantType,
+						typeLibrarySpecData
 					),
 				SymbolKind.NamedType
 			);
@@ -113,7 +120,8 @@ public sealed class AttributeDataModelValidationAnalyzer : DiagnosticAnalyzer
 		INamedTypeSymbol? excludeAttributeType,
 		INamedTypeSymbol? typeArgumentAttributeType,
 		INamedTypeSymbol? typeIdentityType,
-		INamedTypeSymbol? typedConstantType
+		INamedTypeSymbol? typedConstantType,
+		ImmutableDictionary<string, ImmutableHashSet<(string Namespace, string MemberName)>> typeLibrarySpecData
 	)
 	{
 		if (context.Symbol is not INamedTypeSymbol typeSymbol)
@@ -131,7 +139,13 @@ public sealed class AttributeDataModelValidationAnalyzer : DiagnosticAnalyzer
 
 		var typeLocation = typeSymbol.Locations.FirstOrDefault(static location => location.IsInSource) ?? Location.None;
 
-		var (targetAttributeType, _) = AnalyzeTargetAttribute(context, generateAttribute, typeLocation, typeSymbol);
+		var (targetAttributeType, _) = AnalyzeTargetAttribute(
+			context,
+			generateAttribute,
+			typeLocation,
+			typeSymbol,
+			typeLibrarySpecData
+		);
 
 		var targetConstructorParameters = targetAttributeType is INamedTypeSymbol namedTargetType
 			? namedTargetType.InstanceConstructors.SelectMany(static ctor => ctor.Parameters).ToImmutableArray()
@@ -166,11 +180,26 @@ public sealed class AttributeDataModelValidationAnalyzer : DiagnosticAnalyzer
 		SymbolAnalysisContext context,
 		AttributeData generateAttribute,
 		Location typeLocation,
-		INamedTypeSymbol typeSymbol
+		INamedTypeSymbol typeSymbol,
+		ImmutableDictionary<string, ImmutableHashSet<(string Namespace, string MemberName)>> typeLibrarySpecData
 	)
 	{
 		if (generateAttribute.ConstructorArguments.Length == 0)
 		{
+			// An unresolved generated-const argument (TypeLibrary.{Namespace}.{Member}FullName) can leave the
+			// attribute unbound to a constructor (ConstructorArguments empty, AttributeConstructor null), so the
+			// TypeLibrary-path reconstruction is attempted before reporting ADM0001.
+			if (
+				TryResolveTypeLibraryTarget(
+					context.Compilation,
+					generateAttribute,
+					typeLibrarySpecData,
+					context.CancellationToken,
+					out var unresolvedTargetType
+				)
+			)
+				return (unresolvedTargetType, true);
+
 			context.ReportDiagnostic(Diagnostic.Create(TargetAttributeNotResolved, typeLocation, typeSymbol.Name));
 			return (null, false);
 		}
@@ -179,13 +208,199 @@ public sealed class AttributeDataModelValidationAnalyzer : DiagnosticAnalyzer
 		if (firstArgument is ITypeSymbol typeArgument)
 			return (typeArgument, true);
 
-		if (firstArgument is not string)
+		// A [Generate] target may reference a generated type-library full-name constant
+		// (TypeLibrary.{Namespace}.{Member}FullName). The constant is emitted by TypeLibraryGenerator's main
+		// pipeline, so it resolves to a string only in the final compilation; the target full name is
+		// reassembled from the argument's member-access expression and validated against the matching spec so
+		// the model is not reported as unresolvable.
+		var isTypeLibraryPath = TryResolveTypeLibraryTarget(
+			context.Compilation,
+			generateAttribute,
+			typeLibrarySpecData,
+			context.CancellationToken,
+			out var resolvedType
+		);
+
+		if (firstArgument is not string && !isTypeLibraryPath)
 			context.ReportDiagnostic(Diagnostic.Create(TargetAttributeNotResolved, typeLocation, typeSymbol.Name));
 
-		if (GetBoolNamedArgument(generateAttribute, "AutoDiscover"))
+		if (GetBoolNamedArgument(generateAttribute, "AutoDiscover") && !isTypeLibraryPath)
+		{
+			// Auto-discovery requires a resolved target type; a literal string target (even when it names a
+			// resolvable type) and an unresolvable target both report ADM0007, matching the typeof requirement.
 			context.ReportDiagnostic(Diagnostic.Create(AutoDiscoverRequiresType, typeLocation, typeSymbol.Name));
+		}
 
-		return (null, false);
+		return isTypeLibraryPath ? (resolvedType, true) : (null, false);
+	}
+
+	/// <summary>
+	/// Collects the generated class names and <c>[TypeRef]</c> members of all <c>[GenerateTypeLibrary]</c> specs
+	/// in the compilation, defaulting the class name to <c>TypeLibrary</c>, so the analyzer can guard and
+	/// validate the TypeLibrary-path target reconstruction.
+	/// </summary>
+	static ImmutableDictionary<
+		string,
+		ImmutableHashSet<(string Namespace, string MemberName)>
+	> CollectTypeLibrarySpecData(Compilation compilation, INamedTypeSymbol? generateTypeLibraryAttributeType)
+	{
+		if (generateTypeLibraryAttributeType is null)
+			return ImmutableDictionary<string, ImmutableHashSet<(string, string)>>.Empty;
+
+		var typeRefAttributeType = compilation.GetTypeByMetadataName(
+			"Purview.SourceGeneratorFramework.Generators.TypeRefAttribute"
+		);
+		var builder = ImmutableDictionary.CreateBuilder<string, ImmutableHashSet<(string, string)>>(
+			StringComparer.Ordinal
+		);
+		VisitNamespace(compilation.GlobalNamespace);
+
+		return builder.ToImmutable();
+
+		void VisitNamespace(INamespaceSymbol @namespace)
+		{
+			foreach (var type in @namespace.GetTypeMembers())
+				VisitType(type);
+
+			foreach (var child in @namespace.GetNamespaceMembers())
+				VisitNamespace(child);
+		}
+
+		void VisitType(INamedTypeSymbol type)
+		{
+			var generateAttribute = GetAttribute(type, generateTypeLibraryAttributeType);
+			if (generateAttribute is not null)
+			{
+				var className = GetStringNamedArgument(generateAttribute, "ClassName") ?? "TypeLibrary";
+				var members = ImmutableHashSet.CreateBuilder<(string, string)>();
+				foreach (var field in type.GetMembers().OfType<IFieldSymbol>())
+				{
+					var typeRef = GetAttribute(field, typeRefAttributeType);
+					if (typeRef is null)
+						continue;
+
+					var @namespace = ReadTypeRefNamespace(typeRef);
+					if (@namespace is not null)
+						members.Add((@namespace, field.Name));
+				}
+
+				builder[className] = members.ToImmutable();
+			}
+
+			foreach (var nested in type.GetTypeMembers())
+				VisitType(nested);
+		}
+	}
+
+	static string? ReadTypeRefNamespace(AttributeData typeRef)
+	{
+		var named = GetStringNamedArgument(typeRef, "Namespace");
+		if (named is not null)
+			return named;
+
+		var constructor = typeRef.AttributeConstructor;
+		var isNamespaceOnlyForm =
+			constructor is { Parameters.Length: > 0 }
+			&& constructor.Parameters[0].Type.SpecialType == SpecialType.System_String;
+		if (isNamespaceOnlyForm)
+			return GetStringCtorArgument(typeRef, 0);
+
+		if (typeRef.ConstructorArguments.Length > 0 && typeRef.ConstructorArguments[0].Value is ITypeSymbol typeSymbol)
+		{
+			return typeSymbol.ContainingNamespace.IsGlobalNamespace
+				? null
+				: typeSymbol.ContainingNamespace.ToDisplayString();
+		}
+
+		return GetStringCtorArgument(typeRef, 1);
+	}
+
+	static string? GetStringCtorArgument(AttributeData attributeData, int index)
+	{
+		if (index < 0 || index >= attributeData.ConstructorArguments.Length)
+			return null;
+
+		return attributeData.ConstructorArguments[index].Value as string;
+	}
+
+	/// <summary>
+	/// Reassembles a <c>[Generate]</c> target from a reference to a generated type-library full-name constant
+	/// (for example <c>TypeLibrary.Aspire.Hosting.AspireC4.SeverityAttributeFullName</c>). The reconstruction is
+	/// guarded so arbitrary unresolved constants are never reinterpreted: the root identifier must match the
+	/// <c>ClassName</c> of a source <c>[GenerateTypeLibrary]</c> spec and the reassembled namespace + member name
+	/// must be declared by that spec.
+	/// </summary>
+	static bool TryResolveTypeLibraryTarget(
+		Compilation compilation,
+		AttributeData generateAttribute,
+		ImmutableDictionary<string, ImmutableHashSet<(string Namespace, string MemberName)>> typeLibrarySpecData,
+		CancellationToken cancellationToken,
+		out ITypeSymbol? targetType
+	)
+	{
+		targetType = null;
+
+		var attributeSyntax =
+			generateAttribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken) as AttributeSyntax;
+		if (attributeSyntax is null)
+			return false;
+
+		var expression = attributeSyntax.ArgumentList?.Arguments.FirstOrDefault()?.Expression;
+		if (expression is null)
+			return false;
+
+		var segments = GetMemberAccessSegments(expression);
+		if (segments.Length < 2)
+			return false;
+
+		var root = segments[0];
+		if (!typeLibrarySpecData.TryGetValue(root, out var members))
+			return false;
+
+		var finalSegment = segments[segments.Length - 1];
+		var typeNameSegment = finalSegment.EndsWith("FullName", StringComparison.Ordinal)
+			? finalSegment.Substring(0, finalSegment.Length - "FullName".Length)
+			: finalSegment;
+		if (typeNameSegment.Length == 0)
+			return false;
+
+		var @namespace = string.Join(".", segments.Skip(1).Take(segments.Length - 2));
+		if (!members.Contains((@namespace, typeNameSegment)))
+			return false;
+
+		targetType = compilation.GetTypeByMetadataName(
+			@namespace.Length == 0 ? typeNameSegment : @namespace + "." + typeNameSegment
+		);
+		return true;
+	}
+
+	/// <summary>
+	/// Walks a dotted member-access expression (for example <c>TypeLibrary.Aspire.Hosting.AspireC4.SeverityAttributeFullName</c>)
+	/// into its dotted name segments, outermost identifier first.
+	/// </summary>
+	static ImmutableArray<string> GetMemberAccessSegments(ExpressionSyntax expression)
+	{
+		var segments = ImmutableArray.CreateBuilder<string>();
+		while (true)
+		{
+			switch (expression)
+			{
+				case MemberAccessExpressionSyntax memberAccess:
+					segments.Add(memberAccess.Name.Identifier.ValueText);
+					expression = memberAccess.Expression;
+					break;
+				case IdentifierNameSyntax identifier:
+					segments.Add(identifier.Identifier.ValueText);
+					segments.Reverse();
+					return segments.ToImmutable();
+				case AliasQualifiedNameSyntax alias:
+					segments.Add(alias.Name.Identifier.ValueText);
+					segments.Reverse();
+					return segments.ToImmutable();
+				default:
+					return [];
+			}
+		}
 	}
 
 	static void AnalyzeParameter(

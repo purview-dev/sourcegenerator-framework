@@ -39,6 +39,30 @@ public sealed class TypeLibraryValidationAnalyzerTests : TUnitDiagnosticAnalyzer
 				public string? Namespace { get; set; }
 				public int Arity { get; set; }
 							}
+
+			[AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
+			public sealed class EnumValueAttribute : Attribute
+			{
+				public EnumValueAttribute(string enumName, string @namespace, object value, string[]? aliases = null)
+				{
+					EnumName = enumName;
+					Namespace = @namespace;
+					Value = value;
+					Aliases = aliases;
+				}
+
+				public EnumValueAttribute(string enumFullName, object value, string[]? aliases = null)
+				{
+					EnumName = enumFullName;
+					Value = value;
+					Aliases = aliases;
+				}
+
+				public string? EnumName { get; }
+				public string? Namespace { get; }
+				public object? Value { get; }
+				public string[]? Aliases { get; }
+							}
 		}
 
 		namespace Purview.SourceGeneratorFramework
@@ -444,6 +468,299 @@ public sealed class TypeLibraryValidationAnalyzerTests : TUnitDiagnosticAnalyzer
 				{
 					[TypeRef("Test")]
 					static readonly TypeIdentity MyAttribute = default!;
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task Generate_PartialExtensionInDifferentNamespace_ReportsNamespaceMismatch(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary]
+				static partial class TypeLibraryModel
+				{
+					[TypeRef("Test")]
+					static readonly TypeIdentity MyAttribute = default!;
+				}
+
+				namespace MyApp
+				{
+					public static partial class TypeLibrary
+					{
+					}
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasDiagnostics(1);
+		await Assert
+			.That(result)
+			.HasDiagnostic(TypeLibraryValidationAnalyzer.GeneratedTypeLibraryPartialInDifferentNamespace.Id);
+	}
+
+	[Test]
+	public async Task Generate_SameNameDifferentNamespace_NonPartial_DoesNotReportNamespaceMismatch(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary]
+				static partial class TypeLibraryModel
+				{
+					[TypeRef("Test")]
+					static readonly TypeIdentity MyAttribute = default!;
+				}
+
+				namespace MyApp
+				{
+					public static class TypeLibrary
+					{
+					}
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task Generate_PartialExtensionMissingStatic_ReportsModifierMismatch(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary]
+				static partial class TypeLibraryModel
+				{
+					[TypeRef("Test")]
+					static readonly TypeIdentity MyAttribute = default!;
+				}
+
+				public partial class TypeLibrary
+				{
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasDiagnostics(1);
+		await Assert
+			.That(result)
+			.HasDiagnostic(TypeLibraryValidationAnalyzer.GeneratedTypeLibraryPartialModifierMismatch.Id);
+	}
+
+	[Test]
+	public async Task Generate_PartialExtensionMatchingModifiers_DoesNotReportDiagnostic(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary]
+				static partial class TypeLibraryModel
+				{
+					[TypeRef("Test")]
+					static readonly TypeIdentity MyAttribute = default!;
+				}
+
+				public static partial class TypeLibrary
+				{
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task Generate_PartialExtensionMatchingConfiguredNamespace_DoesNotReportDiagnostic(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary(Namespace = "MyApp")]
+				static partial class TypeLibraryModel
+				{
+					[TypeRef("Test")]
+					static readonly TypeIdentity MyAttribute = default!;
+				}
+
+				namespace MyApp
+				{
+					public static partial class TypeLibrary
+					{
+					}
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task Generate_NestedTypeWithGeneratedName_DoesNotReportDiagnostic(CancellationToken cancellationToken)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary]
+				static partial class TypeLibraryModel
+				{
+					[TypeRef("Test")]
+					static readonly TypeIdentity MyAttribute = default!;
+				}
+
+				namespace MyApp
+				{
+					public static class Container
+					{
+						public static partial class TypeLibrary
+						{
+						}
+					}
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task Generate_EnumValueWrongFieldType_ReportsEnumValueMemberTypeInvalid(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary]
+				static partial class TypeLibraryModel
+				{
+					[TypeRef("Status", "Test")]
+					static readonly TypeIdentity Status = default!;
+
+					[EnumValue("Status", "Test", 0)]
+					static readonly string Ready = default!;
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasDiagnostics(1);
+		await Assert.That(result).HasDiagnostic(TypeLibraryValidationAnalyzer.EnumValueMemberTypeInvalid.Id);
+	}
+
+	[Test]
+	public async Task Generate_EnumValueMissingEnumType_ReportsEnumTypeNotDeclared(CancellationToken cancellationToken)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary]
+				static partial class TypeLibraryModel
+				{
+					[EnumValue("Status", "Test", 0)]
+					static readonly TypeIdentity Ready = default!;
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasDiagnostics(1);
+		await Assert.That(result).HasDiagnostic(TypeLibraryValidationAnalyzer.EnumValueEnumTypeNotDeclared.Id);
+	}
+
+	[Test]
+	public async Task Generate_EnumValueDuplicateValue_ReportsDuplicateValue(CancellationToken cancellationToken)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary]
+				static partial class TypeLibraryModel
+				{
+					[TypeRef("Status", "Test")]
+					static readonly TypeIdentity Status = default!;
+
+					[EnumValue("Status", "Test", 0)]
+					static readonly TypeIdentity Ready = default!;
+
+					[EnumValue("Status", "Test", 0)]
+					static readonly TypeIdentity Set = default!;
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasDiagnostics(1);
+		await Assert.That(result).HasDiagnostic(TypeLibraryValidationAnalyzer.EnumValueDuplicateValue.Id);
+	}
+
+	[Test]
+	public async Task Generate_EnumValueDuplicateValue_DifferentUnderlyingTypes_ReportsDuplicateValue(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary]
+				static partial class TypeLibraryModel
+				{
+					[TypeRef("Status", "Test")]
+					static readonly TypeIdentity Status = default!;
+
+					[EnumValue("Status", "Test", (byte)0)]
+					static readonly TypeIdentity Ready = default!;
+
+					[EnumValue("Status", "Test", 0L)]
+					static readonly TypeIdentity Set = default!;
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasDiagnostics(1);
+		await Assert.That(result).HasDiagnostic(TypeLibraryValidationAnalyzer.EnumValueDuplicateValue.Id);
+	}
+
+	[Test]
+	public async Task Generate_ValidEnumValues_DoesNotReportDiagnostic(CancellationToken cancellationToken)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary]
+				static partial class TypeLibraryModel
+				{
+					[TypeRef("Status", "Test")]
+					static readonly TypeIdentity Status = default!;
+
+					[EnumValue("Status", "Test", 0)]
+					static readonly TypeIdentity Ready = default!;
+
+					[EnumValue("Test.Status", 1)]
+					static readonly TypeIdentity Set = default!;
 				}
 				""";
 

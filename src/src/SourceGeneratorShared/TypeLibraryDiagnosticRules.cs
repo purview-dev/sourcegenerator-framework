@@ -156,4 +156,79 @@ public static class TypeLibraryDiagnosticRules
 		DiagnosticSeverity.Warning,
 		isEnabledByDefault: true
 	);
+
+	/// <summary>
+	/// Diagnostic raised when a partial declaration of a generated type library class is in a different
+	/// namespace, so it silently shadows the generated type instead of merging with it.
+	/// </summary>
+	public static readonly DiagnosticDescriptor GeneratedTypeLibraryPartialInDifferentNamespace = new(
+		"TLB0014",
+		"Type library partial extension is declared in a different namespace",
+		"Type '{0}' does not extend the generated type library '{1}' declared in {2}; declare the partial in the same namespace (the generated type library is in the global namespace by default) or set the Namespace property on [GenerateTypeLibrary] to match",
+		"TypeLibrary",
+		DiagnosticSeverity.Warning,
+		isEnabledByDefault: true
+	);
+
+	/// <summary>
+	/// Diagnostic raised when a partial declaration of a generated type library class does not match the
+	/// generated modifiers, so the declarations cannot merge.
+	/// </summary>
+	public static readonly DiagnosticDescriptor GeneratedTypeLibraryPartialModifierMismatch = new(
+		"TLB0015",
+		"Type library partial extension must be declared 'public static partial'",
+		"Type '{0}' must be declared 'public static partial' to merge with the generated type library '{1}'",
+		"TypeLibrary",
+		DiagnosticSeverity.Info,
+		isEnabledByDefault: true
+	);
+
+	/// <summary>
+	/// Diagnostic raised when an enum value member type is not TypeIdentity or EnumValueDefinition.
+	/// </summary>
+	public static readonly DiagnosticDescriptor EnumValueMemberTypeInvalid = new(
+		"TLB0016",
+		"Enum value member type must be TypeIdentity or EnumValueDefinition",
+		"Enum value member '{0}' type '{1}' must be Purview.SourceGeneratorFramework.TypeIdentity or EnumValueDefinition",
+		"TypeLibrary",
+		DiagnosticSeverity.Error,
+		isEnabledByDefault: true
+	);
+
+	/// <summary>
+	/// Diagnostic raised when an enum value member references an enum type that is not declared by a
+	/// sibling <c>[TypeRef]</c> member in the same namespace.
+	/// </summary>
+	public static readonly DiagnosticDescriptor EnumValueEnumTypeNotDeclared = new(
+		"TLB0017",
+		"Enum value member references an enum type that is not declared",
+		"Enum value member '{0}' references enum type '{1}' in namespace '{2}'; declare the enum type with a [TypeRef] member in the same namespace",
+		"TypeLibrary",
+		DiagnosticSeverity.Error,
+		isEnabledByDefault: true
+	);
+
+	/// <summary>
+	/// Diagnostic raised when an enum value member is declared more than once for the same enum type.
+	/// </summary>
+	public static readonly DiagnosticDescriptor EnumValueDuplicateMember = new(
+		"TLB0018",
+		"Duplicate enum value member",
+		"Enum value member '{0}' is declared more than once for enum type '{1}'",
+		"TypeLibrary",
+		DiagnosticSeverity.Error,
+		isEnabledByDefault: true
+	);
+
+	/// <summary>
+	/// Diagnostic raised when two enum value members share the same numeric value.
+	/// </summary>
+	public static readonly DiagnosticDescriptor EnumValueDuplicateValue = new(
+		"TLB0019",
+		"Duplicate enum value",
+		"Enum value '{0}' for enum type '{1}' has a duplicate numeric value",
+		"TypeLibrary",
+		DiagnosticSeverity.Info,
+		isEnabledByDefault: true
+	);
 }

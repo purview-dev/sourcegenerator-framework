@@ -540,6 +540,36 @@ public readonly partial record struct RequiredAttributeData;
 	}
 
 	[Test]
+	public async Task Generate_IsEnumBareMemberDefault_UnresolvableTarget_KeepsLiteral(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test
+			{
+				[Generate("Test.NonexistentAttribute")]
+				public readonly partial record struct MyAttributeData(
+					[Property(IsEnum = true, DefaultValue = "B")]
+						string? Value
+				);
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(
+			result,
+			"MyAttributeData.AttributeDataModel.g.cs",
+			cancellationToken
+		);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert.That(generated).Contains("attributeData.GetEnumNamedArgument(\"Value\", \"B\")");
+	}
+
+	[Test]
 	[SuppressMessage("Design", "CA1506:Avoid excessive class coupling")]
 	public async Task Generate_ResourceDefinitionAttributeData_PullsDataOut(CancellationToken cancellationToken)
 	{
@@ -870,6 +900,120 @@ public readonly partial record struct RequiredAttributeData;
 		await Assert.That(generated).IsNotNull();
 		await Assert.That(generated).Contains("string? Value");
 		await Assert.That(generated).Contains("attributeData.GetEnumNamedArgument(\"Value\", \"Test.MyEnum.B\")");
+	}
+
+	[Test]
+	public async Task Generate_IsEnumNamedArgument_BareMemberDefault_ExpandsFromTargetProperty(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test
+			{
+				public enum MyEnum { A, B }
+
+				[Generate(typeof(MyAttribute))]
+				public readonly partial record struct MyAttributeData(
+					[Property(IsEnum = true, DefaultValue = "B")]
+						string? Value
+				);
+
+				public class MyAttribute : System.Attribute
+				{
+					public MyEnum Value { get; set; }
+				}
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(
+			result,
+			"MyAttributeData.AttributeDataModel.g.cs",
+			cancellationToken
+		);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert.That(generated).Contains("string? Value");
+		await Assert.That(generated).Contains("attributeData.GetEnumNamedArgument(\"Value\", \"Test.MyEnum.B\")");
+	}
+
+	[Test]
+	public async Task Generate_IsEnumConstructorName_BareMemberDefault_ExpandsFromTargetParameter(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test
+			{
+				public enum MyEnum { A, B }
+
+				[Generate(typeof(MyAttribute))]
+				public readonly partial record struct MyAttributeData(
+					[Argument("value", IsEnum = true, DefaultValue = "B")]
+						string? Value
+				);
+
+				public class MyAttribute : System.Attribute
+				{
+					public MyAttribute(MyEnum value) { }
+				}
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(
+			result,
+			"MyAttributeData.AttributeDataModel.g.cs",
+			cancellationToken
+		);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert.That(generated).Contains("string? Value");
+		await Assert.That(generated).Contains("attributeData.GetEnumConstructorArgument(\"value\", \"Test.MyEnum.B\")");
+	}
+
+	[Test]
+	public async Task Generate_IsEnumConstructorIndex_BareMemberDefault_ExpandsFromTargetParameter(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test
+			{
+				public enum MyEnum { A, B }
+
+				[Generate(typeof(MyAttribute))]
+				public readonly partial record struct MyAttributeData(
+					[Argument(0, IsEnum = true, DefaultValue = "B")]
+						string? Value
+				);
+
+				public class MyAttribute : System.Attribute
+				{
+					public MyAttribute(MyEnum value) { }
+				}
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(
+			result,
+			"MyAttributeData.AttributeDataModel.g.cs",
+			cancellationToken
+		);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert.That(generated).Contains("string? Value");
+		await Assert.That(generated).Contains("attributeData.GetEnumConstructorArgument(0, \"Test.MyEnum.B\")");
 	}
 
 	[Test]
