@@ -144,7 +144,10 @@ partial class SourceEmitter
 
 					bodyWriter
 						.XmlSummary(
-							"Gets or sets a value indicating whether the property represents an enum whose type is not known to the generator."
+							"Gets or sets a value indicating whether the property represents an enum whose member name is captured as a string."
+						)
+						.XmlRemarks(
+							"When the default value is a bare member name (for example \"Inherit\"), the generator expands it to the fully-qualified \"{EnumFullName}.{Member}\" form using the target attribute's matching property type."
 						)
 						.Property(
 							new("IsEnum", PurviewTypeLibrary.System.Boolean, TypeDeclarationAccessibility.Public)
@@ -259,7 +262,10 @@ partial class SourceEmitter
 
 					bodyWriter
 						.XmlSummary(
-							"Gets or sets a value indicating whether the argument represents an enum whose type is not known to the generator."
+							"Gets or sets a value indicating whether the argument represents an enum whose member name is captured as a string."
+						)
+						.XmlRemarks(
+							"When the default value is a bare member name (for example \"Inherit\"), the generator expands it to the fully-qualified \"{EnumFullName}.{Member}\" form using the target attribute's matching constructor parameter type."
 						)
 						.Property(
 							new("IsEnum", PurviewTypeLibrary.System.Boolean, TypeDeclarationAccessibility.Public)

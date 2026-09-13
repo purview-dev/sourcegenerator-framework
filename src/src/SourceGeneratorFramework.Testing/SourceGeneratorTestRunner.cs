@@ -210,14 +210,18 @@ public sealed class SourceGeneratorTestRunner<TGenerator>
 
 	static IncrementalCacheRun CaptureRun(GeneratorDriver driver)
 	{
-		var runResult = driver.GetRunResult().Results.FirstOrDefault(run => run.Generator is not null);
-		var steps = runResult.Generator is null
-#pragma warning disable IDE0301
-			? ImmutableDictionary<string, ImmutableArray<IncrementalGeneratorRunStep>>.Empty
-#pragma warning restore IDE0301
-			: runResult.TrackedSteps;
+		var driverRunResult = driver.GetRunResult();
+		var runResult = driverRunResult.Results.FirstOrDefault(run => run.Generator is not null);
 
-		return new(runResult, steps);
+		// Merge the tracked steps from every generator's run result (each exposes only its own).
+		var steps = ImmutableDictionary.CreateBuilder<string, ImmutableArray<IncrementalGeneratorRunStep>>();
+		foreach (var result in driverRunResult.Results)
+		{
+			foreach (var pair in result.TrackedSteps)
+				steps[pair.Key] = pair.Value;
+		}
+
+		return new(runResult, steps.ToImmutable());
 	}
 
 	static async Task<AnalyzerCompilationRunResult?> GetAnalyzerResultsAsync(
@@ -271,8 +275,23 @@ public sealed class SourceGeneratorTestRunner<TGenerator>
 		string? loggingSessionId
 	)
 	{
+		var generators = ImmutableArray.CreateBuilder<ISourceGenerator>(1 + options.AdditionalGeneratorTypes.Length);
+		generators.Add(generator.AsSourceGenerator());
+
+		foreach (var generatorType in options.AdditionalGeneratorTypes)
+		{
+			var additional =
+				Activator.CreateInstance(generatorType) as IIncrementalGenerator
+				?? throw new ArgumentException(
+					$"Additional generator type {generatorType.FullName} must implement IIncrementalGenerator and have a parameterless constructor.",
+					nameof(options)
+				);
+
+			generators.Add(additional.AsSourceGenerator());
+		}
+
 		GeneratorDriver driver = CSharpGeneratorDriver.Create(
-			[generator.AsSourceGenerator()],
+			generators,
 			additionalTexts: options.AdditionalText,
 			parseOptions: new(options.LanguageVersion),
 			driverOptions: new GeneratorDriverOptions(

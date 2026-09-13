@@ -55,6 +55,16 @@ public class XmlCommentWriterTests
 	}
 
 	[Test]
+	public async Task XmlSummary_SingleLine_IsWrittenOverMultipleLines()
+	{
+		var writer = CodeWriterFactory.ForTests();
+
+		writer.XmlSummary("single line");
+
+		await Assert.That(writer.ToString()).IsEqualTo("/// <summary>\n/// single line\n/// </summary>\n");
+	}
+
+	[Test]
 	public async Task XmlReturn_WritesReturnsBlock()
 	{
 		var writer = CodeWriterFactory.ForTests();
@@ -456,7 +466,9 @@ public class XmlCommentWriterTests
 		await Assert
 			.That(writer.ToString())
 			.IsEqualTo(
-				"/// <summary>Pass <paramref name=\"value\" /> as <typeparamref name=\"T\" />; use <c>default(T)</c> or <see cref=\"MyType\" />.</summary>\n"
+				"/// <summary>\n"
+					+ "/// Pass <paramref name=\"value\" /> as <typeparamref name=\"T\" />; use <c>default(T)</c> or <see cref=\"MyType\" />.\n"
+					+ "/// </summary>\n"
 					+ "/// <example><para>An inline paragraph.</para></example>\n"
 			);
 	}

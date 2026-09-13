@@ -68,8 +68,8 @@ The framework's pipeline helpers assign a tracking name to every stage. Cache te
 | `RegisterSourceOutput` extension                  | `RegisterSourceOutput_{OutputType}`      |
 
 Bundled generators add their own names, for example `GetAttributeDataTargets`,
-`GetTypeLibraryTargets`, and `GetFrameworkTypeLibraryTree` (the cached framework
-`PurviewTypeLibrary` shape). `WithTrackingName` can rename any stage.
+`GetTypeLibrarySpecClassNames`, `GetTypeLibraryTargets`, and `GetFrameworkTypeLibraryTree` (the cached
+framework `PurviewTypeLibrary` shape). `WithTrackingName` can rename any stage.
 
 ## Assertion API
 

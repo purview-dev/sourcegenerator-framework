@@ -22,7 +22,30 @@ sealed record TypeLibraryNamespaceNode(
 	string Name,
 	string NamespaceValue,
 	EquatableArray<TypeLibraryMemberModel> Members,
-	EquatableArray<TypeLibraryNamespaceNode> Children
+	EquatableArray<TypeLibraryEnumGroupModel> EnumGroups = default,
+	EquatableArray<TypeLibraryNamespaceNode> Children = default
+);
+
+/// <summary>
+/// Describes a nested class in the generated type library holding the enum values for a single enum
+/// type, in the form <c>{EnumName}Values</c>.
+/// </summary>
+sealed record TypeLibraryEnumGroupModel(
+	string EnumName,
+	string EnumNamespace,
+	bool EnumGeneratesFullNameConstant,
+	EquatableArray<TypeLibraryEnumValueModel> Values
+);
+
+/// <summary>
+/// Describes a single enum value member generated in a <see cref="TypeLibraryEnumGroupModel"/>.
+/// </summary>
+sealed record TypeLibraryEnumValueModel(
+	string MemberName,
+	decimal Value,
+	EnumUnderlyingType UnderlyingType = EnumUnderlyingType.Int32,
+	EquatableArray<string> Aliases = default,
+	string? Documentation = null
 );
 
 /// <summary>
@@ -36,7 +59,8 @@ sealed record TypeLibraryMemberModel(
 	string? ReferenceInitializer,
 	bool IsTypeReference,
 	string? Documentation,
-	bool IncludeInGetTypes = false
+	bool IncludeInGetTypes = false,
+	bool GenerateFullNameConstant = false
 )
 {
 	/// <summary>

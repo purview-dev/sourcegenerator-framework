@@ -1,12 +1,12 @@
-﻿<Project>
+<Project>
 	<PropertyGroup Condition="'$(IsPackable)' == 'true'">
 		<Authors>Purview Contributors</Authors>
 		<Description>Purview SourceGeneratorFramework libraries for building and testing incremental C# source generators.</Description>
-		<PackageProjectUrl>https://github.com/purview-dev/purview-sourcegeneratorframework</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/purview-dev/purview-sourcegeneratorframework</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/purview-dev/sourcegeneratorframework</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/purview-dev/sourcegeneratorframework</RepositoryUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageIcon>purview-logo.jpg</PackageIcon>
-		<PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 	</PropertyGroup>
 
 	<Import Sdk="Purview.DotNetProjectSdk" Project="Sdk.targets" />

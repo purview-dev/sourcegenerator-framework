@@ -16,6 +16,21 @@ static partial class TypeLibrarySpec
 	static readonly TypeIdentity GenerateTypeLibrarySampleAttribute = default;
 
 	/// <summary>
+	/// The <see cref="SeverityAttribute"/> marker attribute, declared with <c>GenerateFullNameConst</c> so the
+	/// generated <c>SeverityAttributeFullName</c> constant can be used as the target of the
+	/// <see cref="Purview.SourceGeneratorFramework.Examples.SeverityAttributeData"/> attribute-data model.
+	/// </summary>
+	[TypeRef("Purview.SourceGeneratorFramework.Examples", GenerateFullNameConst = true)]
+	static readonly TypeIdentity SeverityAttribute = default;
+
+	/// <summary>
+	/// The <see cref="SeverityLevel"/> enum type, declared with <c>GenerateFullNameConst</c> so the generated
+	/// <c>SeverityLevelFullName</c> constant is available.
+	/// </summary>
+	[TypeRef("Purview.SourceGeneratorFramework.Examples", GenerateFullNameConst = true)]
+	static readonly TypeIdentity SeverityLevel = default;
+
+	/// <summary>
 	/// A framework type resolved through <c>typeof(...)</c>.
 	/// </summary>
 	[TypeRef(typeof(System.Diagnostics.Debug))]
@@ -47,4 +62,29 @@ static partial class TypeLibrarySpec
 		SourceGeneratorFramework.PurviewTypeLibrary.System.Collections.Generic.IEnumerable.MakeGeneric(
 			SourceGeneratorFramework.PurviewTypeLibrary.System.String
 		);
+
+	/// <summary>
+	/// The <c>ServiceLifetime</c> enum type, declared with <c>GenerateFullNameConst</c> so the generated
+	/// <c>ServiceLifetimeFullName</c> constant and the per-value full-name constants are available.
+	/// </summary>
+	[TypeRef("ServiceLifetime", "Purview.SourceGeneratorFramework.Examples", GenerateFullNameConst = true)]
+	static readonly TypeIdentity ServiceLifetime = default;
+
+	/// <summary>
+	/// The <c>ServiceLifetime.Singleton</c> enum value, declared with the single full type name form.
+	/// </summary>
+	[EnumValue("Purview.SourceGeneratorFramework.Examples.ServiceLifetime", 0)]
+	static readonly TypeIdentity Singleton = default;
+
+	/// <summary>
+	/// The <c>ServiceLifetime.Scoped</c> enum value, declared with the explicit enum-name/namespace form.
+	/// </summary>
+	[EnumValue("ServiceLifetime", "Purview.SourceGeneratorFramework.Examples", 1)]
+	static readonly TypeIdentity Scoped = default;
+
+	/// <summary>
+	/// The <c>ServiceLifetime.Transient</c> enum value.
+	/// </summary>
+	[EnumValue("ServiceLifetime", "Purview.SourceGeneratorFramework.Examples", 2)]
+	static readonly TypeIdentity Transient = default;
 }

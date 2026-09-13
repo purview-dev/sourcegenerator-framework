@@ -431,7 +431,7 @@ public sealed class ReorganizeExtensionClassCodeFixProvider : CodeFixProvider
 
 		var unit = SyntaxFactory
 			.CompilationUnit()
-			.AddUsings(usings.ToArray())
+			.AddUsings([.. usings])
 			.AddMembers(
 				SyntaxFactory
 					.FileScopedNamespaceDeclaration(SyntaxFactory.ParseName(namespaceName))

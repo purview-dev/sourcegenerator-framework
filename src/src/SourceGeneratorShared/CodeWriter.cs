@@ -27,6 +27,8 @@ public sealed partial class CodeWriter
 	int _lastWrittenItemIndent = -1;
 	int _lastWrittenItemEnd;
 	WrittenItemKind _lastWrittenItem;
+	bool _lastWrittenItemHadDecoration;
+	bool _decorationWrittenSinceLastItem;
 	bool _atLineStart = true;
 
 	readonly StringBuilder _builder;
@@ -342,6 +344,9 @@ public sealed partial class CodeWriter
 		if (value is null)
 			return NewLine();
 
+		if (value.StartsWith("///", StringComparison.Ordinal))
+			_decorationWrittenSinceLastItem = true;
+
 		IndentIfRequired();
 		_builder.Append(value);
 		_builder.Append(NewLineCharacter);
@@ -359,6 +364,8 @@ public sealed partial class CodeWriter
 	{
 		if (comments is null || comments.Length == 0)
 			return this;
+
+		_decorationWrittenSinceLastItem = true;
 
 		if (comments.Length == 1)
 			return Write("// ").Line(comments[0]);
@@ -378,8 +385,11 @@ public sealed partial class CodeWriter
 	/// <example><code>writer.Write("int value = 1;");</code></example>
 	public CodeWriter Write(string? value)
 	{
-		if (string.IsNullOrEmpty(value))
+		if (value is null || value.Length == 0)
 			return this;
+
+		if (value.StartsWith("///", StringComparison.Ordinal))
+			_decorationWrittenSinceLastItem = true;
 
 		IndentIfRequired();
 		_builder.Append(value);
@@ -1232,7 +1242,11 @@ public sealed partial class CodeWriter
 		if (declaration.Type.IsEmpty)
 			return this;
 		ValidateFieldDeclaration(declaration);
-		BeginWrittenItem(WrittenItemKind.Field);
+		BeginWrittenItem(
+			WrittenItemKind.Field,
+			(declaration.IncludeGeneratedAttributes ?? DefaultIncludeGeneratedAttributes)
+				|| !declaration.Attributes.IsDefaultOrEmpty
+		);
 		if (declaration.IncludeGeneratedAttributes ?? DefaultIncludeGeneratedAttributes)
 			GeneratedAttributes(includeCoverageExclusion: false, includeEmbeddedAttribute: false);
 		Attributes(declaration.Attributes);
@@ -1838,12 +1852,6 @@ public sealed partial class CodeWriter
 
 	void XmlSummary(ImmutableArray<string> summary)
 	{
-		if (summary.Length == 1)
-		{
-			Write("/// <summary>").Write(summary[0]).Line("</summary>");
-			return;
-		}
-
 		Line("/// <summary>");
 		for (var index = 0; index < summary.Length; index++)
 			Write("/// ").Line(summary[index]);
@@ -3794,6 +3802,8 @@ public sealed partial class CodeWriter
 
 	CodeWriter Attribute(AttributeDeclarationOptions attribute, string? defaultTarget)
 	{
+		_decorationWrittenSinceLastItem = true;
+
 		Write('[');
 		var target = attribute.Target ?? defaultTarget;
 		if (target is not null)
@@ -3892,12 +3902,24 @@ public sealed partial class CodeWriter
 			writeBody(this);
 	}
 
-	void BeginWrittenItem(WrittenItemKind nextItem)
+	void BeginWrittenItem(WrittenItemKind nextItem, bool willHaveDecoration = false)
 	{
 		if (_lastWrittenItem == WrittenItemKind.None || _lastWrittenItemIndent != _indentLevel)
+		{
+			// A decoration written while nothing is tracked (e.g., a file-scope comment or a summary
+			// prepended to the first member) is attributed to the next item only when it is a field;
+			// otherwise it belongs to surrounding code and must not leak into field spacing.
+			if (nextItem != WrittenItemKind.Field)
+				_decorationWrittenSinceLastItem = false;
 			return;
+		}
 
-		var requiresBlankLine = _lastWrittenItem != WrittenItemKind.Field || nextItem != WrittenItemKind.Field;
+		var requiresBlankLine =
+			_lastWrittenItem != WrittenItemKind.Field
+			|| nextItem != WrittenItemKind.Field
+			|| _lastWrittenItemHadDecoration
+			|| _decorationWrittenSinceLastItem
+			|| willHaveDecoration;
 		if (
 			requiresBlankLine
 			&& (_builder.Length == _lastWrittenItemEnd || _builder[_lastWrittenItemEnd] != NewLineCharacter)
@@ -3905,6 +3927,9 @@ public sealed partial class CodeWriter
 		{
 			_builder.Insert(_lastWrittenItemEnd, NewLineCharacter);
 		}
+
+		if (nextItem != WrittenItemKind.Field)
+			_decorationWrittenSinceLastItem = false;
 
 		// A declaration can only consume the preceding item's separator once. Its own completion
 		// establishes the state used by the following declaration.
@@ -3916,6 +3941,8 @@ public sealed partial class CodeWriter
 		_lastWrittenItem = item;
 		_lastWrittenItemIndent = indent;
 		_lastWrittenItemEnd = _builder.Length;
+		_lastWrittenItemHadDecoration = _decorationWrittenSinceLastItem;
+		_decorationWrittenSinceLastItem = false;
 	}
 
 	BlockScope OpenBlockScope(WrittenItemKind completedItem)

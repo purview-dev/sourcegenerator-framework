@@ -3,12 +3,12 @@
 		<CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
 		<RoslynCompilerVersion Condition="'$(RoslynCompilerVersion)' == ''">[5.9.0,)</RoslynCompilerVersion>
 		<RoslynAnalyzersVersion Condition="'$(RoslynAnalyzersVersion)' == ''">[5.9.0,)</RoslynAnalyzersVersion>
-		<TUnitVersion>[1.65.51,)</TUnitVersion>
+		<TUnitVersion>[1.67.0,)</TUnitVersion>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageVersion Include="Bogus" Version="[35.6.5,)" />
 		<PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="[8.0.0,)" />
-		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="[10.0.400,)" />
+		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="[10.0.401,)" />
 		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="$(RoslynCompilerVersion)" />
 		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="$(RoslynCompilerVersion)" />
 		<PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="$(RoslynAnalyzersVersion)" />
@@ -19,6 +19,6 @@
 		<PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="[8.0.0,)" />
 		<PackageVersion Include="System.Collections.Immutable" Version="[10.0.1,)" />
 		<PackageVersion Include="System.Reflection.MetadataLoadContext" Version="10.0.1" />
-		<PackageVersion Include="BenchmarkDotNet" Version="[0.14.0,)" />
+		<PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
 	</ItemGroup>
 </Project>

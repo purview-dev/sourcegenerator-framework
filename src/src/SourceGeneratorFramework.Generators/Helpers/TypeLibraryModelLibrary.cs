@@ -59,6 +59,10 @@ static class TypeLibraryModelLibrary
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
+			var enumValue = GetAttribute(field, GeneratorTypeLibrary.Attirbutes.EnumValueAttribute);
+			if (enumValue is not null)
+				continue;
+
 			var typeRef = GetAttribute(field, GeneratorTypeLibrary.Attirbutes.TypeRefAttribute);
 			if (typeRef is null)
 				continue;
@@ -67,6 +71,7 @@ static class TypeLibraryModelLibrary
 			var isTypeReference = string.Equals(field.Type.Name, "TypeReference", StringComparison.Ordinal);
 			var documentation = ExtractDocumentation(field);
 			var includeInGetTypes = GetIncludeInGetTypes(typeRef);
+			var generateFullNameConstant = GetGenerateFullNameConstant(typeRef);
 
 			TypeLibraryMemberModel member;
 
@@ -108,7 +113,8 @@ static class TypeLibraryModelLibrary
 					initializer,
 					IsTypeReference: true,
 					documentation,
-					includeInGetTypes
+					includeInGetTypes,
+					generateFullNameConstant
 				);
 				AddToTree(root, nodeLookup, placementNamespace ?? string.Empty, member);
 			}
@@ -151,7 +157,8 @@ static class TypeLibraryModelLibrary
 					initializer,
 					IsTypeReference: false,
 					documentation,
-					includeInGetTypes
+					includeInGetTypes,
+					generateFullNameConstant
 				);
 				AddToTree(root, nodeLookup, placementNamespace ?? string.Empty, member);
 			}
@@ -196,7 +203,8 @@ static class TypeLibraryModelLibrary
 					null,
 					IsTypeReference: false,
 					documentation,
-					includeInGetTypes
+					includeInGetTypes,
+					generateFullNameConstant
 				);
 				AddToTree(root, nodeLookup, memberNamespace, member);
 			}
@@ -214,6 +222,11 @@ static class TypeLibraryModelLibrary
 				continue;
 			}
 		}
+
+		if (diagnostics.Any(d => d.IsBlocking))
+			return GeneratorResult<TypeLibraryModel>.Create([.. diagnostics]);
+
+		ProcessEnumValueMembers(specSymbol, nodeLookup, diagnostics, cancellationToken);
 
 		if (diagnostics.Any(d => d.IsBlocking))
 			return GeneratorResult<TypeLibraryModel>.Create([.. diagnostics]);
@@ -267,6 +280,31 @@ static class TypeLibraryModelLibrary
 			for (var index = 0; index < constructor.Parameters.Length; index++)
 			{
 				if (constructor.Parameters[index].Name == "includeInGetTypes")
+					return index < typeRef.ConstructorArguments.Length
+						&& typeRef.ConstructorArguments[index].Value is true;
+			}
+		}
+
+		return false;
+	}
+
+	/// <summary>
+	/// Resolves the <c>GenerateFullNameConstant</c> flag from the named property, the named constructor argument,
+	/// or the positional <c>generateFullNameConstant</c> constructor argument (the final parameter of either ctor).
+	/// </summary>
+	static bool GetGenerateFullNameConstant(AttributeData typeRef)
+	{
+		var named =
+			GetNamedArgument(typeRef, "GenerateFullNameConst", (bool?)null)
+			?? GetNamedArgument(typeRef, "generateFullNameConst", (bool?)null);
+		if (named is not null)
+			return named.Value;
+
+		if (typeRef.AttributeConstructor is { } constructor)
+		{
+			for (var index = 0; index < constructor.Parameters.Length; index++)
+			{
+				if (constructor.Parameters[index].Name == "generateFullNameConst")
 					return index < typeRef.ConstructorArguments.Length
 						&& typeRef.ConstructorArguments[index].Value is true;
 			}
@@ -377,6 +415,260 @@ static class TypeLibraryModelLibrary
 		// A user member shadows an inherited framework member of the same name in the same leaf.
 		leaf!.Members.RemoveAll(m => m.MemberName == member.MemberName);
 		leaf.Members.Add(member);
+	}
+
+	/// <summary>
+	/// Processes an <c>[EnumValue]</c> marker field, resolving its enum type and attaching the value to
+	/// the matching <c>{EnumName}Values</c> group in the enum's namespace node.
+	/// </summary>
+	static void ProcessEnumValueMembers(
+		INamedTypeSymbol specSymbol,
+		Dictionary<string, NamespaceNodeBuilder> nodeLookup,
+		List<ReportableDiagnostic> diagnostics,
+		CancellationToken cancellationToken
+	)
+	{
+		foreach (var field in specSymbol.GetMembers().OfType<IFieldSymbol>())
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+
+			var enumValue = GetAttribute(field, GeneratorTypeLibrary.Attirbutes.EnumValueAttribute);
+			if (enumValue is null)
+				continue;
+
+			ProcessEnumValue(field, enumValue, nodeLookup, diagnostics, cancellationToken);
+		}
+	}
+
+	static void ProcessEnumValue(
+		IFieldSymbol field,
+		AttributeData enumValue,
+		Dictionary<string, NamespaceNodeBuilder> nodeLookup,
+		List<ReportableDiagnostic> diagnostics,
+		CancellationToken cancellationToken
+	)
+	{
+		var fieldName = field.Name;
+
+		if (field.DeclaredAccessibility != Accessibility.Private)
+		{
+			diagnostics.Add(
+				ReportableDiagnostic.Create(
+					TypeLibraryDiagnosticRules.MemberAccessibilityInvalid,
+					isBlocking: true,
+					field,
+					fieldName
+				)
+			);
+			return;
+		}
+
+		if (HasNoInitializer(field, cancellationToken))
+		{
+			diagnostics.Add(
+				ReportableDiagnostic.Create(
+					TypeLibraryDiagnosticRules.MarkerMissingDefaultInitializer,
+					isBlocking: false,
+					field,
+					fieldName
+				)
+			);
+		}
+
+		var isTypeIdentity = string.Equals(field.Type.Name, "TypeIdentity", StringComparison.Ordinal);
+		var isEnumValueDefinition = string.Equals(field.Type.Name, "EnumValueDefinition", StringComparison.Ordinal);
+		if (!isTypeIdentity && !isEnumValueDefinition)
+		{
+			diagnostics.Add(
+				ReportableDiagnostic.Create(
+					TypeLibraryDiagnosticRules.EnumValueMemberTypeInvalid,
+					isBlocking: true,
+					field,
+					fieldName,
+					field.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
+				)
+			);
+			return;
+		}
+
+		var (enumName, enumNamespace, value, underlyingType, aliases) = ReadEnumValue(enumValue);
+		if (enumName is null)
+		{
+			diagnostics.Add(
+				ReportableDiagnostic.Create(
+					TypeLibraryDiagnosticRules.EnumValueEnumTypeNotDeclared,
+					isBlocking: true,
+					field,
+					fieldName,
+					string.Empty,
+					string.Empty
+				)
+			);
+			return;
+		}
+
+		if (!nodeLookup.TryGetValue(enumNamespace ?? string.Empty, out var leaf))
+		{
+			diagnostics.Add(
+				ReportableDiagnostic.Create(
+					TypeLibraryDiagnosticRules.EnumValueEnumTypeNotDeclared,
+					isBlocking: true,
+					field,
+					fieldName,
+					enumName,
+					enumNamespace ?? string.Empty
+				)
+			);
+			return;
+		}
+
+		// The enum type must be declared by a sibling [TypeRef] TypeIdentity marker in the same node.
+		var enumMember = leaf.Members.FirstOrDefault(m => m.MemberName == enumName && !m.IsReference);
+		if (enumMember is null)
+		{
+			diagnostics.Add(
+				ReportableDiagnostic.Create(
+					TypeLibraryDiagnosticRules.EnumValueEnumTypeNotDeclared,
+					isBlocking: true,
+					field,
+					fieldName,
+					enumName,
+					enumNamespace ?? string.Empty
+				)
+			);
+			return;
+		}
+
+		var group = leaf.EnumGroups.FirstOrDefault(g => g.EnumName == enumName);
+		if (group is null)
+		{
+			group = new EnumGroupBuilder(enumName, enumNamespace ?? string.Empty, enumMember.GenerateFullNameConstant);
+			leaf.EnumGroups.Add(group);
+		}
+
+		if (group.Values.Any(v => v.MemberName == fieldName))
+		{
+			diagnostics.Add(
+				ReportableDiagnostic.Create(
+					TypeLibraryDiagnosticRules.EnumValueDuplicateMember,
+					isBlocking: true,
+					field,
+					fieldName,
+					enumName
+				)
+			);
+			return;
+		}
+
+		if (group.Values.Any(v => v.Value == value))
+		{
+			diagnostics.Add(
+				ReportableDiagnostic.Create(
+					TypeLibraryDiagnosticRules.EnumValueDuplicateValue,
+					isBlocking: false,
+					field,
+					fieldName,
+					enumName
+				)
+			);
+		}
+
+		var documentation = ExtractDocumentation(field);
+		group.Values.Add(
+			new TypeLibraryEnumValueModel(
+				fieldName,
+				value,
+				underlyingType,
+				aliases is null or { Length: 0 }
+					? EquatableArray<string>.Empty
+					: new EquatableArray<string>([.. aliases]),
+				documentation
+			)
+		);
+	}
+
+	/// <summary>
+	/// Reads an <c>[EnumValue]</c> attribute, supporting the explicit enum-name/namespace form and the
+	/// single fully-qualified enum type name form. Returns <see langword="null"/> names for an empty or
+	/// unresolvable fully-qualified form.
+	/// </summary>
+	static (
+		string? EnumName,
+		string? Namespace,
+		decimal Value,
+		EnumUnderlyingType UnderlyingType,
+		string[]? Aliases
+	) ReadEnumValue(AttributeData enumValue)
+	{
+		var constructor = enumValue.AttributeConstructor;
+		var isFullNameForm =
+			constructor is { Parameters.Length: > 0 } && constructor.Parameters[0].Name == "enumFullName";
+
+		if (isFullNameForm)
+		{
+			var fullName = GetConstructorArgument(enumValue, 0, (string?)null);
+			if (string.IsNullOrWhiteSpace(fullName))
+				return (null, null, 0, EnumUnderlyingType.Int32, null);
+
+			var lastDot = fullName!.LastIndexOf('.');
+			var enumName = lastDot < 0 ? fullName : fullName.Substring(lastDot + 1);
+			var enumNamespace = lastDot < 0 ? null : fullName.Substring(0, lastDot);
+
+			var (value, underlyingType) = ReadEnumValueConstant(enumValue, 1);
+
+			return (enumName, enumNamespace, value, underlyingType, GetStringArrayArgument(enumValue, 2));
+		}
+
+		var (explicitValue, explicitUnderlyingType) = ReadEnumValueConstant(enumValue, 2);
+
+		return (
+			GetConstructorArgument(enumValue, 0, (string?)null),
+			GetConstructorArgument(enumValue, 1, (string?)null),
+			explicitValue,
+			explicitUnderlyingType,
+			GetStringArrayArgument(enumValue, 3)
+		);
+	}
+
+	/// <summary>
+	/// Reads an enum value constructor argument, preserving the declared numeric type so the enum's
+	/// underlying type (<c>byte</c> through <c>ulong</c>) is inferred from the literal.
+	/// </summary>
+	static (decimal Value, EnumUnderlyingType UnderlyingType) ReadEnumValueConstant(
+		AttributeData attributeData,
+		int index
+	)
+	{
+		if (index < 0 || index >= attributeData.ConstructorArguments.Length)
+			return (0, EnumUnderlyingType.Int32);
+
+		var raw = attributeData.ConstructorArguments[index].Value;
+		var value = raw switch
+		{
+			byte b => b,
+			sbyte sb => sb,
+			short s => s,
+			ushort us => us,
+			int i => i,
+			uint ui => ui,
+			long l => l,
+			ulong ul => ul,
+			_ => Convert.ToDecimal(raw, CultureInfo.InvariantCulture),
+		};
+		var underlyingType = raw switch
+		{
+			byte => EnumUnderlyingType.Byte,
+			sbyte => EnumUnderlyingType.SByte,
+			short => EnumUnderlyingType.Int16,
+			ushort => EnumUnderlyingType.UInt16,
+			int => EnumUnderlyingType.Int32,
+			uint => EnumUnderlyingType.UInt32,
+			long => EnumUnderlyingType.Int64,
+			ulong => EnumUnderlyingType.UInt64,
+			_ => EnumUnderlyingType.Int32,
+		};
+
+		return (value, underlyingType);
 	}
 
 	static NamespaceNodeBuilder GetOrAddNode(
@@ -684,7 +976,11 @@ static class TypeLibraryModelLibrary
 		if (index < 0 || index >= attributeData.ConstructorArguments.Length)
 			return defaultValue;
 
-		var value = attributeData.ConstructorArguments[index].Value;
+		var constant = attributeData.ConstructorArguments[index];
+		if (constant.Kind == TypedConstantKind.Array)
+			return defaultValue;
+
+		var value = constant.Value;
 		if (value is T typedValue)
 			return typedValue;
 		if (value is null)
@@ -698,6 +994,30 @@ static class TypeLibraryModelLibrary
 		{
 			return defaultValue;
 		}
+	}
+
+	/// <summary>
+	/// Reads a <c>string[]</c> constructor argument, which Roslyn models as an array
+	/// <see cref="TypedConstant"/> whose elements live on <see cref="TypedConstant.Values"/>.
+	/// </summary>
+	static string[]? GetStringArrayArgument(AttributeData attributeData, int index)
+	{
+		if (index < 0 || index >= attributeData.ConstructorArguments.Length)
+			return null;
+
+		var constant = attributeData.ConstructorArguments[index];
+		if (constant.Kind != TypedConstantKind.Array || constant.IsNull)
+			return null;
+
+		var values = constant.Values;
+		if (values.IsDefaultOrEmpty)
+			return null;
+
+		var result = new string[values.Length];
+		for (var i = 0; i < values.Length; i++)
+			result[i] = values[i].Value as string ?? string.Empty;
+
+		return result;
 	}
 
 	static T? GetNamedArgument<T>(AttributeData attributeData, string name, T? defaultValue)
@@ -734,6 +1054,8 @@ static class TypeLibraryModelLibrary
 
 		public List<TypeLibraryMemberModel> Members { get; } = [];
 
+		public List<EnumGroupBuilder> EnumGroups { get; } = [];
+
 		public List<NamespaceNodeBuilder> Children { get; } = [];
 
 		public TypeLibraryNamespaceNode ToModel() =>
@@ -741,7 +1063,27 @@ static class TypeLibraryModelLibrary
 				Name,
 				NamespaceValue,
 				new EquatableArray<TypeLibraryMemberModel>([.. Members]),
+				new EquatableArray<TypeLibraryEnumGroupModel>([.. EnumGroups.Select(static g => g.ToModel())]),
 				new EquatableArray<TypeLibraryNamespaceNode>([.. Children.Select(static c => c.ToModel())])
+			);
+	}
+
+	sealed class EnumGroupBuilder(string enumName, string enumNamespace, bool enumGeneratesFullNameConstant)
+	{
+		public string EnumName { get; } = enumName;
+
+		public string EnumNamespace { get; } = enumNamespace;
+
+		public bool EnumGeneratesFullNameConstant { get; } = enumGeneratesFullNameConstant;
+
+		public List<TypeLibraryEnumValueModel> Values { get; } = [];
+
+		public TypeLibraryEnumGroupModel ToModel() =>
+			new(
+				EnumName,
+				EnumNamespace,
+				EnumGeneratesFullNameConstant,
+				new EquatableArray<TypeLibraryEnumValueModel>([.. Values])
 			);
 	}
 }

@@ -111,9 +111,7 @@ static class ExtensionClassDiscovery
 	/// name so that e.g. <c>SQL</c> produces <c>SqlExtensions</c> while <c>API</c> and <c>AI</c> keep their
 	/// uppercase forms (<c>APIExtensions</c>, <c>AIExtensions</c>).
 	/// </summary>
-	static readonly System.Collections.Generic.Dictionary<string, string> AcronymCanonicalNames = new(
-		System.StringComparer.OrdinalIgnoreCase
-	)
+	static readonly Dictionary<string, string> AcronymCanonicalNames = new(StringComparer.OrdinalIgnoreCase)
 	{
 		{ "SQL", "Sql" },
 		{ "GUID", "Guid" },

@@ -1109,7 +1109,9 @@ public class CodeWriterTests
 					+ GeneratedAttributes(includeCoverageExclusion: false)
 					+ "public enum Status\n"
 					+ "{\n"
-					+ "\t/// <summary>No status has been selected.</summary>\n"
+					+ "\t/// <summary>\n"
+					+ "\t/// No status has been selected.\n"
+					+ "\t/// </summary>\n"
 					+ "\t[Obsolete]\n"
 					+ "\tNone = 0,\n"
 					+ "\n"
@@ -1157,7 +1159,9 @@ public class CodeWriterTests
 					+ "{\n"
 					+ "\tNone = 0,\n"
 					+ "\n"
-					+ "\t/// <summary>The service is ready.</summary>\n"
+					+ "\t/// <summary>\n"
+					+ "\t/// The service is ready.\n"
+					+ "\t/// </summary>\n"
 					+ "\tReady = 1,\n"
 					+ "}\n"
 			);
@@ -1893,7 +1897,22 @@ public class CodeWriterTests
 	}
 
 	[Test]
-	public async Task StructuredMembers_GivenConsecutiveFields_DoesNotAddBlankLine()
+	public async Task StructuredMembers_GivenConsecutiveUndecoratedFields_DoesNotAddBlankLine()
+	{
+		// Arrange
+		var writer = CodeWriterFactory.ForTests();
+
+		// Act
+		writer
+			.Field(new FieldDeclarationOptions("_first", Type("int")) { IncludeGeneratedAttributes = false })
+			.Field(new FieldDeclarationOptions("_second", Type("int")) { IncludeGeneratedAttributes = false });
+
+		// Assert
+		await Assert.That(writer.ToString()).IsEqualTo("private int _first;\nprivate int _second;\n");
+	}
+
+	[Test]
+	public async Task StructuredMembers_GivenConsecutiveFields_AddsBlankLineWhenDecorated()
 	{
 		// Arrange
 		var writer = CodeWriterFactory.ForTests();
@@ -1909,9 +1928,95 @@ public class CodeWriterTests
 			.IsEqualTo(
 				GeneratedAttributes(includeCoverageExclusion: false)
 					+ "private int _first;\n"
+					+ "\n"
 					+ GeneratedAttributes(includeCoverageExclusion: false)
 					+ "private int _second;\n"
 			);
+	}
+
+	[Test]
+	public async Task StructuredMembers_GivenFieldWithAttribute_AddsBlankLineBeforeFollowingField()
+	{
+		// Arrange
+		var writer = CodeWriterFactory.ForTests();
+
+		// Act
+		writer
+			.Field(
+				new FieldDeclarationOptions("_first", Type("int"))
+				{
+					IncludeGeneratedAttributes = false,
+					Attributes = [new(new TypeIdentity("Obsolete", null))],
+				}
+			)
+			.Field(new FieldDeclarationOptions("_second", Type("int")) { IncludeGeneratedAttributes = false });
+
+		// Assert
+		await Assert.That(writer.ToString()).IsEqualTo("[Obsolete]\nprivate int _first;\n\nprivate int _second;\n");
+	}
+
+	[Test]
+	public async Task StructuredMembers_GivenFirstFieldHasSummary_AddsBlankLineAfterIt()
+	{
+		// Arrange
+		var writer = CodeWriterFactory.ForTests();
+
+		// Act
+		writer
+			.XmlSummary("Gets the first value.")
+			.Field(new FieldDeclarationOptions("_first", Type("int")) { IncludeGeneratedAttributes = false })
+			.Field(new FieldDeclarationOptions("_second", Type("int")) { IncludeGeneratedAttributes = false });
+
+		// Assert
+		await Assert
+			.That(writer.ToString())
+			.IsEqualTo(
+				"/// <summary>\n/// Gets the first value.\n/// </summary>\n"
+					+ "private int _first;\n"
+					+ "\n"
+					+ "private int _second;\n"
+			);
+	}
+
+	[Test]
+	public async Task StructuredMembers_GivenSecondFieldHasSummary_AddsBlankLineBeforeIt()
+	{
+		// Arrange
+		var writer = CodeWriterFactory.ForTests();
+
+		// Act
+		writer
+			.Field(new FieldDeclarationOptions("_first", Type("int")) { IncludeGeneratedAttributes = false })
+			.XmlSummary("Gets the second value.")
+			.Field(new FieldDeclarationOptions("_second", Type("int")) { IncludeGeneratedAttributes = false });
+
+		// Assert
+		await Assert
+			.That(writer.ToString())
+			.IsEqualTo(
+				"private int _first;\n"
+					+ "\n"
+					+ "/// <summary>\n/// Gets the second value.\n/// </summary>\n"
+					+ "private int _second;\n"
+			);
+	}
+
+	[Test]
+	public async Task StructuredMembers_GivenCommentBetweenFields_AddsBlankLine()
+	{
+		// Arrange
+		var writer = CodeWriterFactory.ForTests();
+
+		// Act
+		writer
+			.Field(new FieldDeclarationOptions("_first", Type("int")) { IncludeGeneratedAttributes = false })
+			.Comment("Explains the next field.")
+			.Field(new FieldDeclarationOptions("_second", Type("int")) { IncludeGeneratedAttributes = false });
+
+		// Assert
+		await Assert
+			.That(writer.ToString())
+			.IsEqualTo("private int _first;\n\n// Explains the next field.\nprivate int _second;\n");
 	}
 
 	[Test]
@@ -1986,7 +2091,9 @@ public class CodeWriterTests
 				GeneratedAttributes(includeCoverageExclusion: false)
 					+ "private int _value;\n"
 					+ "\n"
-					+ "/// <summary>Gets the value.</summary>\n"
+					+ "/// <summary>\n"
+					+ "/// Gets the value.\n"
+					+ "/// </summary>\n"
 					+ GeneratedAttributes()
 					+ "public int Value { get; }\n"
 			);

@@ -12,27 +12,50 @@ static class AttributeDataModelLibrary
 		IncrementalGeneratorInitializationContext context
 	)
 	{
-		return IncrementalPipeline
-			.ForAttributeWithMetadataName(
-				context,
-				GeneratorTypeLibrary.Attirbutes.GenerateAttribute,
-				static (ctx, ct) =>
-				{
-					// ForAttributeWithMetadataName already resolves TargetSymbol; calling
-					// SemanticModel.GetDeclaredSymbol again would re-run the same symbol resolution
-					// on every pipeline rerun, so the pre-resolved symbol is used directly.
-					var structSymbol = (INamedTypeSymbol?)ctx.TargetSymbol;
-					return structSymbol is null
-						? GeneratorResult<AttributeDataModelTarget>.Empty
-						: BuildTarget(structSymbol, ct);
-				},
-				predicate: static (ctx, ct) => ctx is StructDeclarationSyntax or RecordDeclarationSyntax
+		// A [Generate] target may be a reference to a generated type-library full-name constant
+		// (TypeLibrary.{Namespace}.{Member}FullName). The TypeLibrary class itself is emitted by
+		// TypeLibraryGenerator through RegisterSourceOutput (the main pipeline), so it is not part of the
+		// compilation this generator's ForAttributeWithMetadataName pipeline sees. The [GenerateTypeLibrary]
+		// specs are source (and resolvable), so their ClassName and [TypeRef] members are discovered here and
+		// used to guard and validate the reconstruction of the target from the argument's member-access
+		// expression (see BuildTarget).
+		var typeLibrarySpecData = context
+			.SyntaxProvider.ForAttributeWithMetadataName(
+				GeneratorTypeLibrary.Attirbutes.GenerateTypeLibraryAttribute.MetadataFullName,
+				transform: static (ctx, _) => (INamedTypeSymbol)ctx.TargetSymbol,
+				predicate: static (ctx, _) => ctx is ClassDeclarationSyntax
+			)
+			.Select(static (specSymbol, _) => ReadTypeLibrarySpecData(specSymbol))
+			.Collect()
+			.Select(static (specs, _) => new EquatableArray<TypeLibrarySpecData>(specs))
+			.WithTrackingName("GetTypeLibrarySpecClassNames");
+
+		var attributeCandidates = IncrementalPipeline.ForAttributeWithMetadataName(
+			context,
+			GeneratorTypeLibrary.Attirbutes.GenerateAttribute,
+			// ForAttributeWithMetadataName already resolves TargetSymbol; calling
+			// SemanticModel.GetDeclaredSymbol again would re-run the same symbol resolution on every
+			// pipeline rerun, so the pre-resolved symbol is carried through as the intermediate value.
+			static (ctx, _) => (INamedTypeSymbol)ctx.TargetSymbol,
+			predicate: static (ctx, _) => ctx is StructDeclarationSyntax or RecordDeclarationSyntax
+		);
+
+		return attributeCandidates
+			.CombineWith(
+				typeLibrarySpecData,
+				static (structSymbol, specData, _) => (Symbol: structSymbol, Specs: specData)
+			)
+			.CombineWith(
+				context.CompilationProvider,
+				static (pair, compilation, ct) => BuildTarget(pair.Symbol, pair.Specs, compilation, ct)
 			)
 			.WithTrackingName("GetAttributeDataTargets");
 	}
 
 	static GeneratorResult<AttributeDataModelTarget> BuildTarget(
 		INamedTypeSymbol structSymbol,
+		EquatableArray<TypeLibrarySpecData> typeLibrarySpecData,
+		Compilation compilation,
 		CancellationToken cancellationToken
 	)
 	{
@@ -46,16 +69,37 @@ static class AttributeDataModelLibrary
 
 		ITypeSymbol? targetAttributeType = null;
 		TypeIdentity targetAttribute = default;
+		var targetFromStringForm = false;
 		if (generateAttribute.ConstructorArguments.Length == 0)
 		{
-			diagnostics.Add(
-				ReportableDiagnostic.Create(
-					AttributeDataModelDiagnosticRules.TargetAttributeNotResolved,
-					isBlocking: true,
-					structSymbol,
-					structSymbol.Name
+			// An unresolved generated-const argument (TypeLibrary.{Namespace}.{Member}FullName) can leave the
+			// attribute unbound to a constructor (ConstructorArguments empty, AttributeConstructor null), so the
+			// TypeLibrary-path reconstruction is attempted before reporting ADM0001.
+			if (
+				!TryResolveTypeLibraryTarget(
+					generateAttribute,
+					typeLibrarySpecData,
+					compilation,
+					cancellationToken,
+					out var unresolvedTargetType,
+					out var unresolvedTargetIdentity
 				)
-			);
+			)
+			{
+				diagnostics.Add(
+					ReportableDiagnostic.Create(
+						AttributeDataModelDiagnosticRules.TargetAttributeNotResolved,
+						isBlocking: true,
+						structSymbol,
+						structSymbol.Name
+					)
+				);
+			}
+			else
+			{
+				targetAttributeType = unresolvedTargetType;
+				targetAttribute = unresolvedTargetIdentity;
+			}
 		}
 		else
 		{
@@ -67,7 +111,30 @@ static class AttributeDataModelLibrary
 				targetAttribute = new(typeSymbol);
 			}
 			else if (firstArgument is string targetAttributeName)
+			{
+				// A literal string target. Resolve it against the compilation so enum defaults can be
+				// derived from the target attribute's members; ADM0007 still requires the typeof form.
+				targetFromStringForm = true;
 				targetAttribute = ParseTypeValueObject(targetAttributeName);
+				targetAttributeType = compilation.GetTypeByMetadataName(targetAttribute.MetadataFullName);
+			}
+			else if (
+				TryResolveTypeLibraryTarget(
+					generateAttribute,
+					typeLibrarySpecData,
+					compilation,
+					cancellationToken,
+					out var resolvedType,
+					out var resolvedIdentity
+				)
+			)
+			{
+				// The argument references a {Member}FullName constant generated by TypeLibraryGenerator's
+				// main pipeline, so its value is an error constant in this compilation. The target full name
+				// is reassembled from the argument's member-access expression and resolved here.
+				targetAttributeType = resolvedType;
+				targetAttribute = resolvedIdentity;
+			}
 			else
 			{
 				diagnostics.Add(
@@ -92,7 +159,7 @@ static class AttributeDataModelLibrary
 			GetConstructorArgument(generateAttribute, 2, false)
 		);
 
-		if (autoDiscover && targetAttributeType is null)
+		if (autoDiscover && (targetFromStringForm || targetAttributeType is null))
 		{
 			diagnostics.Add(
 				ReportableDiagnostic.Create(
@@ -105,7 +172,13 @@ static class AttributeDataModelLibrary
 		}
 
 		HashSet<string> excludedNames = new(StringComparer.Ordinal);
-		var explicitProperties = ReadExplicitProperties(structSymbol, excludedNames, diagnostics, cancellationToken);
+		var explicitProperties = ReadExplicitProperties(
+			structSymbol,
+			excludedNames,
+			diagnostics,
+			targetAttributeType as INamedTypeSymbol,
+			cancellationToken
+		);
 		var discoveredProperties =
 			autoDiscover && targetAttributeType is not null
 				? DiscoverProperties(
@@ -173,6 +246,7 @@ static class AttributeDataModelLibrary
 		INamedTypeSymbol structSymbol,
 		HashSet<string> excludedNames,
 		List<ReportableDiagnostic> diagnostics,
+		INamedTypeSymbol? targetAttributeType,
 		CancellationToken cancellationToken
 	)
 	{
@@ -215,7 +289,7 @@ static class AttributeDataModelLibrary
 				continue;
 			}
 
-			var info = ReadParameterAttributes(parameter, propertyName);
+			var info = ReadParameterAttributes(parameter, propertyName, targetAttributeType);
 
 			if (info.IsExcluded)
 			{
@@ -308,7 +382,11 @@ static class AttributeDataModelLibrary
 		return properties.ToImmutable();
 	}
 
-	static ParameterAttributeInfo ReadParameterAttributes(IParameterSymbol parameter, string propertyName)
+	static ParameterAttributeInfo ReadParameterAttributes(
+		IParameterSymbol parameter,
+		string propertyName,
+		INamedTypeSymbol? targetAttributeType
+	)
 	{
 		var sources = ImmutableArray.CreateBuilder<PropertySource>();
 		var isExcluded = false;
@@ -386,6 +464,28 @@ static class AttributeDataModelLibrary
 				defaultValue = namedDefaultValue;
 				hasDefaultValue = true;
 			}
+		}
+
+		// An IsEnum default may be supplied as a bare member name (for example DefaultValue = "Inherit")
+		// when the enum type is known to the generator through the resolved target attribute. Expand it to
+		// the fully-qualified "{EnumFullName}.{Member}" form so the emitted GetEnum*Argument call receives
+		// the same string the runtime's ToEnumString() produces. Fully-qualified defaults and defaults whose
+		// enum type cannot be resolved are left unchanged.
+		if (
+			isEnum
+			&& defaultValue is string defaultString
+			&& !defaultString.Contains('.')
+			&& targetAttributeType is not null
+			&& TryResolveEnumDefault(
+				targetAttributeType,
+				sources.ToImmutable(),
+				defaultString,
+				out var effectiveDefault
+			)
+		)
+		{
+			defaultValue = effectiveDefault;
+			hasDefaultValue = true;
 		}
 
 		return new ParameterAttributeInfo(
@@ -893,6 +993,218 @@ static class AttributeDataModelLibrary
 		return new TypeIdentity(typeName, namespaceName);
 	}
 
+	/// <summary>
+	/// Reads the generated class name and <c>[TypeRef]</c> members of a <c>[GenerateTypeLibrary]</c> spec,
+	/// mirroring <c>TypeLibraryModelLibrary.BuildTarget</c>. The members are used to validate a reconstructed
+	/// <c>TypeLibrary.{Namespace}.{Member}FullName</c> reference even when the underlying type is not resolvable
+	/// in this compilation.
+	/// </summary>
+	static TypeLibrarySpecData ReadTypeLibrarySpecData(INamedTypeSymbol specSymbol)
+	{
+		var generateAttribute = GetAttribute(specSymbol, GeneratorTypeLibrary.Attirbutes.GenerateTypeLibraryAttribute);
+		var className = generateAttribute is null
+			? "TypeLibrary"
+			: GetNamedArgument(generateAttribute, "ClassName", (string?)null) ?? "TypeLibrary";
+
+		var members = ImmutableArray.CreateBuilder<TypeLibraryMemberRef>();
+		foreach (var field in specSymbol.GetMembers().OfType<IFieldSymbol>())
+		{
+			var typeRef = GetAttribute(field, GeneratorTypeLibrary.Attirbutes.TypeRefAttribute);
+			if (typeRef is null)
+				continue;
+
+			var @namespace = ReadTypeRefNamespace(typeRef);
+			if (@namespace is null)
+				continue;
+
+			members.Add(new TypeLibraryMemberRef(field.Name, @namespace));
+		}
+
+		return new TypeLibrarySpecData(className, new EquatableArray<TypeLibraryMemberRef>(members.ToImmutable()));
+	}
+
+	/// <summary>
+	/// Reads the namespace of a <c>[TypeRef]</c> marker member, mirroring the namespace-only, explicit, and
+	/// <c>typeof(...)</c> declaration forms.
+	/// </summary>
+	static string? ReadTypeRefNamespace(AttributeData typeRef)
+	{
+		var named = GetNamedArgument(typeRef, "Namespace", (string?)null);
+		if (named is not null)
+			return named;
+
+		var constructor = typeRef.AttributeConstructor;
+		var isNamespaceOnlyForm =
+			constructor is { Parameters.Length: > 0 }
+			&& constructor.Parameters[0].Type.SpecialType == SpecialType.System_String;
+		if (isNamespaceOnlyForm)
+			return GetConstructorArgument(typeRef, 0, (string?)null);
+
+		if (typeRef.ConstructorArguments.Length > 0 && typeRef.ConstructorArguments[0].Value is ITypeSymbol typeSymbol)
+		{
+			return typeSymbol.ContainingNamespace.IsGlobalNamespace
+				? null
+				: typeSymbol.ContainingNamespace.ToDisplayString();
+		}
+
+		return GetConstructorArgument(typeRef, 1, (string?)null);
+	}
+
+	/// <summary>
+	/// Reassembles a <c>[Generate]</c> target from a reference to a generated type-library full-name constant
+	/// (for example <c>TypeLibrary.Aspire.Hosting.AspireC4.SeverityAttributeFullName</c>). The constant is
+	/// emitted by <c>TypeLibraryGenerator</c>'s main pipeline, so its value is an error constant (null) in the
+	/// compilation this generator sees; the target full name is derived from the argument's member-access
+	/// expression and validated against the <c>[TypeRef]</c> members of the matching spec.
+	/// </summary>
+	/// <remarks>
+	/// The reconstruction is guarded so arbitrary unresolved constants are never reinterpreted: the root
+	/// identifier must match the <c>ClassName</c> of a source <c>[GenerateTypeLibrary]</c> spec and the
+	/// reassembled namespace + member name must be declared by that spec. A valid reference resolves to a type
+	/// when the underlying type is present in this compilation (for example post-init generated attributes); when
+	/// it is not (the consumer's own generator emits the marker attributes, which do not run on the project being
+	/// compiled), the reconstructed identity is used so the model still generates.
+	/// </remarks>
+	static bool TryResolveTypeLibraryTarget(
+		AttributeData generateAttribute,
+		EquatableArray<TypeLibrarySpecData> typeLibrarySpecData,
+		Compilation compilation,
+		CancellationToken cancellationToken,
+		out ITypeSymbol? targetType,
+		out TypeIdentity targetIdentity
+	)
+	{
+		targetType = null;
+		targetIdentity = default;
+
+		var attributeSyntax =
+			generateAttribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken) as AttributeSyntax;
+		if (attributeSyntax is null)
+			return false;
+
+		var expression = attributeSyntax.ArgumentList?.Arguments.FirstOrDefault()?.Expression;
+		if (expression is null)
+			return false;
+
+		var segments = GetMemberAccessSegments(expression);
+		if (segments.Length < 2)
+			return false;
+
+		var root = segments[0];
+		var spec = typeLibrarySpecData.AsImmutableArray().FirstOrDefault(spec => spec.ClassName == root);
+		if (spec is null)
+			return false;
+
+		var finalSegment = segments[segments.Length - 1];
+		var typeNameSegment = finalSegment.EndsWith("FullName", StringComparison.Ordinal)
+			? finalSegment.Substring(0, finalSegment.Length - "FullName".Length)
+			: finalSegment;
+		if (typeNameSegment.Length == 0)
+			return false;
+
+		var @namespace = string.Join(".", segments.Skip(1).Take(segments.Length - 2));
+
+		// The reference must correspond to a [TypeRef] member declared by the spec: the TypeLibrary emits
+		// {Member}FullName = "{Namespace}.{TypeName}" only for declared members, so a matching member confirms
+		// the constant exists even when the underlying type is not resolvable in this compilation.
+		if (!spec.Members.AsImmutableArray().Contains(new TypeLibraryMemberRef(typeNameSegment, @namespace)))
+			return false;
+
+		var fullName = @namespace.Length == 0 ? typeNameSegment : @namespace + "." + typeNameSegment;
+		targetIdentity = ParseTypeValueObject(fullName);
+		targetType = compilation.GetTypeByMetadataName(fullName);
+		return true;
+	}
+
+	/// <summary>
+	/// Walks a dotted member-access expression (for example <c>TypeLibrary.Aspire.Hosting.AspireC4.SeverityAttributeFullName</c>)
+	/// into its dotted name segments, outermost identifier first.
+	/// </summary>
+	static ImmutableArray<string> GetMemberAccessSegments(ExpressionSyntax expression)
+	{
+		var segments = ImmutableArray.CreateBuilder<string>();
+		while (true)
+		{
+			switch (expression)
+			{
+				case MemberAccessExpressionSyntax memberAccess:
+					segments.Add(memberAccess.Name.Identifier.ValueText);
+					expression = memberAccess.Expression;
+					break;
+				case IdentifierNameSyntax identifier:
+					segments.Add(identifier.Identifier.ValueText);
+					segments.Reverse();
+					return segments.ToImmutable();
+				case AliasQualifiedNameSyntax alias:
+					segments.Add(alias.Name.Identifier.ValueText);
+					segments.Reverse();
+					return segments.ToImmutable();
+				default:
+					return [];
+			}
+		}
+	}
+
+	/// <summary>
+	/// Expands a bare enum member name (for example <c>Inherit</c>) to its fully-qualified
+	/// <c>"{EnumFullName}.{Member}"</c> form using the target attribute's property or constructor parameter
+	/// type mapped by the property source. Returns <see langword="false"/> when no source maps to an enum type.
+	/// </summary>
+	static bool TryResolveEnumDefault(
+		INamedTypeSymbol targetAttributeType,
+		ImmutableArray<PropertySource> sources,
+		string memberName,
+		out string effectiveDefault
+	)
+	{
+		foreach (var source in sources)
+		{
+			ITypeSymbol? memberType = null;
+			if (source.Source == AttributePropertySource.NamedArgument && source.MappedName is not null)
+			{
+				memberType = targetAttributeType
+					.GetMembers(source.MappedName)
+					.OfType<IPropertySymbol>()
+					.FirstOrDefault()
+					?.Type;
+			}
+			else if (source.Source == AttributePropertySource.ConstructorName && source.MappedName is not null)
+			{
+				var mappedName = source.MappedName;
+				memberType = targetAttributeType
+					.InstanceConstructors.SelectMany(static ctor => ctor.Parameters)
+					.FirstOrDefault(parameter =>
+						string.Equals(parameter.Name, mappedName, StringComparison.OrdinalIgnoreCase)
+					)
+					?.Type;
+			}
+			else if (source.Source == AttributePropertySource.ConstructorIndex)
+			{
+				memberType = targetAttributeType
+					.InstanceConstructors.SelectMany(static ctor => ctor.Parameters)
+					.FirstOrDefault(parameter => parameter.Ordinal == source.ConstructorIndex)
+					?.Type;
+			}
+
+			if (memberType is { TypeKind: TypeKind.Enum })
+			{
+				effectiveDefault = $"{BuildEnumFullName(memberType)}.{memberName}";
+				return true;
+			}
+		}
+
+		effectiveDefault = string.Empty;
+		return false;
+	}
+
+	static string BuildEnumFullName(ITypeSymbol enumType)
+	{
+		var @namespace = enumType.ContainingNamespace;
+		return @namespace is null || @namespace.IsGlobalNamespace
+			? enumType.Name
+			: $"{@namespace.ToDisplayString()}.{enumType.Name}";
+	}
+
 	static T? GetNamedArgument<T>(AttributeData attributeData, string name, T? defaultValue)
 	{
 		foreach (var arg in attributeData.NamedArguments)
@@ -961,3 +1273,14 @@ static class AttributeDataModelLibrary
 		return builder.ToString();
 	}
 }
+
+/// <summary>
+/// The generated class name and <c>[TypeRef]</c> members of a <c>[GenerateTypeLibrary]</c> spec, used to guard
+/// and validate a <c>TypeLibrary.{Namespace}.{Member}FullName</c> target reconstruction.
+/// </summary>
+sealed record TypeLibrarySpecData(string ClassName, EquatableArray<TypeLibraryMemberRef> Members);
+
+/// <summary>
+/// A single <c>[TypeRef]</c> member declared by a <c>[GenerateTypeLibrary]</c> spec.
+/// </summary>
+sealed record TypeLibraryMemberRef(string MemberName, string Namespace);

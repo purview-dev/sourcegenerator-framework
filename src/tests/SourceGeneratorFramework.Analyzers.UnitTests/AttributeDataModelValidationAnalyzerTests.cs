@@ -90,6 +90,106 @@ public sealed class AttributeDataModelValidationAnalyzerTests
 	}
 
 	[Test]
+	public async Task Generate_TypeLibraryConstTarget_DoesNotReportTargetAttributeNotResolved(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				namespace Purview.SourceGeneratorFramework.Generators
+				{
+					[global::System.AttributeUsage(global::System.AttributeTargets.Class)]
+					public sealed class GenerateTypeLibraryAttribute : global::System.Attribute
+					{
+						public string? ClassName { get; set; }
+					}
+
+					[global::System.AttributeUsage(global::System.AttributeTargets.Field)]
+					public sealed class TypeRefAttribute : global::System.Attribute
+					{
+						public TypeRefAttribute(string @namespace) { }
+					}
+				}
+
+				namespace Aspire.Hosting.AspireC4
+				{
+					public enum LikeC4Severity { Inherit, Info }
+
+					[global::System.AttributeUsage(global::System.AttributeTargets.All)]
+					public sealed class SeverityAttribute : global::System.Attribute
+					{
+						public SeverityAttribute(LikeC4Severity severity) { }
+						public LikeC4Severity Severity { get; set; }
+					}
+				}
+
+				namespace Test
+				{
+					[GenerateTypeLibrary]
+					static partial class TypeLibrarySpec
+					{
+						[TypeRef("Aspire.Hosting.AspireC4")]
+						static readonly TypeIdentity SeverityAttribute = default;
+					}
+
+					[Generate(TypeLibrary.Aspire.Hosting.AspireC4.SeverityAttributeFullName, AutoDiscover = true)]
+					public readonly partial record struct SeverityAttributeData;
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		// The TypeLibrary class is emitted by TypeLibraryGenerator's main pipeline, so the const reference is
+		// unresolved in this compilation; the analyzer reassembles the target from the member-access expression
+		// and resolves it to the source-declared SeverityAttribute, so ADM0001/ADM0007 must not fire.
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task Generate_TypeLibraryConstTarget_UnresolvableType_ReportsTargetAttributeNotResolved(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				namespace Purview.SourceGeneratorFramework.Generators
+				{
+					[global::System.AttributeUsage(global::System.AttributeTargets.Class)]
+					public sealed class GenerateTypeLibraryAttribute : global::System.Attribute
+					{
+						public string? ClassName { get; set; }
+					}
+
+					[global::System.AttributeUsage(global::System.AttributeTargets.Field)]
+					public sealed class TypeRefAttribute : global::System.Attribute
+					{
+						public TypeRefAttribute(string @namespace) { }
+					}
+				}
+
+				namespace Test
+				{
+					[GenerateTypeLibrary]
+					static partial class TypeLibrarySpec
+					{
+						[TypeRef("Aspire.Hosting.AspireC4")]
+						static readonly TypeIdentity Something = default;
+					}
+
+					[Generate(TypeLibrary.Aspire.Hosting.AspireC4.NonexistentAttributeFullName)]
+					public readonly partial record struct SeverityAttributeData;
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasDiagnostics(1);
+		await Assert.That(result).HasDiagnostic(AttributeDataModelValidationAnalyzer.TargetAttributeNotResolved.Id);
+	}
+
+	[Test]
 	public async Task ArrayProperty_ReportsPropertyTypeNotSupported(CancellationToken cancellationToken)
 	{
 		var source =
