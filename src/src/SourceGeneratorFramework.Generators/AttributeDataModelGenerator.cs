@@ -172,7 +172,7 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 		writer.Field(
 			new(
 				"TargetAttribute",
-				GeneratorTypeLibrary.TypeValueObject.AsTypeReference(),
+				GeneratorTypeLibrary.TypeIdentity.AsTypeReference(),
 				TypeDeclarationAccessibility.Public
 			)
 			{

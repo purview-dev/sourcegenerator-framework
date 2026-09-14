@@ -37,7 +37,7 @@ public class SymbolResolverTests
 	}
 
 	[Test]
-	public async Task Resolve_TypeValueObject_ReturnsSymbol()
+	public async Task Resolve_TypeIdentity_ReturnsSymbol()
 	{
 		var compilation = CreateCompilation();
 		TypeIdentity type = new("Object", "System");

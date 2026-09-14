@@ -85,7 +85,7 @@ public class XmlCommentWriterTests
 	}
 
 	[Test]
-	public async Task XmlCref_TypeValueObject_WritesRenderedCrefAndMultipleContentLines()
+	public async Task XmlCref_TypeIdentity_WritesRenderedCrefAndMultipleContentLines()
 	{
 		var writer = CodeWriterFactory.ForTests();
 
@@ -268,7 +268,7 @@ public class XmlCommentWriterTests
 	}
 
 	[Test]
-	public async Task XmlException_TypeValueObject_WritesRenderedCref()
+	public async Task XmlException_TypeIdentity_WritesRenderedCref()
 	{
 		var writer = CodeWriterFactory.ForTests();
 

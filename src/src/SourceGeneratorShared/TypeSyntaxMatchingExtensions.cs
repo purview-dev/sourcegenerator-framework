@@ -26,7 +26,7 @@ namespace Purview.SourceGeneratorFramework;
 public static class TypeSyntaxMatchingExtensions
 {
 	// ---------------------------------------------------------------------------------------------
-	// TypeValueObject — references
+	// TypeIdentity — references
 	// ---------------------------------------------------------------------------------------------
 
 	/// <summary>

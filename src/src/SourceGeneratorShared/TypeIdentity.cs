@@ -609,7 +609,7 @@ public readonly record struct TypeIdentity
 	/// <summary>
 	/// Implicitly converts a <see cref="TypeIdentity"/> to its rendered full name.
 	/// </summary>
-	public static implicit operator string(TypeIdentity typeValueObject) => typeValueObject.RenderFullName;
+	public static implicit operator string(TypeIdentity typeIdentity) => typeIdentity.RenderFullName;
 
 	// ---------------------------------------------------------------------------------------------
 	// Composition

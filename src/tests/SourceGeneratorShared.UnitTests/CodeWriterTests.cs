@@ -30,7 +30,7 @@ public class CodeWriterTests
 	[Arguments(null)]
 	[Arguments("")]
 	[Arguments("   ")]
-	public async Task TypeValueObject_GivenMissingName_Throws(string? name)
+	public async Task TypeIdentity_GivenMissingName_Throws(string? name)
 	{
 		await Assert.That(() => new TypeIdentity(name!, null)).Throws<ArgumentException>();
 	}
@@ -389,7 +389,7 @@ public class CodeWriterTests
 	}
 
 	[Test]
-	public async Task BlockNamespace_TypeValueObject_WritesNamespaceBlock()
+	public async Task BlockNamespace_TypeIdentity_WritesNamespaceBlock()
 	{
 		var writer = CodeWriterFactory.ForTests();
 		TypeIdentity typeValue = new("C", "Test");
@@ -407,7 +407,7 @@ public class CodeWriterTests
 	}
 
 	[Test]
-	public async Task BlockNamespace_TypeValueObjectWithGlobalNamespace_ReturnsNoOpScope()
+	public async Task BlockNamespace_TypeIdentityWithGlobalNamespace_ReturnsNoOpScope()
 	{
 		var writer = CodeWriterFactory.ForTests();
 		TypeIdentity typeValue = new("C", null);
@@ -424,7 +424,7 @@ public class CodeWriterTests
 	}
 
 	[Test]
-	public async Task FileScopedNamespace_TypeValueObject_WritesNamespace()
+	public async Task FileScopedNamespace_TypeIdentity_WritesNamespace()
 	{
 		var writer = CodeWriterFactory.ForTests();
 		TypeIdentity typeValue = new("C", "Test");
@@ -437,7 +437,7 @@ public class CodeWriterTests
 	}
 
 	[Test]
-	public async Task FileScopedNamespace_TypeValueObjectWithGlobalNamespace_WritesNothing()
+	public async Task FileScopedNamespace_TypeIdentityWithGlobalNamespace_WritesNothing()
 	{
 		var writer = CodeWriterFactory.ForTests();
 		TypeIdentity typeValue = new("C", null);
@@ -1609,7 +1609,7 @@ public class CodeWriterTests
 	}
 
 	[Test]
-	public async Task Class_GivenAttributeTypeValueObject_DoesNotDuplicateAttributeBrackets()
+	public async Task Class_GivenAttributeTypeIdentity_DoesNotDuplicateAttributeBrackets()
 	{
 		// Arrange
 		var writer = CodeWriterFactory.ForTests();
@@ -1634,7 +1634,7 @@ public class CodeWriterTests
 	}
 
 	[Test]
-	public async Task AttributeTypeValueObject_GivenDeclarationContexts_RendersUnderlyingType()
+	public async Task AttributeTypeIdentity_GivenDeclarationContexts_RendersUnderlyingType()
 	{
 		// Arrange
 		TypeIdentity attributeType = new("RegistryAttribute", "Example");
@@ -2516,6 +2516,61 @@ public class CodeWriterTests
 		await Assert
 			.That(exception.OpenScopes[0].OpeningStackTrace)
 			.Contains(nameof(ToString_GivenOpenIndentScopeAndValidationEnabled_ThrowsScopeValidationException));
+
+		scope.Dispose();
+		await Assert.That(writer.OpenScopeCount).IsEqualTo(0);
+	}
+
+	[Test]
+	public async Task CodeWriter_ProductionDefault_DoesNotTrackOpenScopes()
+	{
+		// Arrange: the production constructor default (throwOnUnclosedScopes: false) skips scope tracking
+		// so no opening stack trace is captured and partial output can be materialized.
+		CodeWriter writer = new(new GenerationSettings("TestGenerator"));
+		var scope = writer.OpenBlockScope("public sealed class Example");
+
+		// Act
+		var source = writer.ToString();
+
+		// Assert
+		await Assert.That(writer.OpenScopeCount).IsEqualTo(1);
+		await Assert.That(source).Contains("public sealed class Example");
+
+		scope.Dispose();
+		await Assert.That(writer.OpenScopeCount).IsEqualTo(0);
+	}
+
+	[Test]
+	public async Task CodeWriterFactory_ForTests_DefaultsToScopeValidation()
+	{
+		// Arrange: the test factory defaults to validating unclosed scopes.
+		var writer = CodeWriterFactory.ForTests();
+		var scope = writer.OpenBlockScope("public sealed class Example");
+
+		// Act
+		string Action() => writer.ToString();
+
+		// Assert
+		var exception = await Assert.That(Action).Throws<CodeWriterScopeValidationException>();
+		await Assert.That(exception!.OpenScopeCount).IsEqualTo(1);
+
+		scope.Dispose();
+		await Assert.That(writer.OpenScopeCount).IsEqualTo(0);
+	}
+
+	[Test]
+	public async Task CreateTestWriter_DefaultsToScopeValidation()
+	{
+		// Arrange: the test helper defaults to validating unclosed scopes.
+		var writer = CodeWriter.CreateTestWriter();
+		var scope = writer.OpenBlockScope("public sealed class Example");
+
+		// Act
+		string Action() => writer.ToString();
+
+		// Assert
+		var exception = await Assert.That(Action).Throws<CodeWriterScopeValidationException>();
+		await Assert.That(exception!.OpenScopeCount).IsEqualTo(1);
 
 		scope.Dispose();
 		await Assert.That(writer.OpenScopeCount).IsEqualTo(0);

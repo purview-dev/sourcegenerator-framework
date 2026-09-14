@@ -4,11 +4,11 @@ static class GeneratorTypeLibrary
 {
 	const string GeneratorsNamespace = "Purview.SourceGeneratorFramework.Generators";
 
-	public static readonly TypeIdentity TypeValueObject = TypeIdentity.Create<TypeIdentity>();
+	public static readonly TypeIdentity TypeIdentity = TypeIdentity.Create<TypeIdentity>();
 
-	public static readonly TypeIdentity TypeReferenceValueObject = TypeIdentity.Create<TypeReference>();
+	public static readonly TypeIdentity TypeReference = TypeIdentity.Create<TypeReference>();
 
-	public static readonly TypeIdentity EnumValueDefinitionValueObject = TypeIdentity.Create<EnumValueDefinition>();
+	public static readonly TypeIdentity EnumValueDefinition = TypeIdentity.Create<EnumValueDefinition>();
 
 	public static class Attirbutes
 	{
