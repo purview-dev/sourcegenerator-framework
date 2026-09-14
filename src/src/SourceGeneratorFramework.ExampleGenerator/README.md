@@ -29,7 +29,7 @@ Reference implementation of an incremental C# source generator built with `Purvi
 - Enum string extraction from `TypedConstant` values (`IsEnum = true`).
 - `CodeWriter` usage for all output, including post-initialization sources and attribute/enum declarations. See the [CodeWriter API reference](../../docs/code-writer.md) for the structured API and best practices.
 - A dedicated `CodeWriterSampleGenerator` that emits a best-practice sample class for every `[GenerateCodeWriterSample]` target, demonstrating minimal overloads, structured statements, scope usage, and `NetConditionalReturn`.
-- `TypeValueObject` / `TypeLibrary` helpers for safe type/namespace references.
+- `TypeIdentity` / `TypeReference` / `TypeLibrary` helpers for safe type/namespace references.
 - Diagnostic reporting for invalid inputs (e.g. interfaces, static classes, nested classes, abstract classes).
 - Generator disabling via MSBuild properties.
 - Unit testing with `Purview.SourceGeneratorFramework.Testing`.

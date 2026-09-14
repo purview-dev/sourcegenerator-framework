@@ -19,7 +19,7 @@ public class AttributeDataModelGeneratorBenchmarks
 
 			namespace Benchmarks
 			{
-				[GenerateAttributeDataModel(typeof(MyAttribute))]
+				[Generate(typeof(MyAttribute))]
 				public class MyAttribute : System.Attribute
 				{
 					public string Name { get; set; } = default!;

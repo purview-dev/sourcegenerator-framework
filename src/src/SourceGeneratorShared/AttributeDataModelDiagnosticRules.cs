@@ -50,12 +50,12 @@ public static class AttributeDataModelDiagnosticRules
 	);
 
 	/// <summary>
-	/// Diagnostic raised when a nested model type is not annotated with GenerateAttributeDataModel.
+	/// Diagnostic raised when a nested model type is not annotated with [Generate].
 	/// </summary>
 	public static readonly DiagnosticDescriptor NestedModelNotGenerated = new(
 		"ADM0004",
-		"Nested model type is not annotated with GenerateAttributeDataModel",
-		"Nested model type '{0}' is not annotated with GenerateAttributeDataModel",
+		"Nested model type is not annotated with [Generate]",
+		"Nested model type '{0}' is not annotated with [Generate]",
 		"NestedModel",
 		DiagnosticSeverity.Error,
 		isEnabledByDefault: true

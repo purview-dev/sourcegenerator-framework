@@ -5,7 +5,7 @@
 		<PackageProjectUrl>https://github.com/purview-dev/sourcegeneratorframework</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/purview-dev/sourcegeneratorframework</RepositoryUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageIcon>purview-logo.jpg</PackageIcon>
+		<PackageIcon>purview-logo.png</PackageIcon>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 	</PropertyGroup>
 

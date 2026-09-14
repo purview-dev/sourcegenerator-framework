@@ -35,7 +35,7 @@ public readonly record struct TypeMapping
 	public bool IsEmpty => this == Empty;
 
 	/// <summary>
-	/// Defines an implicit conversion from TypeMapping to TypeValueObject. If the SpecialType is None, it returns an empty TypeValueObject; otherwise, it creates a new TypeValueObject with the specified SpecialType.
+	/// Defines an implicit conversion from TypeMapping to TypeIdentity. If the SpecialType is None, it returns an empty TypeIdentity; otherwise, it creates a new TypeIdentity with the specified SpecialType.
 	/// </summary>
 	/// <param name="mapping">The TypeMapping instance to convert.</param>
 	public static implicit operator TypeIdentity(TypeMapping mapping) =>

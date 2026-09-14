@@ -115,7 +115,7 @@ static class AttributeDataModelLibrary
 				// A literal string target. Resolve it against the compilation so enum defaults can be
 				// derived from the target attribute's members; ADM0007 still requires the typeof form.
 				targetFromStringForm = true;
-				targetAttribute = ParseTypeValueObject(targetAttributeName);
+				targetAttribute = ParseTypeIdentity(targetAttributeName);
 				targetAttributeType = compilation.GetTypeByMetadataName(targetAttribute.MetadataFullName);
 			}
 			else if (
@@ -982,7 +982,7 @@ static class AttributeDataModelLibrary
 		return null;
 	}
 
-	static TypeIdentity ParseTypeValueObject(string fullyQualifiedName)
+	static TypeIdentity ParseTypeIdentity(string fullyQualifiedName)
 	{
 		var lastDot = fullyQualifiedName.LastIndexOf('.');
 		if (lastDot < 0)
@@ -1111,7 +1111,7 @@ static class AttributeDataModelLibrary
 			return false;
 
 		var fullName = @namespace.Length == 0 ? typeNameSegment : @namespace + "." + typeNameSegment;
-		targetIdentity = ParseTypeValueObject(fullName);
+		targetIdentity = ParseTypeIdentity(fullName);
 		targetType = compilation.GetTypeByMetadataName(fullName);
 		return true;
 	}

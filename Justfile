@@ -1,15 +1,21 @@
 set quiet
 
+export TESTINGPLATFORM_EXITCODE_IGNORE := "8"
+export DOTNET_CLI_TELEMETRY_OPTOUT := "1"
+export DOTNET_SKIP_FIRST_TIME_EXPERIENCE := "1"
+export DO_NOT_TRACK := "1"
+
 root_folder := "src"
 solution := root_folder / "SourceGeneratorFramework.slnx"
+benchmark := root_folder / "src/SourceGeneratorFramework.Benchmarks/SourceGeneratorFramework.Benchmarks.csproj"
 build_configuration := "Debug"
 artifacts_folder := "./artifacts"
-default_test_filter := "/*/*/*/*/"
+default_test_filter := "/*/*/*/*"
 
 pipeline_feed := "https://api.nuget.org/v3/index.json"
 pipeline_tool := ".tools/purview-build/purview-build"
 
-current_version := `node -p "require('./package.json').version"`
+current_version := `bun -p "require('./package.json').version"`
 
 [private]
 default:
@@ -61,23 +67,35 @@ pipeline-tests *args:
     echo "Running tests pipeline..."
     "{{ pipeline_tool }}" --Build:RunTests=true --Release:Mode=None {{ args }}
 
-# Build and test with the specified configuration, defaulting to "Release"
+# Build and test with the specified configuration, defaulting to "Debug"
 [group('Build and Test')]
-build solutionOrProject=solution configuration=build_configuration:
-    echo "Building {{ BLUE }}{{ solutionOrProject }}{{ NORMAL }} with configuration {{ YELLOW }}{{ configuration }}{{ NORMAL }}"
-    dotnet build {{ solutionOrProject }} -c {{ configuration }}
+build *args:
+    echo "Building {{ BLUE }}{{ solution }}{{ NORMAL }} with configuration {{ YELLOW }}{{ build_configuration }}{{ NORMAL }}"
+    dotnet build {{ solution }} -c {{ build_configuration }} {{ args }}
 
-# Run tests with the specified configuration, defaulting to "Release"
+# Run tests with the specified configuration, defaulting to "Debug"
 [group('Build and Test')]
-test solutionOrProject=solution configuration=build_configuration filter=default_test_filter *args:
-    echo "Running tests for {{ BLUE }}{{ solutionOrProject }}{{ NORMAL }} with configuration {{ YELLOW }}{{ configuration }}{{ NORMAL }} and filter {{ GREEN }}{{ filter }}{{ NORMAL }}"
-    dotnet test {{ solutionOrProject }} -c {{ configuration }} --treenode-filter "{{ filter }}" {{ args }}
+test filter=default_test_filter *args:
+    echo "Running tests for {{ BLUE }}{{ solution }}{{ NORMAL }} with configuration {{ YELLOW }}{{ build_configuration }}{{ NORMAL }}"
+    echo "  and filter {{ GREEN }}{{ filter }}{{ NORMAL }}."
+    dotnet test {{ solution }} -c {{ build_configuration }} --treenode-filter "{{ filter }}" {{ args }}
 
-# Clean all projects with the specified configuration, defaulting to "Release"
+# Run unit tests only
 [group('Build and Test')]
-clean solutionOrProject=solution configuration=build_configuration *args:
-    echo "Cleaning {{ BLUE }}{{ solutionOrProject }}{{ NORMAL }} with configuration {{ YELLOW }}{{ configuration }}{{ NORMAL }}"
-    dotnet clean {{ solutionOrProject }} -c {{ configuration }} {{ args }}
+test-unit *args:
+    just test "/*/*/*/*[Category=Unit]" {{ args }}
+
+# Runs the benchmarks for the project
+[group('Build and Test')]
+benchmark *args:
+    echo "Running benchmarks for {{ BLUE }}{{ solution }}{{ NORMAL }}"
+    dotnet run --project {{ benchmark }} --configuration Release --no-build {{ args }}
+
+# Clean all projects with the specified configuration, defaulting to "Debug"
+[group('Build and Test')]
+clean *args:
+    echo "Cleaning {{ BLUE }}{{ solution }}{{ NORMAL }} with configuration {{ YELLOW }}{{ build_configuration }}{{ NORMAL }}"
+    dotnet clean {{ solution }} -c {{ build_configuration }} {{ args }}
 
 # Clean all projects, across Debug and Release configurations
 [group('Build and Test')]
@@ -86,17 +104,17 @@ clean-all *args:
     dotnet clean {{ solution }} -c Release {{ args }}
     dotnet clean {{ solution }} -c Debug {{ args }}
 
-# Run tests with the specified configuration, defaulting to "Release"
+# Run tests with the specified configuration, defaulting to "Debug"
 [group('Build and Test')]
-restore solutionOrProject=solution:
-    echo "Restoring dependencies for {{ BLUE }}{{ solutionOrProject }}{{ NORMAL }}"
-    dotnet restore {{ solutionOrProject }}
+restore *args:
+    echo "Restoring dependencies for {{ BLUE }}{{ solution }}{{ NORMAL }}"
+    dotnet restore {{ solution }} {{ args }}
 
 # Create NuGet package for the project
 [group('Build and Test')]
-pack solutionOrProject=solution configuration=build_configuration publish_folder=artifacts_folder:
-    echo "Packing {{ BLUE }}{{ solutionOrProject }}{{ NORMAL }} with configuration {{ YELLOW }}{{ configuration }}{{ NORMAL }} to {{ GREEN }}{{ publish_folder }}{{ NORMAL }}"
-    dotnet pack {{ solutionOrProject }} -c {{ configuration }} -o {{ publish_folder }}
+pack publish_folder=artifacts_folder *args:
+    echo "Packing {{ BLUE }}{{ solution }}{{ NORMAL }} with configuration {{ YELLOW }}{{ build_configuration }}{{ NORMAL }} to {{ GREEN }}{{ publish_folder }}{{ NORMAL }}"
+    dotnet pack {{ solution }} -c {{ build_configuration }} -o {{ publish_folder }} {{ args }}
 
 # Display the current version of the project
 [group('Build and Test')]

@@ -148,7 +148,7 @@ public class TypeHelpersTests
 			.IsEqualTo("global::Example.Marker<string>");
 
 	[Test]
-	public async Task TypeValueObject_RenderAttributeName_ConstructedGenericAttribute_PreservesTypeArguments()
+	public async Task TypeIdentity_RenderAttributeName_ConstructedGenericAttribute_PreservesTypeArguments()
 	{
 		var attribute = new TypeIdentity("MarkerAttribute", "Example").MakeGeneric(
 			new TypeIdentity(SpecialType.System_String)

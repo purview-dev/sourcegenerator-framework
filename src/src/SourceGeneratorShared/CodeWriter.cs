@@ -53,8 +53,11 @@ public sealed partial class CodeWriter
 	/// </param>
 	/// <param name="throwOnUnclosedScopes">
 	/// Whether materializing the generated source throws while disposable scopes remain open.
-	/// The default is <see langword="true"/>; set to <see langword="false"/> only for best-effort
-	/// diagnostic output when a scope imbalance is expected and must not terminate generation.
+	/// The default is <see langword="false"/>, matching the production pipeline: tracking each scope
+	/// captures an opening stack trace and allocates per-scope records, so it is skipped unless an
+	/// undisposed scope must be diagnosed. Enable it in tests (for example via
+	/// <c>CodeWriterFactory.ForTests()</c> or <c>SourceGeneratorTestOptions.ValidateCodeWriterScopes</c>)
+	/// to fail fast when a generator leaves a scope open.
 	/// </param>
 	/// <exception cref="ArgumentOutOfRangeException">
 	/// <paramref name="initialCapacity"/> is less than zero.
@@ -65,7 +68,7 @@ public sealed partial class CodeWriter
 	public CodeWriter(
 		GenerationSettings settings,
 		int initialCapacity = DefaultCapacity,
-		bool throwOnUnclosedScopes = true
+		bool throwOnUnclosedScopes = false
 	)
 	{
 		if (settings is null)
@@ -1437,7 +1440,7 @@ public sealed partial class CodeWriter
 	/// <param name="typeReference">The type reference whose namespace will be used, or a value with no namespace to omit the wrapper.</param>
 	/// <param name="bodyWriter">The action that writes the namespace body.</param>
 	/// <returns>The current writer.</returns>
-	/// <example><code>writer.BlockNamespace(new TypeValueObject("C", "Example").AsTypeReference(), body =&gt; body.Line("class C { }"));</code></example>
+	/// <example><code>writer.BlockNamespace(new TypeIdentity("C", "Example").AsTypeReference(), body =&gt; body.Line("class C { }"));</code></example>
 	public CodeWriter BlockNamespace(TypeReference typeReference, Action<CodeWriter> bodyWriter)
 	{
 		if (bodyWriter is null)
@@ -1454,7 +1457,7 @@ public sealed partial class CodeWriter
 	/// </summary>
 	/// <param name="typeReference">The type reference whose namespace will be used, or a value with no namespace to return an empty scope.</param>
 	/// <returns>The namespace body scope, or an empty scope when no namespace is supplied.</returns>
-	/// <example><code>using (writer.BlockNamespaceScope(new TypeValueObject("C", "Example").AsTypeReference())) writer.Line("class C { }");</code></example>
+	/// <example><code>using (writer.BlockNamespaceScope(new TypeIdentity("C", "Example").AsTypeReference())) writer.Line("class C { }");</code></example>
 	public IDisposable BlockNamespaceScope(TypeReference? typeReference) =>
 		typeReference is null ? NoOpScope.Instance : BlockNamespaceScope(typeReference.Identity.Namespace);
 
@@ -1494,7 +1497,7 @@ public sealed partial class CodeWriter
 	/// </summary>
 	/// <param name="typeReference">The type reference whose namespace will be used, or a value with no namespace to write nothing.</param>
 	/// <returns>The current writer.</returns>
-	/// <example><code>writer.FileScopedNamespace(new TypeValueObject("C", "Example").AsTypeReference());</code></example>
+	/// <example><code>writer.FileScopedNamespace(new TypeIdentity("C", "Example").AsTypeReference());</code></example>
 	public CodeWriter FileScopedNamespace(TypeReference? typeReference) =>
 		typeReference is null ? this : FileScopedNamespace(typeReference.Identity.Namespace);
 

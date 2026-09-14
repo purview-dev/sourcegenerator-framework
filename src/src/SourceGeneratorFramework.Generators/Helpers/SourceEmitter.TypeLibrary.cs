@@ -573,17 +573,16 @@ partial class SourceEmitter
 
 	static TypeReference StringArrayReference => PurviewTypeLibrary.System.String.MakeArray();
 
-	static TypeReference EnumValueDefinitionReference =>
-		GeneratorTypeLibrary.EnumValueDefinitionValueObject.AsTypeReference();
+	static TypeReference EnumValueDefinitionReference => GeneratorTypeLibrary.EnumValueDefinition.AsTypeReference();
 
 	static TypeReference ImmutableArrayOfTypeReference =>
 		PurviewTypeLibrary
-			.System.Collections.Immutable.ImmutableArray.MakeGeneric(GeneratorTypeLibrary.TypeReferenceValueObject)
+			.System.Collections.Immutable.ImmutableArray.MakeGeneric(GeneratorTypeLibrary.TypeReference)
 			.AsTypeReference();
 
-	static TypeReference TypeIdentityReference => GeneratorTypeLibrary.TypeValueObject.AsTypeReference();
+	static TypeReference TypeIdentityReference => GeneratorTypeLibrary.TypeIdentity.AsTypeReference();
 
-	static TypeReference TypeReferenceReference => GeneratorTypeLibrary.TypeReferenceValueObject.AsTypeReference();
+	static TypeReference TypeReferenceReference => GeneratorTypeLibrary.TypeReference.AsTypeReference();
 
 	static CodeWriter CreateTypeLibraryWriter(TypeReference type)
 	{

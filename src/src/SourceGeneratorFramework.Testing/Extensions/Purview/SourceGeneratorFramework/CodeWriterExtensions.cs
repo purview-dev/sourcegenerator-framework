@@ -10,10 +10,11 @@ public static class CodeWriterExtensions
 	{
 		public static CodeWriter CreateTestWriter(
 			GenerationSettings? settings = null,
-			bool includeGeneratedAttributes = false
+			bool includeGeneratedAttributes = false,
+			bool throwOnUnclosedScopes = true
 		)
 		{
-			return new(settings ?? new("TestGenerator", "1"))
+			return new(settings ?? new("TestGenerator", "1"), throwOnUnclosedScopes: throwOnUnclosedScopes)
 			{
 				DefaultIncludeGeneratedAttributes = includeGeneratedAttributes,
 			};

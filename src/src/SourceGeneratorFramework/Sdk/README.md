@@ -75,9 +75,9 @@ dotnet add package Purview.SourceGeneratorFramework
 - **`IncrementalPipeline`** — extension methods for composing `IncrementalValueProvider<T>` and `IncrementalValuesProvider<T>` pipelines, including attribute-based discovery, generation context creation, and disable-property checks.
 - **`GenerationContext`** — a base execution-services context that carries the Roslyn `Compilation`, immutable generator settings, optional logging, and a factory for independently owned `CodeWriter` instances.
 - **`GeneratorResult<T>`** — a value-or-diagnostics result type for incremental source generator transforms.
-- **`TypeValueObject`**, **`TargetSymbolDescriptor`**, **`EquatableArray<T>`**, **`ReportableDiagnostic`** — reusable models for generator inputs and outputs.
+- **`TypeIdentity`**, **`TypeReference`**, **`EquatableArray<T>`**, **`ReportableDiagnostic`** — reusable models for generator inputs and outputs.
 - **`SymbolResolver`**, **`TypeHelpers`**, **`EmbeddedResources`** — helper classes for common symbol and resource tasks.
-- **`AttributeDataModelGenerator`** — bundled source generator that emits `readonly record struct` attribute parser models from `[GenerateAttributeDataModel]` declarations, eliminating repetitive `FromAttributeData` boilerplate. Supports manual mapping, auto-discovery, nested models, and inheritance matching.
+- **`AttributeDataModelGenerator`** — bundled source generator that emits `readonly record struct` attribute parser models from `[Generate]` declarations, eliminating repetitive `FromAttributeData` boilerplate. Supports manual mapping, auto-discovery, nested models, and inheritance matching.
 - **Bundled Roslyn analyzers** — `Purview.SourceGeneratorFramework.Analyzers` ships as an analyzer asset inside the `Purview.SourceGeneratorFramework` package and reports diagnostics such as `PSGFR11` (prefer `ForAttributeWithMetadataName`), `PSGFR12` (use `IIncrementalGenerator`), and `PSGFR14` (avoid `RegisterImplementationSourceOutput`).
 - **MSBuild `.props` / `.targets`** — automatically adds `global using` directives for the main namespaces and supports packaging source generators that reference this framework.
 
@@ -111,7 +111,7 @@ using Purview.SourceGeneratorFramework.Models;
 [Generator]
 public sealed class MyGenerator : IIncrementalGenerator
 {
-    static readonly TypeValueObject AttributeType = new("MyAttribute", "MyNamespace");
+    static readonly TypeIdentity AttributeType = new("MyAttribute", "MyNamespace");
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -362,7 +362,7 @@ incremental cache.
 
 ## Attribute model generation
 
-The package includes `AttributeDataModelGenerator`, which generates `readonly record struct` parser models for .NET attributes. Instead of hand-writing `FromAttributeData` methods for every attribute you inspect, declare a `readonly partial record struct` with `[GenerateAttributeDataModel]` and let the generator fill in the `Empty` sentinel, `FromAttributeData` overloads, and property extraction logic.
+The package includes `AttributeDataModelGenerator`, which generates `readonly record struct` parser models for .NET attributes. Instead of hand-writing `FromAttributeData` methods for every attribute you inspect, declare a `readonly partial record struct` with `[Generate]` and let the generator fill in the `Empty` sentinel, `FromAttributeData` overloads, and property extraction logic.
 
 ```csharp
 using Microsoft.CodeAnalysis;
@@ -371,14 +371,14 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MySourceGenerator.Models;
 
-[GenerateAttributeDataModel(typeof(ValidationAttribute), MatchByInheritance = true)]
+[Generate(typeof(ValidationAttribute), MatchByInheritance = true)]
 public readonly partial record struct ValidationAttributeData(
     [Property] string? ErrorMessage,
     [Property] string? ErrorMessageResourceName,
     [Property] ITypeSymbol? ErrorMessageResourceType
 );
 
-[GenerateAttributeDataModel(typeof(RequiredAttribute))]
+[Generate(typeof(RequiredAttribute))]
 public readonly partial record struct RequiredAttributeData(
     [Property] bool AllowEmptyStrings,
     [NestedModel] ValidationAttributeData ValidationAttribute
@@ -389,19 +389,19 @@ Supported mapping attributes:
 - `[Property]` — reads a named attribute property (the property name is inferred from the parameter name unless overridden with `Name = ...`).
 - `[Argument]` — reads a constructor argument by parameter name.
 - `[Argument(int index)]` — reads a constructor argument by position.
-- `[NestedModel]` — populates a nested `[GenerateAttributeDataModel]` type.
+- `[NestedModel]` — populates a nested `[Generate]`-annotated attribute-data model type.
 - `[GenericTypeArgument]` — reads a generic type argument of the attribute class.
 
 You can also target an attribute by fully-qualified name, which is useful when the attribute type is not available in the generator project (e.g., `LengthAttribute` in .NET 8+ or a self-generated attribute):
 
 ```csharp
-[GenerateAttributeDataModel("System.ComponentModel.DataAnnotations.RequiredAttribute")]
+[Generate("System.ComponentModel.DataAnnotations.RequiredAttribute")]
 public readonly partial record struct RequiredAttributeData(
     [Property] bool AllowEmptyStrings
 );
 ```
 
-Enable auto-discovery with `[GenerateAttributeDataModel(typeof(MyAttribute), AutoDiscover = true)]` to generate properties for every constructor parameter and public named property. Auto-discovery requires the `Type` overload. Override defaults with `[Property(DefaultValue = ...)]` or `[Argument(DefaultValue = ...)]`, or rely on inferred defaults from optional constructor parameters.
+Enable auto-discovery with `[Generate(typeof(MyAttribute), AutoDiscover = true)]` to generate properties for every constructor parameter and public named property. Auto-discovery requires the `Type` overload. Override defaults with `[Property(DefaultValue = ...)]` or `[Argument(DefaultValue = ...)]`, or rely on inferred defaults from optional constructor parameters.
 
 See [`SourceGeneratorFramework.Generators`](../SourceGeneratorFramework.Generators) for full documentation and additional examples.
 
@@ -617,7 +617,7 @@ parameter's `TypeReference`. If both are used, only one nullable annotation is e
 
 `TypeReference` supports nullable annotations, nested constructed generics, open generic
 arity, multidimensional and jagged arrays, pointers, and construction from `Type`, Roslyn
-`ITypeSymbol`, or `TypeValueObject`. Arbitrary expressions such as default values and initializers
+`ITypeSymbol`, or `TypeIdentity`. Arbitrary expressions such as default values and initializers
 remain strings because they are expressions rather than type syntax.
 
 Set `TypeDeclarationOptions.IsAbstract` for abstract classes or record classes. It takes precedence
@@ -678,6 +678,13 @@ bare `{ get; set; }` accessors by default.
 ## Detecting undisposed CodeWriter scopes
 
 `CodeWriter` can detect block or indentation scopes that have not been disposed before generated source is materialized. This validation is intended for development and automated tests and is disabled by default.
+
+Direct `CodeWriter` construction matches this default: the `throwOnUnclosedScopes` constructor
+parameter defaults to `false`, so scope tracking — including the opening-stack-trace capture it
+performs — is skipped unless an undisposed scope must be diagnosed. Test helpers flip it on:
+`CodeWriterFactory.ForTests()` and `CodeWriter.CreateTestWriter()` default to
+`throwOnUnclosedScopes: true`, and `SourceGeneratorTestOptions.ValidateCodeWriterScopes` defaults to
+`true`.
 
 Enable it in the project consuming the source generator:
 

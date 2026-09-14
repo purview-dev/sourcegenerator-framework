@@ -9,6 +9,27 @@ This page uses the current best-practice API: bare semantic names (`Class`, `Met
 minimal-parameter overloads with an optional `configure` callback, and structured statements
 (`Return`, `MethodCall`, `Assignment`) instead of raw text.
 
+## Construction and scope validation
+
+A `CodeWriter` is created with `GenerationSettings` and defaults to the **production** configuration:
+scope validation is off, so no opening stack traces are captured and `ToString()` materializes partial
+output even while a scope is open. `GenerationContext.CreateCodeWriter()` inherits this via
+`GenerationSettings.ValidateCodeWriterScopes`, which defaults to `false`.
+
+Testing flips the default so a generator that forgets a `using` or leaves a block open fails fast
+instead of silently emitting malformed code. With validation enabled, `ToString()` throws
+`CodeWriterScopeValidationException` listing every open scope, its header, and the stack trace captured
+when it was opened:
+
+- `CodeWriterFactory.ForTests()` and `CodeWriter.CreateTestWriter()` enable validation by default
+  (`throwOnUnclosedScopes: true`).
+- `SourceGeneratorTestOptions.ValidateCodeWriterScopes` defaults to `true`, so the test runner enables
+  it for the generators under test.
+- Pass `throwOnUnclosedScopes: false` explicitly when a test intentionally materializes partial output.
+
+Scope tracking has a real cost — every scope open captures a `StackTrace` and allocates a per-scope
+record — which is why production leaves it off (see [docs/performance.md](performance.md)).
+
 ## Primitives
 
 Use the raw primitives for low-level text that has no structured equivalent:
