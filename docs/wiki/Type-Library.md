@@ -300,4 +300,4 @@ The generator carries these same diagnostics on its `GeneratorResult` and gates 
 `ShouldProcess`. Most are blocking (`IsBlocking: true`) and stop generation, but the non-blocking rules —
 `TLB0010` (marker without `= default`) and `TLB0013` (warning) — allow generation to continue, so a spec
 with those issues still produces the type library. See
-[`GeneratorResult` diagnostics that don't stop generation](../src/src/SourceGeneratorFramework/Sdk/README.md#diagnostics-that-dont-stop-generation).
+[`GeneratorResult` diagnostics that don't stop generation](../../src/src/SourceGeneratorFramework/Sdk/README.md#diagnostics-that-dont-stop-generation).

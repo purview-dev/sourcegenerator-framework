@@ -1,7 +1,7 @@
 # Performance
 
 Benchmark results are produced by the benchmarks project
-([`SourceGeneratorFramework.Benchmarks`](../src/src/SourceGeneratorFramework.Benchmarks)) using
+([`SourceGeneratorFramework.Benchmarks`](../../src/src/SourceGeneratorFramework.Benchmarks)) using
 [BenchmarkDotNet](https://benchmarkdotnet.org) and folded here for reference.
 
 ## What is measured
@@ -11,7 +11,7 @@ All benchmarks measure the **production** code path: generator runs configure
 Scope tracking is a testing/debug feature and is excluded here because capturing an opening
 `StackTrace` per scope dominates both time and allocation (for 1000 small classes it inflates the
 writer benchmark from ~1.6 ms/2.3 MB to ~19 ms/22 MB). Tests opt into it so an unclosed `using` or
-block fails fast; see [docs/code-writer.md](code-writer.md#construction-and-scope-validation).
+block fails fast; see [Code-Writer.md](Code-Writer.md#construction-and-scope-validation).
 
 ## Environment
 

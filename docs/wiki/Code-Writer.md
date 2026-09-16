@@ -28,7 +28,7 @@ when it was opened:
 - Pass `throwOnUnclosedScopes: false` explicitly when a test intentionally materializes partial output.
 
 Scope tracking has a real cost — every scope open captures a `StackTrace` and allocates a per-scope
-record — which is why production leaves it off (see [docs/performance.md](performance.md)).
+record — which is why production leaves it off (see [Performance.md](Performance.md)).
 
 ## Primitives
 
@@ -581,6 +581,6 @@ writer.Property("Name", TypeReference.Create<string>(), TypeDeclarationAccessibi
 
 ## Samples
 
-The [`SourceGeneratorFramework.ExampleGenerator`](../src/src/SourceGeneratorFramework.ExampleGenerator)
+The [`SourceGeneratorFramework.ExampleGenerator`](../../src/src/SourceGeneratorFramework.ExampleGenerator)
 reference implementation demonstrates these APIs end-to-end, including the `CodeWriterSampleGenerator`,
 which compiles a best-practice sample class for every `[GenerateCodeWriterSample]` target.

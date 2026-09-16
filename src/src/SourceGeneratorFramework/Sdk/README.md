@@ -983,6 +983,11 @@ The `Purview.SourceGeneratorFramework` package includes the `Purview.SourceGener
 | `PSGFR37` | One extension class per receiver type; split classes that extend multiple types. |
 | `PSGFR38` | Extension classes should carry `[EditorBrowsable(EditorBrowsableState.Never)]`. |
 
+## Documentation
+
+- [Homepage](https://purview.dev/projects/sourcegeneratorframework/)
+- [Documentation](https://purview.dev/docs/sourcegeneratorframework/)
+
 ## License
 
 This project is licensed under the MIT license.
