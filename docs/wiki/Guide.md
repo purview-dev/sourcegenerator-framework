@@ -1,13 +1,3 @@
----
-created: 2026-08-29
-updated: 2026-08-29
-tags: 
-  - source-generator
-  - analyser
-  - roslyn
-  - best-practices
----
-
 # Source Generator & Analyser Best Practices
 
 > Practical guidance for writing Roslyn analysers and incremental source generators that remain fast, deterministic, cache-friendly, IDE-compatible, and safe to distribute.
@@ -1294,7 +1284,7 @@ await Assert.That(result.Runs[1]).StepIsModified("GetGenerationConfiguration");
 
 Assertions on `IncrementalCacheRun` (`AllStepsNew`, `AllStepsCachedOrUnchanged`, `StepIsCached`,
 `StepIsModified`, `HasStepReason`) plus `GetStepReasons()` cover the golden matrix. See
-[docs/step-cache-tests.md](step-cache-tests.md) for the full walkthrough and the canonical
+[Step-Cache-Tests.md](Step-Cache-Tests.md) for the full walkthrough and the canonical
 `StepCacheTests.cs` sample in the ExampleGenerator unit tests.
 
 ---

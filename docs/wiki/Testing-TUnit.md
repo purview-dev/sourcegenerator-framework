@@ -1,6 +1,7 @@
-# Purview.SourceGeneratorFramework.Testing.TUnit
+# Testing with TUnit
 
-TUnit integration for testing incremental C# source generators built with `Purview.SourceGeneratorFramework`.
+`Purview.SourceGeneratorFramework.Testing.TUnit` is the TUnit integration for testing incremental C#
+source generators built with `Purview.SourceGeneratorFramework`.
 
 ## Installation
 
@@ -10,9 +11,12 @@ dotnet add package Purview.SourceGeneratorFramework.Testing.TUnit
 
 ## What's included
 
-- **`TUnitSourceGeneratorTestBase<TGenerator>`** — ready-made base class for TUnit tests. It wires generator log output to `TestContext.Current.OutputWriter`.
+- **`TUnitSourceGeneratorTestBase<TGenerator>`** — ready-made base class for TUnit tests. It wires
+  generator log output to `TestContext.Current.OutputWriter`.
 - **Custom TUnit assertions** for inspecting `DriverRunResult` instances directly in TUnit tests.
-- **MSBuild `.props`** — automatically adds `global using` directives for `Purview.SourceGeneratorFramework.Testing.TUnit` and `Purview.SourceGeneratorFramework.Testing.TUnit.Assertions`.
+- **MSBuild `.props`** — automatically adds `global using` directives for
+  `Purview.SourceGeneratorFramework.Testing.TUnit` and
+  `Purview.SourceGeneratorFramework.Testing.TUnit.Assertions`.
 
 ## Usage
 
@@ -25,7 +29,8 @@ Reference the package from a TUnit test project:
 </ItemGroup>
 ```
 
-Derive your test class from `TUnitSourceGeneratorTestBase<TGenerator>` and use the inherited `GenerateAsync` method:
+Derive your test class from `TUnitSourceGeneratorTestBase<TGenerator>` and use the inherited
+`GenerateAsync` method:
 
 ```csharp
 using Purview.SourceGeneratorFramework.Testing.TUnit;
@@ -50,7 +55,8 @@ public class MyGeneratorTests : TUnitSourceGeneratorTestBase<MyGenerator>
 }
 ```
 
-The base class also provides access to the underlying `SourceGeneratorTestRunner<TGenerator>` behavior through `GenerateAsync`.
+The base class also provides access to the underlying `SourceGeneratorTestRunner<TGenerator>` behavior
+through `GenerateAsync`.
 
 ## Using generated types in the TUnit project
 
@@ -77,10 +83,9 @@ analyzer and as a normal assembly:
 </ItemGroup>
 ```
 
-For example, the analyzer reference allows a test fixture to use `[MyGeneratedAttribute]`, while
-the normal reference allows the test class to derive from
-`TUnitSourceGeneratorTestBase<MyGenerator>`. Do not add `OutputItemType="Analyzer"` to the normal
-reference.
+For example, the analyzer reference allows a test fixture to use `[MyGeneratedAttribute]`, while the
+normal reference allows the test class to derive from `TUnitSourceGeneratorTestBase<MyGenerator>`. Do
+not add `OutputItemType="Analyzer"` to the normal reference.
 
 For multi-target TUnit projects, the normal reference means the generator's Roslyn dependencies
 participate in reference resolution for every target. Build the generator against the Roslyn version
@@ -103,8 +108,8 @@ For cache tests, `TUnitSourceGeneratorTestBase` also exposes `GenerateIncrementa
 
 ## Easy starting point: derived options
 
-Derive a `SourceGeneratorTestOptions` record that seeds namespaces and additional assemblies, then pass it
-to every test:
+Derive a `SourceGeneratorTestOptions` record that seeds namespaces and additional assemblies, then
+pass it to every test:
 
 ```csharp
 public sealed record MyTestOptions : SourceGeneratorTestOptions
@@ -120,25 +125,27 @@ public sealed record MyTestOptions : SourceGeneratorTestOptions
 public class MyGeneratorTests : TUnitSourceGeneratorTestBase<MyGenerator, MyTestOptions> { ... }
 ```
 
-Use `options.Compile()` for `CompileToAssembly`, and the `OnBeforeRun`/`OnBeforeRunAsync`/`OnAfterRun`
-hooks for per-run customisation. Code-fix/refactoring tests select actions with `EquivalenceKey` or
-`CodeActionIndex` (and `RefactorTestOptions.NodeSelector`/`Span`).
+Use `options.Compile()` for `CompileToAssembly`, and the
+`OnBeforeRun`/`OnBeforeRunAsync`/`OnAfterRun` hooks for per-run customisation. Code-fix/refactoring
+tests select actions with `EquivalenceKey` or `CodeActionIndex` (and
+`RefactorTestOptions.NodeSelector`/`Span`).
 
 ## Assertion extensions
 
-All assertion extensions are under `Purview.SourceGeneratorFramework.Testing.TUnit.Assertions` (globally
-imported). `await Assert.That(...)` is terminal and returns the value:
+All assertion extensions are under `Purview.SourceGeneratorFramework.Testing.TUnit.Assertions`
+(globally imported). `await Assert.That(...)` is terminal and returns the value:
 
 - `HasGeneratedMethod` / `HasGeneratedMethodReturnType` / `HasGeneratedClass` / `HasGeneratedProperty` /
-  `HasGeneratedField` / `HasGeneratedSyntaxTree` — return the syntax node; `HasGeneratedMethod(name, TypeReference[])`
-  matches parameter types. `HasGeneratedClass(name, arity)` (or a `TypeIdentity` with arity) matches a generic
-  type by its type-parameter count, so `new TypeIdentity("ResourceDefinition", ns, arity: 1)` finds
-  `ResourceDefinition<T>` without matching the non-generic `ResourceDefinition`.
+  `HasGeneratedField` / `HasGeneratedSyntaxTree` — return the syntax node;
+  `HasGeneratedMethod(name, TypeReference[])` matches parameter types. `HasGeneratedClass(name, arity)`
+  (or a `TypeIdentity` with arity) matches a generic type by its type-parameter count, so
+  `new TypeIdentity("ResourceDefinition", ns, arity: 1)` finds `ResourceDefinition<T>` without matching
+  the non-generic `ResourceDefinition`.
 - `HasFixedMethod` — same for code-fix and refactoring results.
-- `HasPropertyOfType` / `HasFieldOfType` / `HasMethodOfType` / `HasConstructorOfType` / `HasAttributeOfType` /
-  `HasNestedType` — chain from a scoped `CodeQueryResult<T>` (for example the result of `HasGeneratedClass`) and
-  return the matched member. The node-producing assertions move the chain onto the matched node, so you can
-  append node-inspection assertions with `.And`:
+- `HasPropertyOfType` / `HasFieldOfType` / `HasMethodOfType` / `HasConstructorOfType` /
+  `HasAttributeOfType` / `HasNestedType` — chain from a scoped `CodeQueryResult<T>` (for example the
+  result of `HasGeneratedClass`) and return the matched member. The node-producing assertions move the
+  chain onto the matched node, so you can append node-inspection assertions with `.And`:
   ```csharp
   var method = await Assert.That(query)
       .HasGeneratedClass("Service")
@@ -147,22 +154,24 @@ imported). `await Assert.That(...)` is terminal and returns the value:
       .And.HasMethodOfType("Build", []);
   ```
 - `WithAccessibility` / `WithGetterAccessibility` / `WithSetterAccessibility` / `WithBaseType` /
-  `WithGenericTypeParameter(s)` / `IsInNamespace` / `IsInGlobalNamespace` — node-inspection assertions that
-  keep the matched node on the chain. Accessibility resolves C# defaults (an unmodified nested type is
-  `Private`, a top-level type `Internal`, interface/enum members `Public`, and an accessor with no modifier
-  inherits its property's accessibility).
-- `HasDiagnostic` / `HasDiagnostics` / `HasNoDiagnostics` / `DoesNotHaveDiagnostic` / `HasNoErrorDiagnostics`.
+  `WithGenericTypeParameter(s)` / `IsInNamespace` / `IsInGlobalNamespace` — node-inspection assertions
+  that keep the matched node on the chain. Accessibility resolves C# defaults (an unmodified nested
+  type is `Private`, a top-level type `Internal`, interface/enum members `Public`, and an accessor with
+  no modifier inherits its property's accessibility).
+- `HasDiagnostic` / `HasDiagnostics` / `HasNoDiagnostics` / `DoesNotHaveDiagnostic` /
+  `HasNoErrorDiagnostics`.
 - `HasSymbol(TypeIdentity)` / `HasSymbol("Namespace.Type")`.
 - `GeneratesCode(expected)` / `ContainsGeneratedCode(expected)` (whitespace-flattened).
 
-The `CodeQuery` assertions operate on a `CodeQuery` directly, so they accept a query from any test result —
-`result.Generated()` for generated code, `result.Output()` for the whole compilation, or `result.FixedCode()`
-for fixed/refactored code. Convenience overloads on the test result types query the generated (or fixed) code
-for you.
+The `CodeQuery` assertions operate on a `CodeQuery` directly, so they accept a query from any test
+result — `result.Generated()` for generated code, `result.Output()` for the whole compilation, or
+`result.FixedCode()` for fixed/refactored code. Convenience overloads on the test result types query
+the generated (or fixed) code for you.
 
-To assert a nullable expected type, use the test-only `query.MakeNullable(...)` extension: it resolves the
-annotation against the query's compilation and, unlike `TypeReference.Nullable()`/`TypeIdentity.MakeNullable()`,
-does not trigger the `PSGFR16` context-overload suggestion (tests have no generation context to pass).
+To assert a nullable expected type, use the test-only `query.MakeNullable(...)` extension: it resolves
+the annotation against the query's compilation and, unlike `TypeReference.Nullable()` /
+`TypeIdentity.MakeNullable()`, does not trigger the `PSGFR16` context-overload suggestion (tests have
+no generation context to pass).
 
 ```csharp
 var query = result.Generated();
@@ -180,13 +189,9 @@ await Assert.That(attributeClass).HasPropertyOfType("Name", query.MakeNullable(T
 `GenerateIncrementalAsync` proves the pipeline caches stage-by-stage (first run `New`, identical rerun
 `Cached`/`Unchanged`, targeted changes mark only the affected stage `Modified`). A reference
 implementation (`ServiceRegistrationCacheTests`) lives in the `Purview.SourceGeneratorFramework` source
-repository's example generator tests; replicate it in your own project with your own stage names.
-
-## Documentation
-
-- [Homepage](https://purview.dev/projects/sourcegeneratorframework/)
-- [Documentation](https://purview.dev/docs/sourcegeneratorframework/)
+repository's example generator tests; replicate it in your own project with your own stage names. See
+[Step-Cache-Tests.md](Step-Cache-Tests.md) for the full walkthrough.
 
 ## License
 
-This project is licensed under the MIT license.
+This documentation is part of the MIT-licensed `Purview.SourceGeneratorFramework` project.

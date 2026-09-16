@@ -7,10 +7,10 @@ A set of libraries for building and testing incremental C# source generators usi
 
 ## Documentation
 
-- [Source generator & analyser best practices](docs/guide.md)
-- [CodeWriter structured API reference](docs/code-writer.md)
-- [Step-cache tests for incremental generators](docs/step-cache-tests.md)
-- [Benchmark results](docs/performance.md)
+- [Source generator & analyser best practices](docs/wiki/Guide.md)
+- [CodeWriter structured API reference](docs/wiki/Code-Writer.md)
+- [Step-cache tests for incremental generators](docs/wiki/Step-Cache-Tests.md)
+- [Benchmark results](docs/wiki/Performance.md)
 
 ## Packages
 
@@ -69,7 +69,7 @@ See the [`Purview.SourceGeneratorFramework.Generators` README](src/src/SourceGen
 
 `TypeLibraryGenerator` removes the boilerplate of hand-writing the static type library that exposes the `TypeIdentity`/`TypeReference` values a generator needs. From a small declarative spec (`[GenerateTypeLibrary]` + `[TypeRef]` members), it emits a self-contained `public static partial` type library whose nested `public static partial` classes mirror the namespaces of the members, each with a `Namespace` constant and `public static readonly` fields.
 
-See [docs/type-library.md](docs/type-library.md) for the DSL, the member-accessibility rules, and a runnable sample in [`SourceGeneratorFramework.ExampleGenerator`](src/src/SourceGeneratorFramework.ExampleGenerator/TypeLibrarySpec.cs).
+See [docs/wiki/Type-Library.md](docs/wiki/Type-Library.md) for the DSL, the member-accessibility rules, and a runnable sample in [`SourceGeneratorFramework.ExampleGenerator`](src/src/SourceGeneratorFramework.ExampleGenerator/TypeLibrarySpec.cs).
 
 ## Packaging
 

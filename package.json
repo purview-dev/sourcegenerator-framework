@@ -1,5 +1,17 @@
 {
   "name": "purview-sourcegeneratorframework",
   "version": "1.0.0-prerelease.42",
-  "private": true
+  "license": "MIT",
+  "author": {
+    "name": "Kieron Lanning",
+    "url": "https://kieronlanning.dev/"
+  },
+  "homepage": "https://purview.dev/projects/sourcegeneratorframework/",
+  "bugs": {
+    "url": "https://github.com/purview-dev/sourcegeneratorframework/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/purview-dev/sourcegeneratorframework.git"
+  }
 }

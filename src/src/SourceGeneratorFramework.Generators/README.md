@@ -198,7 +198,7 @@ Consumers then reference `MyTypeLibrary.GenerateMyAttribute`,
 `MyTypeLibrary.Microsoft.Extensions.Logging.ILogger`, and
 `MyTypeLibrary.System.Collections.Generic.Items` directly.
 
-See [docs/type-library.md](../../docs/type-library.md) for the full DSL and the member-accessibility rules.
+See [docs/wiki/Type-Library.md](../../docs/wiki/Type-Library.md) for the full DSL and the member-accessibility rules.
 
 ## License
 
