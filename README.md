@@ -1,7 +1,7 @@
 # Purview.SourceGeneratorFramework
 
 [![NuGet version](https://img.shields.io/nuget/v/Purview.SourceGeneratorFramework.svg)](https://www.nuget.org/packages/Purview.SourceGeneratorFramework)
-[![Release](https://github.com/purview-dev/sourcegeneratorframework/actions/workflows/release.yml/badge.svg)](https://github.com/purview-dev/sourcegeneratorframework/actions/workflows/release.yml)
+[![Release](https://github.com/purview-dev/sourcegenerator-framework/actions/workflows/release.yml/badge.svg)](https://github.com/purview-dev/sourcegenerator-framework/actions/workflows/release.yml)
 
 A set of libraries for building and testing incremental C# source generators using Roslyn.
 

@@ -1,7 +1,7 @@
 <Project>
 	<!--
 		This benchmark project intentionally uses the standard Microsoft.NET.Sdk and does not import
-		the parent Purview.DotNetProjectSdk props/targets. BenchmarkDotNet generates child projects under
+		the parent Purview.BuildSdk props/targets. BenchmarkDotNet generates child projects under
 		this directory, and the custom SDK targets write paths that are incompatible with those
 		auto-generated project locations.
 	-->

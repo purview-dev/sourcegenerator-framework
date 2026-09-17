@@ -1,9 +1,9 @@
 ---
 agent: ask
-description: "Ensure the Purview.DotNetProjectSdk applies analyzer/source-generator best-practice defaults to packable projects, so consumers of Purview.SourceGeneratorFramework (and any Roslyn component) get correct packaging without per-project overrides."
+description: "Ensure the Purview.BuildSdk applies analyzer/source-generator best-practice defaults to packable projects, so consumers of Purview.SourceGeneratorFramework (and any Roslyn component) get correct packaging without per-project overrides."
 ---
 
-You are working on the **Purview.DotNetProjectSdk** project (the `Purview.DotNetProjectSdk` package that projects import via `<Project Sdk="Purview.DotNetProjectSdk">`). Apply this checklist to its `Sdk.props` / `Sdk.targets` so that **packable** analyzer and source-generator projects get Roslyn best-practice defaults automatically.
+You are working on the **Purview.BuildSdk** project (the `Purview.BuildSdk` package that projects import via `<Project Sdk="Purview.BuildSdk">`). Apply this checklist to its `Sdk.props` / `Sdk.targets` so that **packable** analyzer and source-generator projects get Roslyn best-practice defaults automatically.
 
 ## Context
 

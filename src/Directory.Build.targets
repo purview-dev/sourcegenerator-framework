@@ -3,11 +3,11 @@
 		<Authors>Purview Contributors</Authors>
 		<Description>Purview SourceGeneratorFramework libraries for building and testing incremental C# source generators.</Description>
 		<PackageProjectUrl>$(PurviewProjectUrl)</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/purview-dev/sourcegeneratorframework</RepositoryUrl>
+		<RepositoryUrl>https://github.com/purview-dev/sourcegenerator-framework</RepositoryUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageIcon>purview-logo.png</PackageIcon>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 	</PropertyGroup>
 
-	<Import Sdk="Purview.DotNetProjectSdk" Project="Sdk.targets" />
+	<Import Sdk="Purview.BuildSdk" Project="Sdk.targets" />
 </Project>

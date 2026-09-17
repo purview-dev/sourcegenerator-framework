@@ -9,7 +9,7 @@ The current version lives in the repository-root `package.json`:
 
 ```json
 {
-  "name": "purview-sourcegeneratorframework",
+  "name": "purview-sourcegenerator-framework",
   "version": "1.0.0-prerelease.42"
 }
 ```

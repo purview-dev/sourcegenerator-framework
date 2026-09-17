@@ -4,7 +4,7 @@
 		<TargetFrameworks>netstandard2.1;$(TestingTargetFrameworks)</TargetFrameworks>
 		<NamespacePrefix>Purview.SourceGeneratorFramework</NamespacePrefix>
 		<ExcludePurviewTelemetry>true</ExcludePurviewTelemetry>
-		<RepositoryUrl>https://github.com/purview-dev/sourcegeneratorframework</RepositoryUrl>
+		<RepositoryUrl>https://github.com/purview-dev/sourcegenerator-framework</RepositoryUrl>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -24,7 +24,7 @@
 		<NoWarn>$(NoWarn);CA1031;CA1510;</NoWarn>
 	</PropertyGroup>
 
-	<Import Sdk="Purview.DotNetProjectSdk" Project="Sdk.props" />
+	<Import Sdk="Purview.BuildSdk" Project="Sdk.props" />
 
 	<PropertyGroup Condition="'$(IsTestProject)' == 'true' OR '$(IsSharedTestingProject)' == 'true'">
 		<!-- Test projects aren't executable so we need to remove .NET Standard 2.1 -->
@@ -33,15 +33,15 @@
 
 	<PropertyGroup Label="Purview site URL metadata">
 		<PurviewHomepage>https://purview.dev/</PurviewHomepage>
-		<PurviewProjectUrl>$(PurviewHomepage)projects/sourcegeneratorframework/</PurviewProjectUrl>
-		<PurviewDocsUrl>$(PurviewHomepage)docs/sourcegeneratorframework/</PurviewDocsUrl>
+		<PurviewProjectUrl>$(PurviewHomepage)projects/sourcegenerator-framework/</PurviewProjectUrl>
+		<PurviewDocsUrl>$(PurviewHomepage)docs/sourcegenerator-framework/</PurviewDocsUrl>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(IsPackable)' == 'true'">
 		<Authors>Purview Contributors</Authors>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<PackageProjectUrl>$(PurviewProjectUrl)</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/purview-dev/sourcegeneratorframework</RepositoryUrl>
+		<RepositoryUrl>https://github.com/purview-dev/sourcegenerator-framework</RepositoryUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
 		<PackageIcon>purview-logo.png</PackageIcon>

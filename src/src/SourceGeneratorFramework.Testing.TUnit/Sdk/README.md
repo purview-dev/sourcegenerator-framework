@@ -184,8 +184,8 @@ repository's example generator tests; replicate it in your own project with your
 
 ## Documentation
 
-- [Homepage](https://purview.dev/projects/sourcegeneratorframework/)
-- [Documentation](https://purview.dev/docs/sourcegeneratorframework/)
+- [Homepage](https://purview.dev/projects/sourcegenerator-framework/)
+- [Documentation](https://purview.dev/docs/sourcegenerator-framework/)
 
 ## License
 
