@@ -1,6 +1,6 @@
 <Project>
 	<!--
-		Intentionally empty: prevents the parent Purview.DotNetProjectSdk targets from being imported
+		Intentionally empty: prevents the parent Purview.BuildSdk targets from being imported
 		into BenchmarkDotNet auto-generated projects under this directory.
 	-->
 </Project>

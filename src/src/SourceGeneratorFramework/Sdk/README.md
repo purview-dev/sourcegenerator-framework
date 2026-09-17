@@ -985,8 +985,8 @@ The `Purview.SourceGeneratorFramework` package includes the `Purview.SourceGener
 
 ## Documentation
 
-- [Homepage](https://purview.dev/projects/sourcegeneratorframework/)
-- [Documentation](https://purview.dev/docs/sourcegeneratorframework/)
+- [Homepage](https://purview.dev/projects/sourcegenerator-framework/)
+- [Documentation](https://purview.dev/docs/sourcegenerator-framework/)
 
 ## License
 
