@@ -21,7 +21,7 @@
 				"build/Purview.SourceGeneratorFramework.targets",
 				"README.md",
 				"LICENSE.md",
-				"purview-logo.png"
+				"purview-logo-light.png"
 			],
 			"purview.sourcegeneratorframework.testing": [
 				"lib/netstandard2.0/Purview.SourceGeneratorFramework.Testing.dll",
@@ -29,7 +29,7 @@
 				"build/Purview.SourceGeneratorFramework.Testing.props",
 				"README.md",
 				"LICENSE.md",
-				"purview-logo.png"
+				"purview-logo-light.png"
 			],
 			"purview.sourcegeneratorframework.testing.tunit": [
 				"lib/netstandard2.0/Purview.SourceGeneratorFramework.Testing.TUnit.dll",
@@ -37,7 +37,7 @@
 				"build/Purview.SourceGeneratorFramework.Testing.TUnit.props",
 				"README.md",
 				"LICENSE.md",
-				"purview-logo.png"
+				"purview-logo-light.png"
 			]
 		},
 		"ForbiddenContent": {

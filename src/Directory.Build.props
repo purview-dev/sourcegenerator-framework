@@ -44,12 +44,12 @@
 		<RepositoryUrl>https://github.com/purview-dev/sourcegenerator-framework</RepositoryUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
-		<PackageIcon>purview-logo.png</PackageIcon>
+		<PackageIcon>purview-logo-light.png</PackageIcon>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 	</PropertyGroup>
 
 	<ItemGroup Label="NuGet package assets" Condition="'$(IsPackable)' == 'true'">
 		<None Include="..\..\..\LICENSE.md" Link="Sdk\LICENSE.md" />
-		<None Include="..\..\..\assets/images/purview-logo.png" Link="Sdk\purview-logo.png" />
+		<None Include="..\..\..\assets/images/purview-logo-light.png" Link="Sdk\purview-logo-light.png" />
 	</ItemGroup>
 </Project>
