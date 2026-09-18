@@ -1,4 +1,4 @@
-# Purview.SourceGeneratorFramework
+# SourceGenerator Framework
 
 Core helpers, models, and MSBuild integration for writing incremental C# source generators with Roslyn.
 

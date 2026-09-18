@@ -27,7 +27,7 @@ package to contain, at minimum:
 - `analyzers/dotnet/cs/` versions of the framework, generators, analyzers, code fixers, and shared
   assemblies;
 - `build/Purview.SourceGeneratorFramework.props` and `build/Purview.SourceGeneratorFramework.targets`;
-- `README.md`, `LICENSE.md`, and `purview-logo.png`.
+- `README.md`, `LICENSE.md`, and `purview-logo-light.png`.
 
 PDBs are delivered only through the `.snupkg`; `*.pdb` files are forbidden inside the `.nupkg`.
 

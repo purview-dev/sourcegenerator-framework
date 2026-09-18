@@ -59,7 +59,7 @@ and cleaning (`just clean`, `just scrub`).
   `purview.sourcegeneratorframework` must contain the `lib/netstandard2.0/` framework assembly and
   shared assembly, the `analyzers/dotnet/cs/` generator/analyzer/code-fixer/shared assemblies, the
   `build/Purview.SourceGeneratorFramework.props` and `.targets` files, `README.md`, `LICENSE.md`, and
-  `purview-logo.png`. See [Packaging.md](Packaging.md) for details.
+  `purview-logo-light.png`. See [Packaging.md](Packaging.md) for details.
 - `PackValidation.ForbiddenContent` — `*.pdb` files are forbidden inside the `.nupkg` (PDBs are
   delivered only through the `.snupkg`).
 
