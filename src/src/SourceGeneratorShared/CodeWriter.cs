@@ -729,9 +729,10 @@ public sealed partial class CodeWriter
 
 	void MethodHeader(MethodDeclarationOptions declaration)
 	{
-		var accessibility = declaration.IsPartial && declaration.Accessibility is null
-			? null
-			: ResolveAccessibility(declaration.Accessibility, DefaultMethodAccessibility);
+		var accessibility =
+			declaration.IsPartial && declaration.Accessibility is null
+				? null
+				: ResolveAccessibility(declaration.Accessibility, DefaultMethodAccessibility);
 
 		ValidateMethodDeclaration(declaration);
 		BeginWrittenItem(WrittenItemKind.Method);
