@@ -141,8 +141,10 @@ public sealed record GenerationSettings
 
 	/// <summary>
 	/// Gets the default accessibility emitted for method declarations when a declaration does not specify
-	/// one. The default is <see cref="TypeDeclarationAccessibility.Public"/>. Set to
-	/// <see langword="null"/> to omit the modifier, matching the previous behaviour.
+	/// one. The default is <see cref="TypeDeclarationAccessibility.Public"/>. Partial methods are the
+	/// exception: when their declaration does not specify an accessibility, the modifier is omitted
+	/// instead of using this default. Set to <see langword="null"/> to omit the modifier for other
+	/// method declarations, matching the previous behaviour.
 	/// </summary>
 	public TypeDeclarationAccessibility? DefaultMethodAccessibility { get; init; } =
 		TypeDeclarationAccessibility.Public;

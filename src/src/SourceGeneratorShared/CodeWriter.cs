@@ -236,8 +236,10 @@ public sealed partial class CodeWriter
 
 	/// <summary>
 	/// Gets or sets the default accessibility emitted for method declarations when a declaration does not
-	/// specify one. The default is <see cref="TypeDeclarationAccessibility.Public"/>. Set to
-	/// <see langword="null"/> to omit the modifier.
+	/// specify one. The default is <see cref="TypeDeclarationAccessibility.Public"/>. Partial methods are
+	/// the exception: when their declaration does not specify an accessibility, the modifier is omitted
+	/// instead of using this default. Set to <see langword="null"/> to omit the modifier for other method
+	/// declarations.
 	/// </summary>
 	public TypeDeclarationAccessibility? DefaultMethodAccessibility { get; set; } = TypeDeclarationAccessibility.Public;
 
@@ -727,6 +729,10 @@ public sealed partial class CodeWriter
 
 	void MethodHeader(MethodDeclarationOptions declaration)
 	{
+		var accessibility = declaration.IsPartial && declaration.Accessibility is null
+			? null
+			: ResolveAccessibility(declaration.Accessibility, DefaultMethodAccessibility);
+
 		ValidateMethodDeclaration(declaration);
 		BeginWrittenItem(WrittenItemKind.Method);
 
@@ -737,7 +743,7 @@ public sealed partial class CodeWriter
 		Attributes(declaration.ReturnAttributes, defaultTarget: "return");
 
 		MemberModifiers(
-			ResolveAccessibility(declaration.Accessibility, DefaultMethodAccessibility),
+			accessibility,
 			declaration.IsStatic,
 			declaration.IsAbstract,
 			declaration.IsVirtual,
@@ -759,6 +765,9 @@ public sealed partial class CodeWriter
 
 	/// <summary>
 	/// Writes a structured partial method declaration.
+	/// When <see cref="MethodDeclarationOptions.Accessibility"/> is <see langword="null"/>, the
+	/// declaration omits any accessibility modifier instead of using
+	/// <see cref="DefaultMethodAccessibility"/>.
 	/// </summary>
 	/// <example><code>writer.PartialMethod(new MethodDeclarationOptions("OnChanged"));</code></example>
 	public CodeWriter PartialMethod(MethodDeclarationOptions declaration)
