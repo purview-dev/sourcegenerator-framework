@@ -518,6 +518,10 @@ one. Set the defaults on `GenerationSettings` (to apply across a generation) or 
 (to override per writer). Each value is `null`-able, so setting a kind back to `null` omits the
 modifier entirely.
 
+Partial methods are the one exception to method defaulting: `PartialMethod(...)` and any method
+declaration with `IsPartial = true` omit the accessibility modifier when none is provided, even if
+`DefaultMethodAccessibility` is still `Public`.
+
 | Setting | Default |
 |---|---|
 | `DefaultTypeAccessibility` | `Public` |

@@ -64,7 +64,10 @@ partial class CodeWriter
 	/// </summary>
 	/// <param name="name">The method name.</param>
 	/// <param name="returnType">The return type, or <see langword="null"/> for <c>void</c>.</param>
-	/// <param name="accessibility">The optional accessibility.</param>
+	/// <param name="accessibility">
+	/// The optional accessibility. When omitted, the partial method is emitted without an accessibility
+	/// modifier.
+	/// </param>
 	/// <param name="configure">An optional callback that configures the declaration.</param>
 	/// <returns>The current writer.</returns>
 	/// <example><code>writer.PartialMethod("OnChanged");</code></example>

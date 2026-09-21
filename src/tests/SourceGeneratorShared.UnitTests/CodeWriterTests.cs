@@ -3535,7 +3535,7 @@ partial void Apply()
 			.That(writer.ToString())
 			.IsEqualTo(
 				GeneratedAttributes()
-					+ "public readonly partial void OnValidate(global::System.Guid id, string? displayName, bool isActive);\n"
+					+ "readonly partial void OnValidate(global::System.Guid id, string? displayName, bool isActive);\n"
 			);
 	}
 
@@ -3550,7 +3550,7 @@ partial void Apply()
 		writer.PartialMethod(declaration);
 
 		// Assert
-		await Assert.That(writer.ToString()).IsEqualTo(GeneratedAttributes() + "public partial void Apply();\n");
+		await Assert.That(writer.ToString()).IsEqualTo(GeneratedAttributes() + "partial void Apply();\n");
 	}
 
 	[Test]
@@ -4654,7 +4654,33 @@ partial void Apply()
 		writer.PartialMethod("OnChanged", Type("void"));
 
 		// Assert
-		await Assert.That(writer.ToString()).IsEqualTo(GeneratedAttributes() + "public partial void OnChanged();\n");
+		await Assert.That(writer.ToString()).IsEqualTo(GeneratedAttributes() + "partial void OnChanged();\n");
+	}
+
+	[Test]
+	public async Task PartialMethod_WithoutAccessibility_OmitsDefaultMethodAccessibility()
+	{
+		// Arrange
+		var writer = CodeWriterFactory.ForTests();
+
+		// Act
+		writer.PartialMethod(new("OnChanged"));
+
+		// Assert
+		await Assert.That(writer.ToString()).IsEqualTo(GeneratedAttributes() + "partial void OnChanged();\n");
+	}
+
+	[Test]
+	public async Task PartialMethod_ExplicitAccessibility_OverridesOmittedDefault()
+	{
+		// Arrange
+		var writer = CodeWriterFactory.ForTests();
+
+		// Act
+		writer.PartialMethod(new("OnChanged", TypeDeclarationAccessibility.Internal));
+
+		// Assert
+		await Assert.That(writer.ToString()).IsEqualTo(GeneratedAttributes() + "internal partial void OnChanged();\n");
 	}
 
 	[Test]
