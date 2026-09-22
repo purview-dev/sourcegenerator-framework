@@ -11,12 +11,10 @@
 		"RequiredContent": {
 			"purview.sourcegeneratorframework": [
 				"lib/netstandard2.0/Purview.SourceGeneratorFramework.dll",
-				"lib/netstandard2.0/Purview.SourceGeneratorFramework.Shared.dll",
 				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.dll",
 				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.Generators.dll",
 				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.Analyzers.dll",
 				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.CodeFixers.dll",
-				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.Shared.dll",
 				"build/Purview.SourceGeneratorFramework.props",
 				"build/Purview.SourceGeneratorFramework.targets",
 				"README.md",
@@ -25,7 +23,6 @@
 			],
 			"purview.sourcegeneratorframework.testing": [
 				"lib/netstandard2.0/Purview.SourceGeneratorFramework.Testing.dll",
-				"lib/netstandard2.0/Purview.SourceGeneratorFramework.Shared.dll",
 				"build/Purview.SourceGeneratorFramework.Testing.props",
 				"README.md",
 				"LICENSE.md",
@@ -33,7 +30,6 @@
 			],
 			"purview.sourcegeneratorframework.testing.tunit": [
 				"lib/netstandard2.0/Purview.SourceGeneratorFramework.Testing.TUnit.dll",
-				"lib/netstandard2.0/Purview.SourceGeneratorFramework.Shared.dll",
 				"build/Purview.SourceGeneratorFramework.Testing.TUnit.props",
 				"README.md",
 				"LICENSE.md",

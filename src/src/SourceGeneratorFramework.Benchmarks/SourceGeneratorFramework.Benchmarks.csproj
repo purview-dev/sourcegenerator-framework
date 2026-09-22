@@ -9,7 +9,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\SourceGeneratorFramework.ExampleGenerator.CodeFixers\SourceGeneratorFramework.ExampleGenerator.CodeFixers.csproj" />
-		<ProjectReference Include="..\SourceGeneratorShared\SourceGeneratorShared.csproj" />
 		<ProjectReference Include="..\SourceGeneratorFramework\SourceGeneratorFramework.csproj" />
 		<ProjectReference Include="..\SourceGeneratorFramework.Testing\SourceGeneratorFramework.Testing.csproj" />
 		<ProjectReference Include="..\SourceGeneratorFramework.Generators\SourceGeneratorFramework.Generators.csproj" />

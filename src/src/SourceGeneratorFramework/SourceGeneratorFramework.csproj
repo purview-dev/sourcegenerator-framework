@@ -15,40 +15,52 @@
 		<!-- The repo's pack validation requires PDBs to be delivered only through the .snupkg, so the
 		     analyzer PDB must not ship inside the .nupkg under analyzers/dotnet/cs. -->
 		<PurviewPackAnalyzerPdb>false</PurviewPackAnalyzerPdb>
-		<TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);IncludeSourceGeneratorShared</TargetsForTfmSpecificContentInPackage>
-		<TargetsForTfmSpecificDebugSymbolsInPackage>$(TargetsForTfmSpecificDebugSymbolsInPackage);IncludeSourceGeneratorSharedSymbols</TargetsForTfmSpecificDebugSymbolsInPackage>
+		<TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);BuildAndPackBundledAnalyzerAssemblies</TargetsForTfmSpecificContentInPackage>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<ProjectReference
-			Include="..\SourceGeneratorFramework.Generators\SourceGeneratorFramework.Generators.csproj"
-			PrivateAssets="all"
-			ReferenceOutputAssembly="false"
-			OutputItemType="Analyzer"
-		/>
-		<ProjectReference
-			Include="..\SourceGeneratorFramework.Analyzers\SourceGeneratorFramework.Analyzers.csproj"
-			PrivateAssets="all"
-			ReferenceOutputAssembly="false"
-			OutputItemType="Analyzer"
-		/>
-		<ProjectReference
-			Include="..\SourceGeneratorFramework.CodeFixers\SourceGeneratorFramework.CodeFixers.csproj"
-			PrivateAssets="all"
-			ReferenceOutputAssembly="false"
-			OutputItemType="Analyzer"
-		/>
-		<ProjectReference
-			Include="..\SourceGeneratorShared\SourceGeneratorShared.csproj"
-			PrivateAssets="all"
-			Pack="false"
-		/>
-	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" />
 	</ItemGroup>
 
-	<Import Project="..\SourceGeneratorShared\SourceGeneratorShared.Pack.targets" />
+	<ItemGroup>
+		<!-- The shared types were internal to the retired Shared assembly and visible to these
+		     assemblies via InternalsVisibleTo; they are internal to this assembly now. -->
+		<InternalsVisibleTo Include="Purview.SourceGeneratorFramework.Generators" />
+		<InternalsVisibleTo Include="Purview.SourceGeneratorFramework.SourceGeneratorShared.UnitTests" />
+	</ItemGroup>
+
+	<!--
+		The SourceGeneratorShared sources compile into this assembly so consumers receive a single
+		Purview.SourceGeneratorFramework.dll instead of a separate
+		Purview.SourceGeneratorFramework.Shared.dll.
+	-->
+	<Import Project="..\SourceGeneratorShared\SourceGeneratorShared.Link.targets" />
+
+	<!--
+		The generator, analyzer, and code-fix assemblies were previously consumed as analyzer
+		ProjectReferences. They now reference this assembly for the shared types, which would form
+		a project-reference cycle, so they are built and packed into analyzers/dotnet/cs here.
+	-->
+	<Target
+		Name="BuildAndPackBundledAnalyzerAssemblies"
+		Label="Builds and packs the bundled generator/analyzer/code-fix assemblies."
+	>
+		<MSBuild
+			Projects="..\SourceGeneratorFramework.Generators\SourceGeneratorFramework.Generators.csproj;..\SourceGeneratorFramework.Analyzers\SourceGeneratorFramework.Analyzers.csproj;..\SourceGeneratorFramework.CodeFixers\SourceGeneratorFramework.CodeFixers.csproj"
+			Targets="GetSourceGeneratorAnalyzerFiles"
+			Properties="Configuration=$(Configuration)"
+			BuildInParallel="true"
+		>
+			<Output TaskParameter="TargetOutputs" ItemName="_PurviewBundledAnalyzerFile" />
+		</MSBuild>
+		<ItemGroup>
+			<TfmSpecificPackageFile
+				Include="@(_PurviewBundledAnalyzerFile)"
+				Condition="Exists('%(_PurviewBundledAnalyzerFile.Identity)') AND '%(_PurviewBundledAnalyzerFile.Filename)%(_PurviewBundledAnalyzerFile.Extension)' != 'Purview.SourceGeneratorFramework.dll'"
+			>
+				<PackagePath>analyzers/dotnet/cs/</PackagePath>
+			</TfmSpecificPackageFile>
+		</ItemGroup>
+	</Target>
 </Project>
