@@ -11,21 +11,28 @@ analyzer assemblies and their runtime dependencies. The bundled projects are:
 
 - `SourceGeneratorFramework.Generators` — `AttributeDataModelGenerator`, `TypeLibraryGenerator`;
 - `SourceGeneratorFramework.Analyzers` — the `PSGFR*` and `TLB*` analyzers;
-- `SourceGeneratorFramework.CodeFixers` — the code fix providers;
-- `SourceGeneratorShared` — shared models and helpers, packed into the package as
-  `Purview.SourceGeneratorFramework.Shared.dll`.
+- `SourceGeneratorFramework.CodeFixers` — the code fix providers.
+
+The shared models and helpers that used to ship as a separate
+`Purview.SourceGeneratorFramework.Shared.dll` are compiled directly into the framework assembly
+(`SourceGeneratorFramework` links the `SourceGeneratorShared` sources via
+`SourceGeneratorShared.Link.targets`). Consumers therefore receive a single
+`Purview.SourceGeneratorFramework.dll`, which removes the version-skew hazard that a separately
+bundled Shared assembly caused: generator packages that loaded a different Shared version in-process
+failed with binary-incompatibility errors (e.g. removed `PurviewTypeLibrary` fields).
 
 These projects are `IsRoslynComponent = true` and are **not** packable on their own; they are packed
-into the main package by the `SourceGeneratorFramework` project via analyzer project references
-(`OutputItemType="Analyzer"`).
+into the main package by the `SourceGeneratorFramework` project. They were previously consumed as
+analyzer project references, but since they now reference the framework assembly for the shared types
+(which would form a project-reference cycle), the `SourceGeneratorFramework` project builds them via
+`GetSourceGeneratorAnalyzerFiles` and packs them under `analyzers/dotnet/cs/` in
+`BuildAndPackBundledAnalyzerAssemblies`.
 
 The repo's pack validation (`purview-build.json`) requires the `purview.sourcegeneratorframework`
 package to contain, at minimum:
 
-- `lib/netstandard2.0/Purview.SourceGeneratorFramework.dll` and
-  `lib/netstandard2.0/Purview.SourceGeneratorFramework.Shared.dll`;
-- `analyzers/dotnet/cs/` versions of the framework, generators, analyzers, code fixers, and shared
-  assemblies;
+- `lib/netstandard2.0/Purview.SourceGeneratorFramework.dll`;
+- `analyzers/dotnet/cs/` versions of the framework, generators, analyzers, and code fixers;
 - `build/Purview.SourceGeneratorFramework.props` and `build/Purview.SourceGeneratorFramework.targets`;
 - `README.md`, `LICENSE.md`, and `purview-logo-light.png`.
 

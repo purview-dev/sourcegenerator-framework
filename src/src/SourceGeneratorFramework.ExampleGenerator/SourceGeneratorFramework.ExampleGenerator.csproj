@@ -13,7 +13,6 @@
 		  <PackageReference Include="Purview.SourceGeneratorFramework" PrivateAssets="all" Version="*" />
 
 		-->
-		<ProjectReference Include="..\SourceGeneratorShared\SourceGeneratorShared.csproj" />
 		<ProjectReference Include="..\SourceGeneratorFramework\SourceGeneratorFramework.csproj" />
 		<ProjectReference
 			Include="..\SourceGeneratorFramework.Generators\SourceGeneratorFramework.Generators.csproj"

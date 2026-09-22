@@ -1,0 +1,24 @@
+<Project>
+	<!--
+		Links the SourceGeneratorShared source directly into a consuming project so the shared
+		types (CodeWriter, PurviewTypeLibrary, TypeIdentity, GenerationSettings, EquatableArray,
+		etc.) compile into that project's own assembly instead of a separate
+		Purview.SourceGeneratorFramework.Shared.dll.
+
+		The separate Shared assembly was problematic for consumers: generator packages bundled
+		their own copy, and loading a different Shared version in-process caused
+		binary-incompatibility failures (e.g. removed PurviewTypeLibrary fields in .46 broke
+		generators built against .45). Compiling the source into the parent assembly removes the
+		separate dependency entirely.
+
+		Properties\AssemblyInfo.cs is excluded because its InternalsVisibleTo attributes apply to
+		the retired Shared assembly and are not valid for consuming assemblies.
+	-->
+	<ItemGroup>
+		<Compile
+			Include="$(MSBuildThisFileDirectory)**\*.cs"
+			Link="Shared/%(RecursiveDir)%(Filename)%(Extension)"
+			Exclude="$(MSBuildThisFileDirectory)obj\**;$(MSBuildThisFileDirectory)bin\**;$(MSBuildThisFileDirectory)Properties\AssemblyInfo.cs;$(MSBuildThisFileDirectory)GlobalUsings.cs;$(MSBuildThisFileDirectory)Extensions\System\Runtime\CompilerServices\IsExternalInit.cs"
+		/>
+	</ItemGroup>
+</Project>

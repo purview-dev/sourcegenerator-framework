@@ -1,7 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);IncludeSourceGeneratorShared</TargetsForTfmSpecificContentInPackage>
-		<TargetsForTfmSpecificDebugSymbolsInPackage>$(TargetsForTfmSpecificDebugSymbolsInPackage);IncludeSourceGeneratorSharedSymbols</TargetsForTfmSpecificDebugSymbolsInPackage>
 		<!-- netstandard2.0 enables net48 consumers (net48 can consume netstandard2.0 but not 2.1). -->
 		<TargetFrameworks>netstandard2.0;$(TestingTargetFrameworks)</TargetFrameworks>
 		<IsPackable>true</IsPackable>
@@ -10,11 +8,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\SourceGeneratorFramework\SourceGeneratorFramework.csproj" />
-		<ProjectReference
-			Include="..\SourceGeneratorShared\SourceGeneratorShared.csproj"
-			PrivateAssets="all"
-			Pack="false"
-		/>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -22,6 +15,4 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
 		<PackageReference Include="System.Reflection.MetadataLoadContext" />
 	</ItemGroup>
-
-	<Import Project="..\SourceGeneratorShared\SourceGeneratorShared.Pack.targets" />
 </Project>

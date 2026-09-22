@@ -1,7 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\SourceGeneratorFramework.Testing\SourceGeneratorFramework.Testing.csproj" />
-		<ProjectReference Include="..\..\src\SourceGeneratorShared\SourceGeneratorShared.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

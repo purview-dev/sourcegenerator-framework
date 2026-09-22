@@ -3,15 +3,16 @@
 		<IsRoslynComponent>true</IsRoslynComponent>
 		<!--
 			RS2002/RS2003/RS2005 are release-tracking checks that only recognise DiagnosticDescriptors
-			created within this assembly. The ADM/TLB rules are declared once in SourceGeneratorShared
-			so the bundled generators can carry them; release tracking cannot verify them here, so these
-			checks are disabled and the descriptors are tracked as shipped in AnalyzerReleases.Shipped.md.
+			created within this assembly. The ADM/TLB rules are declared once in the framework
+			assembly so the bundled generators can carry them; release tracking cannot verify them
+			here, so these checks are disabled and the descriptors are tracked as shipped in
+			AnalyzerReleases.Shipped.md.
 		-->
 		<NoWarn>$(NoWarn);RS2002;RS2003;RS2005;</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\SourceGeneratorShared\SourceGeneratorShared.csproj" />
+		<ProjectReference Include="..\SourceGeneratorFramework\SourceGeneratorFramework.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -24,29 +25,16 @@
 	</ItemGroup>
 
 	<Target
-		Name="DeclareSourceGeneratorSharedRuntimeDependency"
+		Name="DeclareFrameworkRuntimeDependency"
 		BeforeTargets="CopySourceGeneratorRuntimeDependencies;GetSourceGeneratorAnalyzerFiles"
 	>
 		<ItemGroup>
 			<SourceGeneratorRuntimeDependency
 				Include="@(ReferenceCopyLocalPaths)"
-				Condition="'%(ReferenceCopyLocalPaths.Filename)%(ReferenceCopyLocalPaths.Extension)' == 'Purview.SourceGeneratorFramework.Shared.dll'"
+				Condition="'%(ReferenceCopyLocalPaths.Filename)%(ReferenceCopyLocalPaths.Extension)' == 'Purview.SourceGeneratorFramework.dll'"
 			>
 				<DestinationSubPath>%(ReferenceCopyLocalPaths.Filename)%(ReferenceCopyLocalPaths.Extension)</DestinationSubPath>
 			</SourceGeneratorRuntimeDependency>
 		</ItemGroup>
-	</Target>
-
-	<PropertyGroup>
-		<SourceGeneratorSharedAssembly>$(MSBuildThisFileDirectory)..\SourceGeneratorShared\bin\$(Configuration)\netstandard2.0\Purview.SourceGeneratorFramework.Shared.dll</SourceGeneratorSharedAssembly>
-	</PropertyGroup>
-
-	<Target Name="CopySourceGeneratorSharedToAnalyzerOutput" AfterTargets="CopyFilesToOutputDirectory">
-		<Copy
-			SourceFiles="$(SourceGeneratorSharedAssembly)"
-			DestinationFolder="$(TargetDir)"
-			SkipUnchangedFiles="true"
-			Condition="Exists('$(SourceGeneratorSharedAssembly)')"
-		/>
 	</Target>
 </Project>

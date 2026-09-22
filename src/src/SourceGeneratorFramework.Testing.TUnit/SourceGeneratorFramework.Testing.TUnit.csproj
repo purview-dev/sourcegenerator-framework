@@ -1,7 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);IncludeSourceGeneratorShared</TargetsForTfmSpecificContentInPackage>
-		<TargetsForTfmSpecificDebugSymbolsInPackage>$(TargetsForTfmSpecificDebugSymbolsInPackage);IncludeSourceGeneratorSharedSymbols</TargetsForTfmSpecificDebugSymbolsInPackage>
 		<TargetFrameworks>netstandard2.0;$(TestingTargetFrameworks)</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<AssemblyName>$(RootNamespace)</AssemblyName>
@@ -9,17 +7,10 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\SourceGeneratorFramework.Testing\SourceGeneratorFramework.Testing.csproj" />
-		<ProjectReference
-			Include="..\SourceGeneratorShared\SourceGeneratorShared.csproj"
-			PrivateAssets="all"
-			Pack="false"
-		/>
 	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="TUnit.Core" />
 		<PackageReference Include="TUnit.Assertions" />
 	</ItemGroup>
-
-	<Import Project="..\SourceGeneratorShared\SourceGeneratorShared.Pack.targets" />
 </Project>

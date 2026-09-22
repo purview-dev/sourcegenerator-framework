@@ -19,7 +19,6 @@
 		<Project Path="src/SourceGeneratorFramework.Testing.TUnit/SourceGeneratorFramework.Testing.TUnit.csproj" />
 		<Project Path="src/SourceGeneratorFramework.Testing/SourceGeneratorFramework.Testing.csproj" />
 		<Project Path="src/SourceGeneratorFramework/SourceGeneratorFramework.csproj" />
-		<Project Path="src/SourceGeneratorShared/SourceGeneratorShared.csproj" />
 	</Folder>
 	<Folder Name="/src/examples/">
 		<Project Path="src/SourceGeneratorFramework.ExampleGenerator.CodeFixers/SourceGeneratorFramework.ExampleGenerator.CodeFixers.csproj" />
