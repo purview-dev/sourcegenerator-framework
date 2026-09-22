@@ -14,7 +14,6 @@ public sealed class SeverityMarkerGenerator : IIncrementalGenerator
 	public void Initialize(IncrementalGeneratorInitializationContext context)
 	{
 		context.RegisterPostInitializationOutput(static spc =>
-		{
 			spc.AddSource(
 				"SeverityMarker.g.cs",
 				SourceText.From(
@@ -44,7 +43,7 @@ public sealed class SeverityMarkerGenerator : IIncrementalGenerator
 					""",
 					System.Text.Encoding.UTF8
 				)
-			);
-		});
+			)
+		);
 	}
 }

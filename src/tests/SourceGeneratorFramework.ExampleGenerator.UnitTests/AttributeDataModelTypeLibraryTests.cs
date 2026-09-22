@@ -17,7 +17,7 @@ public record AttributeDataModelTypeLibraryTestOptions : SourceGeneratorTestOpti
 }
 
 /// <summary>
-/// Options for testing the <see cref="Purview.SourceGeneratorFramework.Examples.SeverityAttributeData"/> sample,
+/// Options for testing the <see cref="Examples.SeverityAttributeData"/> sample,
 /// referencing the real example types.
 /// </summary>
 public sealed record SeverityAttributeDataTestOptions : AttributeDataModelTypeLibraryTestOptions
@@ -25,14 +25,14 @@ public sealed record SeverityAttributeDataTestOptions : AttributeDataModelTypeLi
 	public SeverityAttributeDataTestOptions()
 	{
 		AdditionalAssemblyTypes = AdditionalAssemblyTypes.AddRange(
-			typeof(Purview.SourceGeneratorFramework.Examples.SeverityLevel),
-			typeof(Purview.SourceGeneratorFramework.Examples.SeverityAttribute)
+			typeof(Examples.SeverityLevel),
+			typeof(Examples.SeverityAttribute)
 		);
 	}
 }
 
 /// <summary>
-/// Covers the <see cref="Purview.SourceGeneratorFramework.Examples.SeverityAttributeData"/> sample: the model's
+/// Covers the <see cref="Examples.SeverityAttributeData"/> sample: the model's
 /// <c>[Generate]</c> target references the generated type library's <c>SeverityAttributeFullName</c> constant and
 /// its <c>IsEnum</c> defaults are bare member names expanded against the real example attribute.
 /// </summary>

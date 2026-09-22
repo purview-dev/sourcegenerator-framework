@@ -245,7 +245,7 @@ public sealed class AttributeDataModelValidationAnalyzer : DiagnosticAnalyzer
 	> CollectTypeLibrarySpecData(Compilation compilation, INamedTypeSymbol? generateTypeLibraryAttributeType)
 	{
 		if (generateTypeLibraryAttributeType is null)
-			return ImmutableDictionary<string, ImmutableHashSet<(string, string)>>.Empty;
+			return [];
 
 		var typeRefAttributeType = compilation.GetTypeByMetadataName(
 			"Purview.SourceGeneratorFramework.Generators.TypeRefAttribute"
@@ -312,6 +312,7 @@ public sealed class AttributeDataModelValidationAnalyzer : DiagnosticAnalyzer
 				: typeSymbol.ContainingNamespace.ToDisplayString();
 		}
 
+		// If the constructor is not the namespace-only form, the namespace is the second argument.
 		return GetStringCtorArgument(typeRef, 1);
 	}
 
@@ -320,6 +321,7 @@ public sealed class AttributeDataModelValidationAnalyzer : DiagnosticAnalyzer
 		if (index < 0 || index >= attributeData.ConstructorArguments.Length)
 			return null;
 
+		// If the constructor argument is a string, return it directly.
 		return attributeData.ConstructorArguments[index].Value as string;
 	}
 
@@ -340,9 +342,10 @@ public sealed class AttributeDataModelValidationAnalyzer : DiagnosticAnalyzer
 	{
 		targetType = null;
 
-		var attributeSyntax =
-			generateAttribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken) as AttributeSyntax;
-		if (attributeSyntax is null)
+		if (
+			generateAttribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken)
+			is not AttributeSyntax attributeSyntax
+		)
 			return false;
 
 		var expression = attributeSyntax.ArgumentList?.Arguments.FirstOrDefault()?.Expression;

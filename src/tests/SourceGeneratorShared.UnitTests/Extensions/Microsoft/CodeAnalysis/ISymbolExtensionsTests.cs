@@ -89,7 +89,7 @@ public class ISymbolExtensionsTests
 		var symbol = semanticModel.GetDeclaredSymbol(
 			localDeclaration.Declaration.Variables[0],
 			cancellationToken: cancellationToken
-		)!;
+		);
 
 		await Assert.That(symbol.HasNullDefaultValue()).IsTrue();
 	}
@@ -109,7 +109,7 @@ public class ISymbolExtensionsTests
 		var symbol = semanticModel.GetDeclaredSymbol(
 			localDeclaration.Declaration.Variables[0],
 			cancellationToken: cancellationToken
-		)!;
+		);
 
 		await Assert.That(symbol.HasNullDefaultValue()).IsFalse();
 	}

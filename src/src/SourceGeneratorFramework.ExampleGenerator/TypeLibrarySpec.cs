@@ -18,7 +18,7 @@ static partial class TypeLibrarySpec
 	/// <summary>
 	/// The <see cref="SeverityAttribute"/> marker attribute, declared with <c>GenerateFullNameConst</c> so the
 	/// generated <c>SeverityAttributeFullName</c> constant can be used as the target of the
-	/// <see cref="Purview.SourceGeneratorFramework.Examples.SeverityAttributeData"/> attribute-data model.
+	/// <see cref="Examples.SeverityAttributeData"/> attribute-data model.
 	/// </summary>
 	[TypeRef("Purview.SourceGeneratorFramework.Examples", GenerateFullNameConst = true)]
 	static readonly TypeIdentity SeverityAttribute = default;

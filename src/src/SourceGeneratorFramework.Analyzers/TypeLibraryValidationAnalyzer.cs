@@ -416,7 +416,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 
 		if (!enumValuesByGroup.TryGetValue(groupKey, out var values))
 		{
-			values = new();
+			values = [];
 			enumValuesByGroup[groupKey] = values;
 		}
 
@@ -465,6 +465,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		if (index < 0 || index >= attributeData.ConstructorArguments.Length)
 			return 0;
 
+		// The value is boxed as the underlying type of the enum, so we switch on the known numeric types and
 		return attributeData.ConstructorArguments[index].Value switch
 		{
 			byte b => b,
@@ -839,19 +840,12 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 	/// Describes the shape of the type library class a <c>[GenerateTypeLibrary]</c> spec generates, so
 	/// the analyzer can detect source partial declarations that would not merge with it.
 	/// </summary>
-	sealed class GeneratedTypeLibraryInfo
+	sealed class GeneratedTypeLibraryInfo(string generatedName, string? generatedNamespace, INamedTypeSymbol spec)
 	{
-		public GeneratedTypeLibraryInfo(string generatedName, string? generatedNamespace, INamedTypeSymbol spec)
-		{
-			GeneratedName = generatedName;
-			GeneratedNamespace = generatedNamespace;
-			Spec = spec;
-		}
+		public string GeneratedName { get; } = generatedName;
 
-		public string GeneratedName { get; }
+		public string? GeneratedNamespace { get; } = generatedNamespace;
 
-		public string? GeneratedNamespace { get; }
-
-		public INamedTypeSymbol Spec { get; }
+		public INamedTypeSymbol Spec { get; } = spec;
 	}
 }

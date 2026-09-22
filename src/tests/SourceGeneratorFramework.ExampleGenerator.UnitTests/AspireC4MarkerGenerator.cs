@@ -14,7 +14,6 @@ public sealed class AspireC4MarkerGenerator : IIncrementalGenerator
 	public void Initialize(IncrementalGeneratorInitializationContext context)
 	{
 		context.RegisterPostInitializationOutput(static spc =>
-		{
 			spc.AddSource(
 				"AspireC4Marker.g.cs",
 				SourceText.From(
@@ -71,7 +70,7 @@ public sealed class AspireC4MarkerGenerator : IIncrementalGenerator
 					""",
 					System.Text.Encoding.UTF8
 				)
-			);
-		});
+			)
+		);
 	}
 }

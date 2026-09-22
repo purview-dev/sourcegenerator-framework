@@ -35,22 +35,17 @@ public enum SeverityLevel
 /// names (<c>"Inherit"</c>) and the generator expands them to the fully-qualified enum member name derived from
 /// the resolved target attribute.
 /// </remarks>
-[global::System.AttributeUsage(global::System.AttributeTargets.All, AllowMultiple = false)]
-public sealed class SeverityAttribute : global::System.Attribute
+/// <remarks>
+/// Initializes a new instance of the <see cref="SeverityAttribute"/> class.
+/// </remarks>
+/// <param name="severity">The severity level.</param>
+[AttributeUsage(AttributeTargets.All, AllowMultiple = false)]
+public sealed class SeverityAttribute(SeverityLevel severity) : Attribute
 {
-	/// <summary>
-	/// Initializes a new instance of the <see cref="SeverityAttribute"/> class.
-	/// </summary>
-	/// <param name="severity">The severity level.</param>
-	public SeverityAttribute(SeverityLevel severity)
-	{
-		Severity = severity;
-	}
-
 	/// <summary>
 	/// Gets or sets the severity level.
 	/// </summary>
-	public SeverityLevel Severity { get; set; }
+	public SeverityLevel Severity { get; } = severity;
 
 	/// <summary>
 	/// Gets or sets the severity level read from the named <c>Level</c> argument.

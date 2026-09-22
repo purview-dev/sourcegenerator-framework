@@ -162,7 +162,7 @@ static class CodeWriterSampleEmitter
 							Parameters =
 							[
 								new("source", TypeIdentity.Create<string>().AsTypeReference()),
-								new("onBuilt", PurviewTypeLibrary.System.Action.AsTypeReference()),
+								new("onBuilt", PurviewTypeLibrary.System.Action.WithArity(0).AsTypeReference()),
 							],
 						},
 					methodBody =>

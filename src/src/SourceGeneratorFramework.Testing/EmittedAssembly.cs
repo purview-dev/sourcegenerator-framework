@@ -46,13 +46,15 @@ sealed class EmittedAssembly : IDisposable
 
 			if (field is null)
 			{
-				#if NET8_0_OR_GREATER
+				#pragma warning disable format
+#if NET8_0_OR_GREATER
 				field = _loadContext!.LoadFromStream(
 					new MemoryStream(_bytes, writable: false)
 				);
 #else
 				field =
 					Assembly.Load(_bytes);
+#pragma warning restore format
 #endif
 			}
 
