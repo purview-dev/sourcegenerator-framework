@@ -231,4 +231,16 @@ public static class TypeLibraryDiagnosticRules
 		DiagnosticSeverity.Info,
 		isEnabledByDefault: true
 	);
+
+	/// <summary>
+	/// Diagnostic raised when an <c>[EnumValues]</c> member references a type that is not an enum.
+	/// </summary>
+	public static readonly DiagnosticDescriptor EnumValuesTypeNotEnum = new(
+		"TLB0020",
+		"Enum values member references a type that is not an enum",
+		"Enum values member '{0}' references type '{1}' which is not an enum type",
+		"TypeLibrary",
+		DiagnosticSeverity.Error,
+		isEnabledByDefault: true
+	);
 }

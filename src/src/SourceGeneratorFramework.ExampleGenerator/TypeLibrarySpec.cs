@@ -65,26 +65,13 @@ static partial class TypeLibrarySpec
 
 	/// <summary>
 	/// The <c>ServiceLifetime</c> enum type, declared with <c>GenerateFullNameConst</c> so the generated
-	/// <c>ServiceLifetimeFullName</c> constant and the per-value full-name constants are available.
+	/// <c>ServiceLifetimeFullName</c> constant and the per-value full-name constants are available. The
+	/// enum values are declared inline on the same field: each <c>[EnumValue]</c> names the enum member
+	/// and the enum type is inferred from the sibling <c>[TypeRef]</c>.
 	/// </summary>
 	[TypeRef("ServiceLifetime", "Purview.SourceGeneratorFramework.Examples", GenerateFullNameConst = true)]
+	[EnumValue("Singleton", 0)]
+	[EnumValue("Scoped", 1)]
+	[EnumValue("Transient", 2)]
 	static readonly TypeIdentity ServiceLifetime = default;
-
-	/// <summary>
-	/// The <c>ServiceLifetime.Singleton</c> enum value, declared with the single full type name form.
-	/// </summary>
-	[EnumValue("Purview.SourceGeneratorFramework.Examples.ServiceLifetime", 0)]
-	static readonly TypeIdentity Singleton = default;
-
-	/// <summary>
-	/// The <c>ServiceLifetime.Scoped</c> enum value, declared with the explicit enum-name/namespace form.
-	/// </summary>
-	[EnumValue("ServiceLifetime", "Purview.SourceGeneratorFramework.Examples", 1)]
-	static readonly TypeIdentity Scoped = default;
-
-	/// <summary>
-	/// The <c>ServiceLifetime.Transient</c> enum value.
-	/// </summary>
-	[EnumValue("ServiceLifetime", "Purview.SourceGeneratorFramework.Examples", 2)]
-	static readonly TypeIdentity Transient = default;
 }

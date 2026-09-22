@@ -40,7 +40,7 @@ public sealed class TypeLibraryValidationAnalyzerTests : TUnitDiagnosticAnalyzer
 				public int Arity { get; set; }
 							}
 
-			[AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
+			[AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = true)]
 			public sealed class EnumValueAttribute : Attribute
 			{
 				public EnumValueAttribute(string enumName, string @namespace, object value, string[]? aliases = null)
@@ -62,6 +62,17 @@ public sealed class TypeLibraryValidationAnalyzerTests : TUnitDiagnosticAnalyzer
 				public string? Namespace { get; }
 				public object? Value { get; }
 				public string[]? Aliases { get; }
+							}
+
+			[AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
+			public sealed class EnumValuesAttribute : Attribute
+			{
+				public EnumValuesAttribute(Type enumType)
+				{
+					EnumType = enumType;
+				}
+
+				public Type? EnumType { get; }
 							}
 		}
 
@@ -767,5 +778,249 @@ public sealed class TypeLibraryValidationAnalyzerTests : TUnitDiagnosticAnalyzer
 		var result = await AnalyzeAsync(source, cancellationToken);
 
 		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task Generate_ValidEnumValuesFromType_DoesNotReportDiagnostic(CancellationToken cancellationToken)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				namespace Test
+				{
+					public enum Status
+					{
+						Ready = 0,
+						Set = 1,
+					}
+
+					[GenerateTypeLibrary]
+					static partial class TypeLibraryModel
+					{
+						[TypeRef(typeof(Status))]
+						static readonly TypeIdentity Status = default!;
+
+						[EnumValues(typeof(Status))]
+						static readonly TypeIdentity StatusValues = default!;
+					}
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromTypeWrongFieldType_ReportsEnumValueMemberTypeInvalid(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				namespace Test
+				{
+					public enum Status
+					{
+						Ready = 0,
+					}
+
+					[GenerateTypeLibrary]
+					static partial class TypeLibraryModel
+					{
+						[TypeRef(typeof(Status))]
+						static readonly TypeIdentity Status = default!;
+
+						[EnumValues(typeof(Status))]
+						static readonly string StatusValues = default!;
+					}
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasDiagnostics(1);
+		await Assert.That(result).HasDiagnostic(TypeLibraryValidationAnalyzer.EnumValueMemberTypeInvalid.Id);
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromTypeMissingEnumTypeRef_ReportsEnumTypeNotDeclared(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				namespace Test
+				{
+					public enum Status
+					{
+						Ready = 0,
+					}
+
+					[GenerateTypeLibrary]
+					static partial class TypeLibraryModel
+					{
+						[EnumValues(typeof(Status))]
+						static readonly TypeIdentity StatusValues = default!;
+					}
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasDiagnostics(1);
+		await Assert.That(result).HasDiagnostic(TypeLibraryValidationAnalyzer.EnumValueEnumTypeNotDeclared.Id);
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromTypeNotAnEnum_ReportsTypeNotEnum(CancellationToken cancellationToken)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				namespace Test
+				{
+					public class NotAnEnum
+					{
+					}
+
+					[GenerateTypeLibrary]
+					static partial class TypeLibraryModel
+					{
+						[EnumValues(typeof(NotAnEnum))]
+						static readonly TypeIdentity NotAnEnumValues = default!;
+					}
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasDiagnostics(1);
+		await Assert.That(result).HasDiagnostic(TypeLibraryValidationAnalyzer.EnumValuesTypeNotEnum.Id);
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromTypeOverlapsIndividual_ReportsDuplicateMember(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				namespace Test
+				{
+					public enum Status
+					{
+						Ready = 0,
+						Set = 1,
+					}
+
+					[GenerateTypeLibrary]
+					static partial class TypeLibraryModel
+					{
+						[TypeRef(typeof(Status))]
+						static readonly TypeIdentity Status = default!;
+
+						[EnumValue("Status", "Test", 0)]
+						static readonly TypeIdentity Ready = default!;
+
+						[EnumValues(typeof(Status))]
+						static readonly TypeIdentity StatusValues = default!;
+					}
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasDiagnostic(TypeLibraryValidationAnalyzer.EnumValueDuplicateMember.Id);
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromTypeDuplicateBulkMarker_ReportsDuplicateMember(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				namespace Test
+				{
+					public enum Status
+					{
+						Ready = 0,
+						Set = 1,
+					}
+
+					[GenerateTypeLibrary]
+					static partial class TypeLibraryModel
+					{
+						[TypeRef(typeof(Status))]
+						static readonly TypeIdentity Status = default!;
+
+						[EnumValues(typeof(Status))]
+						static readonly TypeIdentity StatusValues = default!;
+
+						[EnumValues(typeof(Status))]
+						static readonly TypeIdentity StatusValues2 = default!;
+					}
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasDiagnostic(TypeLibraryValidationAnalyzer.EnumValueDuplicateMember.Id);
+	}
+
+	[Test]
+	public async Task Generate_ValidEnumValueOnTypeRefField_DoesNotReportDiagnostic(CancellationToken cancellationToken)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				namespace Test
+				{
+					[GenerateTypeLibrary]
+					static partial class TypeLibraryModel
+					{
+						[TypeRef("ServiceLifetime", "Test")]
+						[EnumValue("Singleton", 0)]
+						[EnumValue("Scoped", 1)]
+						static readonly TypeIdentity ServiceLifetime = default!;
+					}
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task Generate_EnumValueOnTypeRefFieldDuplicateMember_ReportsDuplicateMember(
+		CancellationToken cancellationToken
+	)
+	{
+		var source =
+			AttributeDefinition
+			+ """
+				namespace Test
+				{
+					[GenerateTypeLibrary]
+					static partial class TypeLibraryModel
+					{
+						[TypeRef("ServiceLifetime", "Test")]
+						[EnumValue("Singleton", 0)]
+						[EnumValue("Singleton", 1)]
+						static readonly TypeIdentity ServiceLifetime = default!;
+					}
+				}
+				""";
+
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		await Assert.That(result).HasDiagnostics(1);
+		await Assert.That(result).HasDiagnostic(TypeLibraryValidationAnalyzer.EnumValueDuplicateMember.Id);
 	}
 }

@@ -858,6 +858,674 @@ public class TypeLibraryGeneratorTests : TUnitSourceGeneratorTestBase<TypeLibrar
 		await Assert.That(generated).IsNull();
 	}
 
+	[Test]
+	public async Task Generate_EnumValuesFromType_EmitsValuesGroup(CancellationToken cancellationToken)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			public enum ServiceLifetime
+			{
+				Singleton = 0,
+				Scoped = 1,
+				Transient = 2,
+			}
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("ServiceLifetime", "Test")]
+				static readonly TypeIdentity ServiceLifetime = default;
+
+				[EnumValues(typeof(ServiceLifetime))]
+				static readonly TypeIdentity ServiceLifetimeValues = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert.That(generated).Contains("public static partial class ServiceLifetimeValues");
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Singleton = new(ServiceLifetime, \"Singleton\", 0);"
+			);
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Scoped = new(ServiceLifetime, \"Scoped\", 1);"
+			);
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Transient = new(ServiceLifetime, \"Transient\", 2);"
+			);
+		await Assert
+			.That(generated)
+			.Contains("public static global::Purview.SourceGeneratorFramework.EnumValueDefinition Get(");
+		await Assert.That(generated).Contains("if (Singleton.Matches(name))");
+		await Assert
+			.That(generated)
+			.Contains("return global::Purview.SourceGeneratorFramework.EnumValueDefinition.Empty;");
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromType_GenerateFullNameConst_EmitsPerValueConsts(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			public enum ServiceLifetime
+			{
+				Singleton = 0,
+				Scoped = 1,
+			}
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("ServiceLifetime", "Test", GenerateFullNameConst = true)]
+				static readonly TypeIdentity ServiceLifetime = default;
+
+				[EnumValues(typeof(ServiceLifetime))]
+				static readonly TypeIdentity ServiceLifetimeValues = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert
+			.That(generated)
+			.Contains("public const string ServiceLifetimeFullName = \"Test.ServiceLifetime\";");
+		await Assert
+			.That(generated)
+			.Contains("public const string SingletonFullName = ServiceLifetimeFullName + \".\" + \"Singleton\";");
+		await Assert
+			.That(generated)
+			.Contains("public const string ScopedFullName = ServiceLifetimeFullName + \".\" + \"Scoped\";");
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromType_UnderlyingType_EmitsNamedArgument(CancellationToken cancellationToken)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			public enum Status : byte
+			{
+				Ready = 5,
+				Busy = 6,
+			}
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("Status", "Test")]
+				static readonly TypeIdentity Status = default;
+
+				[EnumValues(typeof(Status))]
+				static readonly TypeIdentity StatusValues = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Ready = new(Status, \"Ready\", 5, underlyingType: EnumUnderlyingType.Byte);"
+			);
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Busy = new(Status, \"Busy\", 6, underlyingType: EnumUnderlyingType.Byte);"
+			);
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromType_UInt64Value_EmitsLiteralAndUnderlyingType(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			public enum Big : ulong
+			{
+				Maximum = 18446744073709551615,
+			}
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("Big", "Test")]
+				static readonly TypeIdentity Big = default;
+
+				[EnumValues(typeof(Big))]
+				static readonly TypeIdentity BigValues = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Maximum = new(Big, \"Maximum\", 18446744073709551615, underlyingType: EnumUnderlyingType.UInt64);"
+			);
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromType_XmlDocumentation_EmitsEnumMemberDocs(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			public enum ServiceLifetime
+			{
+				/// <summary>
+				/// A single instance is created and reused for the lifetime of the application.
+				/// </summary>
+				Singleton = 0,
+
+				/// <summary>
+				/// A new instance is created once per scope.
+				/// </summary>
+				Scoped = 1,
+			}
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("ServiceLifetime", "Test")]
+				static readonly TypeIdentity ServiceLifetime = default;
+
+				[EnumValues(typeof(ServiceLifetime))]
+				static readonly TypeIdentity ServiceLifetimeValues = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert
+			.That(generated)
+			.Contains("A single instance is created and reused for the lifetime of the application.");
+		await Assert.That(generated).Contains("A new instance is created once per scope.");
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromType_TypeRefMarkers_ReferencesMarkerField(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			public enum ServiceLifetime
+			{
+				Singleton = 0,
+				Scoped = 1,
+			}
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("ServiceLifetime", "Test")]
+				static readonly TypeIdentity ServiceLifetime = default;
+
+				[EnumValues(typeof(ServiceLifetime))]
+				static readonly TypeIdentity ServiceLifetimeValues = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var typeRefs = await GetGeneratedStringAsync(
+			result,
+			"TypeLibrary.SampleTypeLibrary.Test.TypeLibraryModel.TypeRefs.g.cs",
+			cancellationToken
+		);
+
+		await Assert.That(typeRefs).IsNotNull();
+		await Assert.That(typeRefs).Contains("ServiceLifetimeValues");
+		// Enum member names are not spec fields and must not be referenced by the generated partial.
+		await Assert.That(typeRefs).DoesNotContain("[Singleton]");
+		await Assert.That(typeRefs).DoesNotContain("[Scoped]");
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromType_MissingEnumTypeRef_DoesNotEmitGroup(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			public enum ServiceLifetime
+			{
+				Singleton = 0,
+			}
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[EnumValues(typeof(ServiceLifetime))]
+				static readonly TypeIdentity ServiceLifetimeValues = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		// TLB0017 is blocking, so the type library is not generated at all.
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNull();
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromType_NotAnEnum_DoesNotEmitGroup(CancellationToken cancellationToken)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[EnumValues(typeof(string))]
+				static readonly TypeIdentity NotEnum = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		// TLB0020 is blocking, so the type library is not generated at all.
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNull();
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromType_CombinedWithEnumValue_DuplicateMember_DoesNotEmitGroup(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			public enum ServiceLifetime
+			{
+				Singleton = 0,
+				Scoped = 1,
+			}
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("ServiceLifetime", "Test")]
+				static readonly TypeIdentity ServiceLifetime = default;
+
+				[EnumValue("ServiceLifetime", "Test", 0)]
+				static readonly TypeIdentity Singleton = default;
+
+				[EnumValues(typeof(ServiceLifetime))]
+				static readonly TypeIdentity ServiceLifetimeValues = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		// TLB0018 (duplicate member) is blocking, so the type library is not generated at all.
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNull();
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromType_CombinedWithEnumValue_NoOverlap_EmitsAll(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			public enum ServiceLifetime
+			{
+				Singleton = 0,
+				Scoped = 1,
+			}
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("ServiceLifetime", "Test")]
+				static readonly TypeIdentity ServiceLifetime = default;
+
+				[EnumValues(typeof(ServiceLifetime))]
+				static readonly TypeIdentity ServiceLifetimeValues = default;
+
+				[EnumValue("ServiceLifetime", "Test", 2)]
+				static readonly TypeIdentity Transient = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert.That(generated).Contains("public static partial class ServiceLifetimeValues");
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Singleton = new(ServiceLifetime, \"Singleton\", 0);"
+			);
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Scoped = new(ServiceLifetime, \"Scoped\", 1);"
+			);
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Transient = new(ServiceLifetime, \"Transient\", 2);"
+			);
+	}
+
+	[Test]
+	public async Task Generate_EnumValuesFromType_EmptyEnum_EmitsGroupWithGetOnly(CancellationToken cancellationToken)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			public enum EmptyEnum
+			{
+			}
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("EmptyEnum", "Test")]
+				static readonly TypeIdentity EmptyEnum = default;
+
+				[EnumValues(typeof(EmptyEnum))]
+				static readonly TypeIdentity EmptyEnumValues = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert.That(generated).Contains("public static partial class EmptyEnumValues");
+		await Assert
+			.That(generated)
+			.Contains("public static global::Purview.SourceGeneratorFramework.EnumValueDefinition Get(");
+		await Assert
+			.That(generated)
+			.Contains("return global::Purview.SourceGeneratorFramework.EnumValueDefinition.Empty;");
+		await Assert.That(generated).DoesNotContain("EnumValueDefinition Singleton");
+	}
+
+	[Test]
+	public async Task Generate_EnumValueOnTypeRefField_EmitsValuesGroup(CancellationToken cancellationToken)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("ServiceLifetime", "Test")]
+				[EnumValue("Singleton", 0)]
+				[EnumValue("Scoped", 1)]
+				[EnumValue("Transient", 2)]
+				static readonly TypeIdentity ServiceLifetime = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert.That(generated).Contains("public static partial class ServiceLifetimeValues");
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Singleton = new(ServiceLifetime, \"Singleton\", 0);"
+			);
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Scoped = new(ServiceLifetime, \"Scoped\", 1);"
+			);
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Transient = new(ServiceLifetime, \"Transient\", 2);"
+			);
+		await Assert
+			.That(generated)
+			.Contains("public static global::Purview.SourceGeneratorFramework.EnumValueDefinition Get(");
+		await Assert.That(generated).Contains("if (Singleton.Matches(name))");
+	}
+
+	[Test]
+	public async Task Generate_EnumValueOnTypeRefField_GenerateFullNameConst_EmitsPerValueConsts(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("ServiceLifetime", "Test", GenerateFullNameConst = true)]
+				[EnumValue("Singleton", 0)]
+				[EnumValue("Scoped", 1)]
+				static readonly TypeIdentity ServiceLifetime = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert
+			.That(generated)
+			.Contains("public const string ServiceLifetimeFullName = \"Test.ServiceLifetime\";");
+		await Assert
+			.That(generated)
+			.Contains("public const string SingletonFullName = ServiceLifetimeFullName + \".\" + \"Singleton\";");
+		await Assert
+			.That(generated)
+			.Contains("public const string ScopedFullName = ServiceLifetimeFullName + \".\" + \"Scoped\";");
+	}
+
+	[Test]
+	public async Task Generate_EnumValueOnTypeRefField_UnderlyingType_EmitsNamedArgument(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("Status", "Test")]
+				[EnumValue("Ready", (byte)5)]
+				[EnumValue("Busy", (byte)6)]
+				static readonly TypeIdentity Status = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Ready = new(Status, \"Ready\", 5, underlyingType: EnumUnderlyingType.Byte);"
+			);
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Busy = new(Status, \"Busy\", 6, underlyingType: EnumUnderlyingType.Byte);"
+			);
+	}
+
+	[Test]
+	public async Task Generate_EnumValueOnTypeRefField_TypeRefMarkers_ReferencesFieldOnce(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("ServiceLifetime", "Test")]
+				[EnumValue("Singleton", 0)]
+				[EnumValue("Scoped", 1)]
+				static readonly TypeIdentity ServiceLifetime = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var typeRefs = await GetGeneratedStringAsync(
+			result,
+			"TypeLibrary.SampleTypeLibrary.Test.TypeLibraryModel.TypeRefs.g.cs",
+			cancellationToken
+		);
+
+		await Assert.That(typeRefs).IsNotNull();
+		await Assert.That(typeRefs).Contains("ServiceLifetime");
+		// Enum member names are not spec fields and must not be referenced by the generated partial.
+		await Assert.That(typeRefs).DoesNotContain("[Singleton]");
+		await Assert.That(typeRefs).DoesNotContain("[Scoped]");
+	}
+
+	[Test]
+	public async Task Generate_EnumValueOnTypeRefField_CombinedWithStandaloneMarker_EmitsAll(
+		CancellationToken cancellationToken
+	)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				[TypeRef("ServiceLifetime", "Test")]
+				[EnumValue("Singleton", 0)]
+				static readonly TypeIdentity ServiceLifetime = default;
+
+				[EnumValue("ServiceLifetime", "Test", 1)]
+				static readonly TypeIdentity Scoped = default;
+
+				[EnumValue("ServiceLifetime", "Test", 2)]
+				static readonly TypeIdentity Transient = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNotNull();
+		await Assert.That(generated).Contains("public static partial class ServiceLifetimeValues");
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Singleton = new(ServiceLifetime, \"Singleton\", 0);"
+			);
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Scoped = new(ServiceLifetime, \"Scoped\", 1);"
+			);
+		await Assert
+			.That(generated)
+			.Contains(
+				"public static readonly global::Purview.SourceGeneratorFramework.EnumValueDefinition Transient = new(ServiceLifetime, \"Transient\", 2);"
+			);
+	}
+
 	static async Task<string?> GetGeneratedStringAsync(
 		DriverRunResult result,
 		string fileName,

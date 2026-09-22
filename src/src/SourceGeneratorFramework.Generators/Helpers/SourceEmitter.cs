@@ -19,6 +19,7 @@ static partial class SourceEmitter
 		yield return (GetHintName(nameof(GenerateTypeLibraryAttribute)), GenerateTypeLibraryAttribute());
 		yield return (GetHintName(nameof(TypeRefAttribute)), TypeRefAttribute());
 		yield return (GetHintName(nameof(EnumValueAttribute)), EnumValueAttribute());
+		yield return (GetHintName(nameof(EnumValuesAttribute)), EnumValuesAttribute());
 	}
 
 	static CodeWriter CreateWriter(TypeReference type)

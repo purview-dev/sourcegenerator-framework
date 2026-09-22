@@ -34,7 +34,8 @@ sealed record TypeLibraryEnumGroupModel(
 	string EnumName,
 	string EnumNamespace,
 	bool EnumGeneratesFullNameConstant,
-	EquatableArray<TypeLibraryEnumValueModel> Values
+	EquatableArray<TypeLibraryEnumValueModel> Values,
+	EquatableArray<string> MarkerFieldNames = default
 );
 
 /// <summary>

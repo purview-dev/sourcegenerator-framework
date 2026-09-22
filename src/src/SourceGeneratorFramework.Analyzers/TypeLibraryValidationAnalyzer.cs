@@ -60,6 +60,8 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 
 	public static DiagnosticDescriptor EnumValueDuplicateValue => TypeLibraryDiagnosticRules.EnumValueDuplicateValue;
 
+	public static DiagnosticDescriptor EnumValuesTypeNotEnum => TypeLibraryDiagnosticRules.EnumValuesTypeNotEnum;
+
 	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
 		[
 			SpecNotStaticClass,
@@ -80,6 +82,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 			EnumValueEnumTypeNotDeclared,
 			EnumValueDuplicateMember,
 			EnumValueDuplicateValue,
+			EnumValuesTypeNotEnum,
 		];
 
 	public override void Initialize(AnalysisContext context)
@@ -107,6 +110,9 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 			var enumValueAttributeType = context.Compilation.GetTypeByMetadataName(
 				"Purview.SourceGeneratorFramework.Generators.EnumValueAttribute"
 			);
+			var enumValuesAttributeType = context.Compilation.GetTypeByMetadataName(
+				"Purview.SourceGeneratorFramework.Generators.EnumValuesAttribute"
+			);
 			var enumValueDefinitionType = context.Compilation.GetTypeByMetadataName(
 				"Purview.SourceGeneratorFramework.EnumValueDefinition"
 			);
@@ -127,6 +133,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 						typeIdentityType,
 						typeReferenceType,
 						enumValueAttributeType,
+						enumValuesAttributeType,
 						enumValueDefinitionType,
 						generatedTypeLibraries
 					),
@@ -142,6 +149,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		INamedTypeSymbol? typeIdentityType,
 		INamedTypeSymbol? typeReferenceType,
 		INamedTypeSymbol? enumValueAttributeType,
+		INamedTypeSymbol? enumValuesAttributeType,
 		INamedTypeSymbol? enumValueDefinitionType,
 		IReadOnlyList<GeneratedTypeLibraryInfo> generatedTypeLibraries
 	)
@@ -225,6 +233,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 				typeIdentityType,
 				typeReferenceType,
 				enumValueAttributeType,
+				enumValuesAttributeType,
 				enumValueDefinitionType,
 				memberNamesByPath,
 				enumMemberNamesByGroup,
@@ -242,6 +251,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		INamedTypeSymbol? typeIdentityType,
 		INamedTypeSymbol? typeReferenceType,
 		INamedTypeSymbol? enumValueAttributeType,
+		INamedTypeSymbol? enumValuesAttributeType,
 		INamedTypeSymbol? enumValueDefinitionType,
 		Dictionary<string, HashSet<string>> memberNamesByPath,
 		Dictionary<string, HashSet<string>> enumMemberNamesByGroup,
@@ -250,26 +260,71 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		Location typeLocation
 	)
 	{
-		var enumValue = GetAttribute(field, enumValueAttributeType);
-		if (enumValue is not null)
+		var typeRef = GetAttribute(field, typeRefAttributeType);
+		var enumValueAttributes = GetAttributes(field, enumValueAttributeType);
+		var enumValuesAttribute = GetAttribute(field, enumValuesAttributeType);
+
+		if (typeRef is null && enumValueAttributes.Count == 0 && enumValuesAttribute is null)
+			return;
+
+		// A field can declare both [TypeRef] and enum-value markers; validate the [TypeRef] when present.
+		if (typeRef is not null)
+		{
+			AnalyzeTypeRefMember(
+				context,
+				field,
+				typeRef,
+				typeIdentityType,
+				typeReferenceType,
+				memberNamesByPath,
+				typeLocation
+			);
+		}
+
+		foreach (var enumValue in enumValueAttributes)
 		{
 			AnalyzeEnumValueMember(
 				context,
 				field,
 				enumValue,
+				typeRefAttributeType,
 				enumValueDefinitionType,
 				enumMemberNamesByGroup,
 				enumValuesByGroup,
 				typeRefMarkersByPath,
 				typeLocation
 			);
-			return;
 		}
 
-		var typeRef = GetAttribute(field, typeRefAttributeType);
-		if (typeRef is null)
-			return;
+		if (enumValuesAttribute is not null)
+		{
+			AnalyzeEnumValuesMember(
+				context,
+				field,
+				enumValuesAttribute,
+				enumValueDefinitionType,
+				enumMemberNamesByGroup,
+				enumValuesByGroup,
+				typeRefMarkersByPath,
+				typeLocation
+			);
+		}
+	}
 
+	/// <summary>
+	/// Validates a <c>[TypeRef]</c> member: member type, accessibility, and (for markers) a resolvable
+	/// type and namespace.
+	/// </summary>
+	static void AnalyzeTypeRefMember(
+		SymbolAnalysisContext context,
+		IFieldSymbol field,
+		AttributeData typeRef,
+		INamedTypeSymbol? typeIdentityType,
+		INamedTypeSymbol? typeReferenceType,
+		Dictionary<string, HashSet<string>> memberNamesByPath,
+		Location typeLocation
+	)
+	{
 		var memberLocation = field.Locations.FirstOrDefault(static location => location.IsInSource) ?? typeLocation;
 
 		var isTypeIdentity =
@@ -339,12 +394,15 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 
 	/// <summary>
 	/// Validates an <c>[EnumValue]</c> marker field: member type, accessibility, the referenced enum
-	/// type, and duplicate detection within the enum's value group.
+	/// type, and duplicate detection within the enum's value group. When the field also declares a
+	/// <c>[TypeRef]</c>, the enum type is inferred from it and the attribute's first argument is the
+	/// enum member name.
 	/// </summary>
 	static void AnalyzeEnumValueMember(
 		SymbolAnalysisContext context,
 		IFieldSymbol field,
 		AttributeData enumValue,
+		INamedTypeSymbol? typeRefAttributeType,
 		INamedTypeSymbol? enumValueDefinitionType,
 		Dictionary<string, HashSet<string>> enumMemberNamesByGroup,
 		Dictionary<string, HashSet<decimal>> enumValuesByGroup,
@@ -377,8 +435,8 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		if (HasNoInitializer(field, context.CancellationToken))
 			context.ReportDiagnostic(Diagnostic.Create(MarkerMissingDefaultInitializer, memberLocation, field.Name));
 
-		var (enumName, enumNamespace, value) = ReadEnumValue(enumValue);
-		if (enumName is null)
+		var (declaredName, declaredNamespace, value) = ReadEnumValue(enumValue);
+		if (declaredName is null)
 		{
 			context.ReportDiagnostic(
 				Diagnostic.Create(EnumValueEnumTypeNotDeclared, memberLocation, field.Name, string.Empty, string.Empty)
@@ -386,21 +444,38 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 			return;
 		}
 
-		if (!typeRefMarkersByPath.Contains((enumNamespace ?? string.Empty) + "\0" + enumName))
+		var typeRef = typeRefAttributeType is null ? null : GetAttribute(field, typeRefAttributeType);
+
+		string enumName;
+		string enumNamespace;
+		string memberName;
+
+		if (typeRef is not null)
+		{
+			// The enum type comes from the sibling [TypeRef]; the first attribute argument is the member name.
+			if (!TryResolveTypeRef(typeRef, field.Name, out var typeName, out var memberNamespace) || typeName is null)
+				return;
+
+			memberName = declaredName;
+			enumName = typeName;
+			enumNamespace = memberNamespace ?? string.Empty;
+		}
+		else
+		{
+			memberName = field.Name;
+			enumName = declaredName;
+			enumNamespace = declaredNamespace ?? string.Empty;
+		}
+
+		if (!typeRefMarkersByPath.Contains(enumNamespace + "\0" + enumName))
 		{
 			context.ReportDiagnostic(
-				Diagnostic.Create(
-					EnumValueEnumTypeNotDeclared,
-					memberLocation,
-					field.Name,
-					enumName,
-					enumNamespace ?? string.Empty
-				)
+				Diagnostic.Create(EnumValueEnumTypeNotDeclared, memberLocation, field.Name, enumName, enumNamespace)
 			);
 			return;
 		}
 
-		var groupKey = (enumNamespace ?? string.Empty) + "\0" + enumName;
+		var groupKey = enumNamespace + "\0" + enumName;
 
 		if (!enumMemberNamesByGroup.TryGetValue(groupKey, out var memberNames))
 		{
@@ -408,7 +483,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 			enumMemberNamesByGroup[groupKey] = memberNames;
 		}
 
-		if (!memberNames.Add(field.Name))
+		if (!memberNames.Add(memberName))
 		{
 			context.ReportDiagnostic(Diagnostic.Create(EnumValueDuplicateMember, memberLocation, field.Name, enumName));
 			return;
@@ -423,6 +498,138 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		if (!values.Add(value))
 			context.ReportDiagnostic(Diagnostic.Create(EnumValueDuplicateValue, memberLocation, field.Name, enumName));
 	}
+
+	/// <summary>
+	/// Validates an <c>[EnumValues]</c> marker field: member type, accessibility, the referenced enum
+	/// type, and duplicate detection against every value in the enum's value group.
+	/// </summary>
+	static void AnalyzeEnumValuesMember(
+		SymbolAnalysisContext context,
+		IFieldSymbol field,
+		AttributeData enumValues,
+		INamedTypeSymbol? enumValueDefinitionType,
+		Dictionary<string, HashSet<string>> enumMemberNamesByGroup,
+		Dictionary<string, HashSet<decimal>> enumValuesByGroup,
+		HashSet<string> typeRefMarkersByPath,
+		Location typeLocation
+	)
+	{
+		var memberLocation = field.Locations.FirstOrDefault(static location => location.IsInSource) ?? typeLocation;
+
+		var isTypeIdentity =
+			field.Type.Name == "TypeIdentity"
+			|| (
+				enumValueDefinitionType is not null
+				&& SymbolEqualityComparer.Default.Equals(field.Type, enumValueDefinitionType)
+			);
+		if (!isTypeIdentity)
+		{
+			context.ReportDiagnostic(
+				Diagnostic.Create(EnumValueMemberTypeInvalid, memberLocation, field.Name, field.Type)
+			);
+			return;
+		}
+
+		if (field.DeclaredAccessibility != Accessibility.Private)
+		{
+			context.ReportDiagnostic(Diagnostic.Create(MemberAccessibilityInvalid, memberLocation, field.Name));
+			return;
+		}
+
+		if (HasNoInitializer(field, context.CancellationToken))
+			context.ReportDiagnostic(Diagnostic.Create(MarkerMissingDefaultInitializer, memberLocation, field.Name));
+
+		var enumType = ReadEnumValuesType(enumValues);
+		if (enumType is null || enumType.TypeKind != TypeKind.Enum)
+		{
+			context.ReportDiagnostic(
+				Diagnostic.Create(
+					EnumValuesTypeNotEnum,
+					memberLocation,
+					field.Name,
+					enumType?.ToDisplayString() ?? string.Empty
+				)
+			);
+			return;
+		}
+
+		var enumName = enumType.Name;
+		var enumNamespace = enumType.ContainingNamespace.IsGlobalNamespace
+			? string.Empty
+			: enumType.ContainingNamespace.ToDisplayString();
+
+		if (!typeRefMarkersByPath.Contains(enumNamespace + "\0" + enumName))
+		{
+			context.ReportDiagnostic(
+				Diagnostic.Create(EnumValueEnumTypeNotDeclared, memberLocation, field.Name, enumName, enumNamespace)
+			);
+			return;
+		}
+
+		var groupKey = enumNamespace + "\0" + enumName;
+		if (!enumMemberNamesByGroup.TryGetValue(groupKey, out var memberNames))
+		{
+			memberNames = new(StringComparer.Ordinal);
+			enumMemberNamesByGroup[groupKey] = memberNames;
+		}
+
+		if (!enumValuesByGroup.TryGetValue(groupKey, out var values))
+		{
+			values = [];
+			enumValuesByGroup[groupKey] = values;
+		}
+
+		foreach (var enumMember in enumType.GetMembers().OfType<IFieldSymbol>())
+		{
+			if (!enumMember.HasConstantValue)
+				continue;
+
+			if (!memberNames.Add(enumMember.Name))
+			{
+				context.ReportDiagnostic(
+					Diagnostic.Create(EnumValueDuplicateMember, memberLocation, field.Name, enumMember.Name, enumName)
+				);
+				continue;
+			}
+
+			if (!values.Add(ReadEnumValueConstant(enumMember.ConstantValue)))
+			{
+				context.ReportDiagnostic(
+					Diagnostic.Create(EnumValueDuplicateValue, memberLocation, field.Name, enumMember.Name, enumName)
+				);
+			}
+		}
+	}
+
+	/// <summary>
+	/// Reads an <c>[EnumValues]</c> attribute, resolving the enum type from its <c>typeof(...)</c>
+	/// constructor argument.
+	/// </summary>
+	static INamedTypeSymbol? ReadEnumValuesType(AttributeData enumValues)
+	{
+		if (enumValues.ConstructorArguments.Length == 0)
+			return null;
+
+		return enumValues.ConstructorArguments[0].Value as INamedTypeSymbol;
+	}
+
+	/// <summary>
+	/// Reads an enum member's constant value, normalizing it to a <see cref="decimal"/> so every enum
+	/// underlying type (<c>byte</c> through <c>ulong</c>) is compared exactly.
+	/// </summary>
+	static decimal ReadEnumValueConstant(object? constantValue) =>
+		constantValue switch
+		{
+			byte b => b,
+			sbyte sb => sb,
+			short s => s,
+			ushort us => us,
+			int i => i,
+			uint ui => ui,
+			long l => l,
+			ulong ul => ul,
+			_ => Convert.ToDecimal(constantValue, System.Globalization.CultureInfo.InvariantCulture),
+		};
 
 	/// <summary>
 	/// Reads an <c>[EnumValue]</c> attribute, supporting the explicit enum-name/namespace form and the
@@ -787,6 +994,24 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		}
 
 		return null;
+	}
+
+	static List<AttributeData> GetAttributes(ISymbol symbol, INamedTypeSymbol? attributeType)
+	{
+		List<AttributeData> result = [];
+		if (attributeType is null)
+			return result;
+
+		foreach (var attribute in symbol.GetAttributes())
+		{
+			if (
+				attribute.AttributeClass is not null
+				&& SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, attributeType)
+			)
+				result.Add(attribute);
+		}
+
+		return result;
 	}
 
 	static T? GetConstructorArgument<T>(AttributeData attributeData, int index, T? defaultValue)

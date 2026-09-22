@@ -38,5 +38,7 @@ static class GeneratorTypeLibrary
 		public static readonly TypeIdentity TypeRefAttribute = new(nameof(TypeRefAttribute), GeneratorsNamespace);
 
 		public static readonly TypeIdentity EnumValueAttribute = new(nameof(EnumValueAttribute), GeneratorsNamespace);
+
+		public static readonly TypeIdentity EnumValuesAttribute = new(nameof(EnumValuesAttribute), GeneratorsNamespace);
 	}
 }
