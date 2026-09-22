@@ -9,7 +9,12 @@ namespace System.Runtime.CompilerServices;
 
 #pragma warning restore IDE0130 // Namespace does not match folder structure
 
+/// <summary>
+/// Supplies the compiler marker used by init-only members when targeting frameworks that do not
+/// define it. Source-generator projects consume this marker from the framework assembly so the
+/// self-contained packaging step does not have to merge duplicate marker definitions.
+/// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
-static class IsExternalInit;
+public static class IsExternalInit;
 
 #endif

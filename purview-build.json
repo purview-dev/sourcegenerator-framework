@@ -11,12 +11,12 @@
 		"RequiredContent": {
 			"purview.sourcegeneratorframework": [
 				"lib/netstandard2.0/Purview.SourceGeneratorFramework.dll",
-				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.dll",
 				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.Generators.dll",
 				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.Analyzers.dll",
 				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.CodeFixers.dll",
 				"build/Purview.SourceGeneratorFramework.props",
 				"build/Purview.SourceGeneratorFramework.targets",
+				"tools/net10.0/Purview.SourceGeneratorFramework.MergeTool.dll",
 				"README.md",
 				"LICENSE.md",
 				"purview-logo-light.png"

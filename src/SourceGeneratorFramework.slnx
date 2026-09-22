@@ -14,15 +14,20 @@
 			Path="src/SourceGeneratorFramework.CodeFixers/SourceGeneratorFramework.CodeFixers.csproj"
 			Id="0911f5c7-139e-4ddc-9918-d4826fe0c20c"
 		/>
-		<Project Path="src/SourceGeneratorFramework.Benchmarks/SourceGeneratorFramework.Benchmarks.csproj" />
 		<Project Path="src/SourceGeneratorFramework.Generators/SourceGeneratorFramework.Generators.csproj" />
-		<Project Path="src/SourceGeneratorFramework.Testing.TUnit/SourceGeneratorFramework.Testing.TUnit.csproj" />
-		<Project Path="src/SourceGeneratorFramework.Testing/SourceGeneratorFramework.Testing.csproj" />
 		<Project Path="src/SourceGeneratorFramework/SourceGeneratorFramework.csproj" />
 	</Folder>
 	<Folder Name="/src/examples/">
 		<Project Path="src/SourceGeneratorFramework.ExampleGenerator.CodeFixers/SourceGeneratorFramework.ExampleGenerator.CodeFixers.csproj" />
 		<Project Path="src/SourceGeneratorFramework.ExampleGenerator/SourceGeneratorFramework.ExampleGenerator.csproj" />
+	</Folder>
+	<Folder Name="/src/test-projects/">
+		<Project Path="src/SourceGeneratorFramework.Benchmarks/SourceGeneratorFramework.Benchmarks.csproj" />
+		<Project Path="src/SourceGeneratorFramework.Testing.TUnit/SourceGeneratorFramework.Testing.TUnit.csproj" />
+		<Project Path="src/SourceGeneratorFramework.Testing/SourceGeneratorFramework.Testing.csproj" />
+	</Folder>
+	<Folder Name="/src/tools/">
+		<Project Path="src/SourceGeneratorFramework.MergeTool/SourceGeneratorFramework.MergeTool.csproj" />
 	</Folder>
 	<Folder Name="/tests/">
 		<Project Path="tests/SharedTestingInfra/SharedTestingInfra.csproj" Id="9ffd38cd-d83d-4ebf-830f-1302054c6ddb" />

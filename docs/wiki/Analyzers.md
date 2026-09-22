@@ -50,6 +50,7 @@ The analyzers enforce two families of rules:
 | `PSGFR36` | Extension classes must be placed in the extended type's namespace under an `Extensions` folder. |
 | `PSGFR37` | One extension class per receiver type; split classes that extend multiple types. |
 | `PSGFR38` | Extension classes should carry `[EditorBrowsable(EditorBrowsableState.Never)]`. |
+| `PSGFR39` | A non-packable Roslyn component that explicitly opts out of the default self-contained analyzer output (`PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles=false`) while embedding the framework, otherwise the package embeds the loose framework DLL under `analyzers/`. |
 
 ## Type-library and attribute-model diagnostics
 

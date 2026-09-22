@@ -610,6 +610,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		if (enumValues.ConstructorArguments.Length == 0)
 			return null;
 
+		// The first constructor argument is a System.Type, which is represented as an INamedTypeSymbol in the semantic model.
 		return enumValues.ConstructorArguments[0].Value as INamedTypeSymbol;
 	}
 

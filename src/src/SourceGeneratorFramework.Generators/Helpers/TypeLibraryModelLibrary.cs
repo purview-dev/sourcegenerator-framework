@@ -796,12 +796,14 @@ static class TypeLibraryModelLibrary
 		if (enumValues.ConstructorArguments.Length == 0)
 			return null;
 
+		// The first constructor argument is the enum type, which is a System.Type reference. The value is an ITypeSymbol.
 		return enumValues.ConstructorArguments[0].Value as INamedTypeSymbol;
 	}
 
 	/// <summary>
 	/// Maps an enum symbol's underlying type to the <see cref="EnumUnderlyingType"/> model value.
 	/// </summary>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0072:Add missing cases")]
 	static EnumUnderlyingType EnumUnderlyingTypeFromSymbol(INamedTypeSymbol enumType) =>
 		enumType.EnumUnderlyingType?.SpecialType switch
 		{

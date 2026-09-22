@@ -6,12 +6,17 @@ This page covers how to package a source generator that references
 ## How the framework packages are assembled
 
 `Purview.SourceGeneratorFramework` is dual-role: the built framework assembly ships in `lib/` so
-consumers can compile generators against it, and the `analyzers/` folder carries the generator +
-analyzer assemblies and their runtime dependencies. The bundled projects are:
+generator projects can compile against it, and the `analyzers/` folder carries self-contained
+generator, analyzer, and code-fixer assemblies. The bundled projects are:
 
 - `SourceGeneratorFramework.Generators` — `AttributeDataModelGenerator`, `TypeLibraryGenerator`;
 - `SourceGeneratorFramework.Analyzers` — the `PSGFR*` and `TLB*` analyzers;
 - `SourceGeneratorFramework.CodeFixers` — the code fix providers.
+
+Each Roslyn component has the framework implementation merged and internalized into its own assembly.
+The package deliberately does **not** put `Purview.SourceGeneratorFramework.dll` under
+`analyzers/dotnet/cs`. Consequently, generators built against different framework versions do not
+ask Roslyn to load competing versions of a same-named runtime dependency.
 
 The shared models and helpers that used to ship as a separate
 `Purview.SourceGeneratorFramework.Shared.dll` are compiled directly into the framework assembly
@@ -25,23 +30,40 @@ These projects are `IsRoslynComponent = true` and are **not** packable on their 
 into the main package by the `SourceGeneratorFramework` project. They were previously consumed as
 analyzer project references, but since they now reference the framework assembly for the shared types
 (which would form a project-reference cycle), the `SourceGeneratorFramework` project builds them via
-`GetSourceGeneratorAnalyzerFiles` and packs them under `analyzers/dotnet/cs/` in
+`GetPurviewMergedAnalyzerFile` and packs them under `analyzers/dotnet/cs/` in
 `BuildAndPackBundledAnalyzerAssemblies`.
 
 The repo's pack validation (`purview-build.json`) requires the `purview.sourcegeneratorframework`
 package to contain, at minimum:
 
 - `lib/netstandard2.0/Purview.SourceGeneratorFramework.dll`;
-- `analyzers/dotnet/cs/` versions of the framework, generators, analyzers, and code fixers;
+- `analyzers/dotnet/cs/` versions of the self-contained generators, analyzers, and code fixers;
 - `build/Purview.SourceGeneratorFramework.props` and `build/Purview.SourceGeneratorFramework.targets`;
+- `tools/net10.0/` versions of the framework-owned merge tool and its runtime files;
 - `README.md`, `LICENSE.md`, and `purview-logo-light.png`.
 
 PDBs are delivered only through the `.snupkg`; `*.pdb` files are forbidden inside the `.nupkg`.
 
 ## Referencing a generator from a consuming project
 
-Use an analyzer project reference so Roslyn receives both the generator assembly and its framework
-runtime dependency:
+Reference the framework privately from a Roslyn component. When the generator project itself is
+packed, the framework's build target replaces its output with a self-contained assembly at pack time:
+
+```xml
+<PropertyGroup>
+  <IsRoslynComponent>true</IsRoslynComponent>
+</PropertyGroup>
+
+<ItemGroup>
+  <PackageReference
+    Include="Purview.SourceGeneratorFramework"
+    Version="..."
+    PrivateAssets="all" />
+</ItemGroup>
+```
+
+Use an analyzer project reference from a consuming project so Roslyn receives the generator
+assembly:
 
 ```xml
 <ProjectReference
@@ -52,17 +74,114 @@ runtime dependency:
 />
 ```
 
-The Purview SDK automatically invokes `GetSourceGeneratorAnalyzerFiles`, which returns both the
-generator and its framework dependency without adding either file to the consuming application's
-runtime references. Specifying `Targets="GetSourceGeneratorAnalyzerFiles"` explicitly remains
-supported but is not required.
+The Purview SDK automatically invokes `GetSourceGeneratorAnalyzerFiles`, which returns the generator
+assembly without adding it to the consuming application's runtime references. By default
+(`PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles=true`) the framework returns the **merged,
+self-contained** generator from the intermediate `purview-merged/` directory, so consuming projects
+and any GASF-based package compile against a generator that carries its own framework implementation
+and never needs the loose `Purview.SourceGeneratorFramework.dll`. The generator's bin output is left
+unmerged, so a project that references the generator assembly directly (an in-process test harness)
+keeps its shared framework type identity, `InternalsVisibleTo` access, and avoids `CS0433`
+collisions with the framework library. Specifying `Targets="GetSourceGeneratorAnalyzerFiles"`
+explicitly remains supported but is not required.
+
+Set `PurviewEmbedSourceGeneratorFramework` to `false` only for a project that produces the framework
+compile-time library itself. Published generator packages must not disable embedding.
+
+Set `PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles` to `false` only when the generator's
+analyzer-files consumers must keep the unmerged assembly + loose framework DLL shape (for example a
+generator shipped into a single compiler process alongside an incompatible framework version).
+
+### Analyzer consumption contract
+
+A component that references the framework is consumed in three distinct ways, each producing a
+different shape:
+
+| Path | Trigger | Output |
+| --- | --- | --- |
+| `GetSourceGeneratorAnalyzerFiles` (default) | A consuming project references the component as an analyzer | The **merged**, self-contained component, returned from the intermediate `purview-merged/` directory. The component's bin output stays unmerged, so its in-process test harness retains shared framework type identity and `InternalsVisibleTo` access without `CS0433` collisions. |
+| `GetSourceGeneratorAnalyzerFiles` (opt-out) | Same, with `PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles=false` | Unmerged component + the loose `Purview.SourceGeneratorFramework.dll` copied from the framework package `lib/`. |
+| `GetPurviewMergedAnalyzerFile` | The framework package's own bundled-component pack, or a third-party package embedding the generator | The **merged** component from the intermediate output; the component's bin is never overwritten. |
+| `GenerateNuspec` (`EmbedPurviewSourceGeneratorFrameworkForPack`) | Packing a standalone, packable generator project | The generator's bin is replaced by the **merged** self-contained DLL and the loose framework DLL is deleted before the package is written. |
+
+In the opt-out path the loose framework DLL is declared as a `SourceGeneratorRuntimeDependency`
+(statically from the framework package `lib/` for package consumers, with a target-time fallback for
+in-repo `ProjectReference` components) so the SDK copies it beside the generator before Roslyn loads
+it. The merged paths never declare it.
+
+The merge itself (`_PurviewMergeSourceGeneratorFramework`) only writes to the component's
+intermediate `purview-merged/` directory. `GetSourceGeneratorAnalyzerFiles` returns that result by
+substituting the merged path into `TargetPathWithTargetPlatformMoniker` immediately before its body
+runs, leaving `GetTargetPath` — which resolves assembly references — pointing at the unmerged bin.
+This is what keeps the in-repo test harness working while shipped assemblies stay self-contained.
+
+### Self-contained analyzer validation (PSGFR39)
+
+The bundled `SelfContainedGeneratorAnalyzer` (PSGFR39) runs on every project that references the
+framework and errors when a **non-packable** Roslyn component explicitly opts out of the default
+self-contained analyzer output. Such a component, if embedded into a package through the GASF-based
+pack, forces the loose `Purview.SourceGeneratorFramework.dll` under `analyzers/`, reintroducing the
+shared-version hazard.
+
+The analyzer reads the following compiler-visible properties:
+`IsRoslynComponent`, `IsPackable`, `PurviewEmbedSourceGeneratorFramework`,
+`PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles`, and
+`PurviewSourceGeneratorFrameworkAnalyzerValidation`. It does not report when the component:
+
+- is not a Roslyn component, or does not reference the framework;
+- disables embedding (`PurviewEmbedSourceGeneratorFramework=false`);
+- is packable (`IsPackable=true`) — its own `GenerateNuspec` merge makes the package self-contained;
+- keeps the default merged GASF output (`PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles=true`);
+- explicitly opts out (`PurviewSourceGeneratorFrameworkAnalyzerValidation=false`).
+
+Set `PurviewSourceGeneratorFrameworkAnalyzerValidation=false` on a component that is shipped
+self-contained via `GetPurviewMergedAnalyzerFile`, or that is only consumed in-repo and never packed.
+Packaging an embedded generator through the raw GASF path without one of the self-contained
+arrangements is an error.
+
+### `IsExternalInit` contract
+
+The framework assembly defines `System.Runtime.CompilerServices.IsExternalInit` **publicly** so the
+framework's own bundled generators can emit `init`-based attribute types into any consumer
+compilation, and so the merge step has a single marker definition to internalize. Consumers
+(generator projects) must **not** declare their own `IsExternalInit`: doing so produces a duplicate
+type definition against the framework reference.
 
 ### Generators embedded in another package
 
-If the generator assembly is embedded in a different NuGet package, the outer package must make the
-framework's compiler-visible properties visible to its consumers. Build assets from
-`Purview.SourceGeneratorFramework` are not automatically copied into the outer package. Include a
-`.props` file imported by the outer package that declares the property and its
+If the generator assembly is embedded in a different NuGet package, pack the generator's **merged,
+self-contained** assembly so the outer package does not ship a loose `Purview.SourceGeneratorFramework.dll`.
+Call the framework's `GetPurviewMergedAnalyzerFile` target on the generator project (which merges the
+framework implementation into the generator's intermediate output without touching its bin) and add
+the returned file under `analyzers/dotnet/cs`, disabling the SDK's default GASF-based analyzer packing:
+
+```xml
+<PropertyGroup>
+  <PackProjectReferencedSourceGenerators>false</PackProjectReferencedSourceGenerators>
+  <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);PackMyGenerator</TargetsForTfmSpecificContentInPackage>
+</PropertyGroup>
+
+<Target Name="PackMyGenerator">
+  <MSBuild
+    Projects="../MyGenerator/MyGenerator.csproj"
+    Targets="GetPurviewMergedAnalyzerFile"
+    Properties="Configuration=$(Configuration)"
+    RemoveProperties="TargetFramework;TargetFrameworks;RuntimeIdentifier;SelfContained"
+  >
+    <Output TaskParameter="TargetOutputs" ItemName="_MyGeneratorMerged" />
+  </MSBuild>
+  <ItemGroup>
+    <TfmSpecificPackageFile Include="@(_MyGeneratorMerged)">
+      <PackagePath>analyzers/dotnet/cs/</PackagePath>
+    </TfmSpecificPackageFile>
+  </ItemGroup>
+</Target>
+```
+
+If the generator assembly is also embedded at compile time for the outer package's consumers, the
+outer package must make the framework's compiler-visible properties visible to those consumers. Build
+assets from `Purview.SourceGeneratorFramework` are not automatically copied into the outer package.
+Include a `.props` file imported by the outer package that declares the property and its
 `CompilerVisibleProperty` entry (see
 [Code-Writer.md](Code-Writer.md#generators-embedded-in-another-package)), and pack it using the outer
 package's ID so NuGet imports it automatically:
@@ -135,6 +254,11 @@ A broadly-compatible generator project might start with:
         Version="$(RoslynAnalyserVersion)"
         PrivateAssets="all" />
 
+    <PackageReference
+        Include="Purview.SourceGeneratorFramework"
+        Version="$(SourceGeneratorFrameworkVersion)"
+        PrivateAssets="all" />
+
   </ItemGroup>
 
   <ItemGroup>
@@ -150,6 +274,10 @@ A broadly-compatible generator project might start with:
 </Project>
 ```
 
+The resulting generator package contains the generator DLL under `analyzers/dotnet/cs`; it does not
+contain a loose `Purview.SourceGeneratorFramework.dll`. Package validation should inspect both the
+ZIP entries and the generator's assembly references to enforce that invariant.
+
 Then centrally define:
 
 ```xml
@@ -160,6 +288,29 @@ Then centrally define:
 ```
 
 The exact Roslyn baseline is a product-support decision.
+
+## Release gates
+
+The following checks are the acceptance criteria for the self-contained packaging:
+
+1. **No assembly reference** — every shipped Roslyn component DLL
+   (`analyzers/dotnet/cs/*.dll`) has no assembly reference to `Purview.SourceGeneratorFramework`.
+   Inspect the metadata directly; do not rely on "the sample compiled".
+2. **No loose framework DLL in packages** — no `.nupkg` contains
+   `Purview.SourceGeneratorFramework.dll` under `analyzers/`, and `*.pdb` files are forbidden in the
+   `.nupkg` (symbols ship only through the `.snupkg`).
+3. **Merged entry points survive** — each merged DLL still exposes its `IIncrementalGenerator`,
+   `DiagnosticAnalyzer`, or `CodeFixProvider` implementations.
+4. **Installed-package consumer test** — a generator project that references the framework package
+   by `PackageReference` (with the framework's `build/` targets auto-imported) packs a single
+   self-contained DLL under `analyzers/dotnet/cs`, and a consumer that installs that package builds
+   with the generator producing output.
+5. **Two-version coexistence test** — build Generator A against the current framework and
+   Generator B against an intentionally binary-incompatible framework version (for example a v2
+   that adds a `CodeWriter` member Generator B calls). Install both packages into one consumer and
+   build with both package-reference orders. Both generators must run, each against its own embedded
+   framework copy. Under the old shared-DLL model one generator fails with `MissingMethodException`
+   (load-order dependent); with self-contained packaging both succeed.
 
 ## License
 
