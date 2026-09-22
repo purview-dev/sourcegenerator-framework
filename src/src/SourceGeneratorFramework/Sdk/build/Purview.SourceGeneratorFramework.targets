@@ -9,7 +9,7 @@
 			>true</PurviewEmbedSourceGeneratorFramework>
 		<PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles
 			Condition="'$(PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles)' == ''"
-			>false</PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles>
+			>true</PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles>
 		<ProduceReferenceAssembly Condition="'$(ProduceReferenceAssembly)' == '' AND '$(IsRoslynComponent)' == 'true'"
 			>true</ProduceReferenceAssembly>
 	</PropertyGroup>
@@ -129,28 +129,34 @@
 	<!--
 		Analyzer-files path: when a project references this component as an analyzer, the component's
 		output is normally returned unmerged (with the loose framework DLL) so the in-process test
-		harness keeps its shared type identity. Set PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles
-		to true to opt into a self-contained merged analyzer for GetSourceGeneratorAnalyzerFiles, which
-		also keeps downstream GASF-based packages self-contained. The framework's own bundled components
-		keep this disabled and are packed through GetPurviewMergedAnalyzerFile instead.
+		harness keeps its shared type identity. When
+		PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles is true (the default), GetSourceGeneratorAnalyzerFiles
+		returns the self-contained merged assembly instead. The merged assembly is returned from the
+		intermediate directory and the component's bin output is left unmerged, so a project
+		referencing the component's assembly directly (a test harness, for example) never sees the
+		merged assembly's internalized framework types and cannot collide with the framework library.
+
+		GetSourceGeneratorAnalyzerFiles reads @(TargetPathWithTargetPlatformMoniker) in its body, so
+		the merged assembly is substituted there at the last moment. This target runs before the
+		target's body but after its dependencies (Build;GetTargetPathWithTargetPlatformMoniker) have
+		populated the item. GetTargetPath — which project references use to resolve the component's
+		assembly — is unaffected, so referencing projects keep the unmerged bin output.
 	-->
 	<Target
 		Name="EmbedPurviewSourceGeneratorFramework"
 		BeforeTargets="GetSourceGeneratorAnalyzerFiles"
 		DependsOnTargets="_PurviewMergeSourceGeneratorFramework"
 		Condition="'$(PurviewEmbedSourceGeneratorFramework)' == 'true' AND '$(PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles)' == 'true'"
-		Label="Produces a self-contained Roslyn component for analyzer-file resolution."
+		Label="Returns a self-contained Roslyn component for analyzer-file resolution."
 	>
 		<Error
 			Condition="!Exists('$(_PurviewMergedComponent)')"
 			Text="Purview.SourceGeneratorFramework embedding was requested but the merged component '$(_PurviewMergedComponent)' was not produced."
 		/>
-		<Copy SourceFiles="$(_PurviewMergedComponent)" DestinationFiles="$(TargetPath)" />
-		<Copy
-			Condition="Exists('$(_PurviewMergedComponentPdb)')"
-			SourceFiles="$(_PurviewMergedComponentPdb)"
-			DestinationFiles="$(TargetDir)$(TargetName).pdb"
-		/>
+		<ItemGroup>
+			<TargetPathWithTargetPlatformMoniker Remove="@(TargetPathWithTargetPlatformMoniker)" />
+			<TargetPathWithTargetPlatformMoniker Include="$([System.IO.Path]::GetFullPath('$(_PurviewMergedComponent)'))" />
+		</ItemGroup>
 	</Target>
 
 	<!--

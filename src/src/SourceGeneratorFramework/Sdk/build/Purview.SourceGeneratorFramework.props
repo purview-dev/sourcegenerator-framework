@@ -21,6 +21,21 @@
 		<CompilerVisibleProperty Include="PurviewSourceGeneratorFrameworkLanguageVersion">
 			<Description>Carries the consuming project's LangVersion so generators can gate emitted features.</Description>
 		</CompilerVisibleProperty>
+		<CompilerVisibleProperty Include="IsRoslynComponent">
+			<Description>True when the project is a Roslyn component (source generator, analyzer, or code fix).</Description>
+		</CompilerVisibleProperty>
+		<CompilerVisibleProperty Include="IsPackable">
+			<Description>True when the project produces its own NuGet package.</Description>
+		</CompilerVisibleProperty>
+		<CompilerVisibleProperty Include="PurviewEmbedSourceGeneratorFramework">
+			<Description>True when the framework implementation is merged into the Roslyn component.</Description>
+		</CompilerVisibleProperty>
+		<CompilerVisibleProperty Include="PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles">
+			<Description>True when GetSourceGeneratorAnalyzerFiles returns a merged, self-contained component.</Description>
+		</CompilerVisibleProperty>
+		<CompilerVisibleProperty Include="PurviewSourceGeneratorFrameworkAnalyzerValidation">
+			<Description>False to opt out of PSGFR39 self-contained analyzer validation.</Description>
+		</CompilerVisibleProperty>
 	</ItemGroup>
 
 	<ItemGroup>

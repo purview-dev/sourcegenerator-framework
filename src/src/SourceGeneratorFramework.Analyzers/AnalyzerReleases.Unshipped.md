@@ -14,6 +14,7 @@ PSGFR35 | Purview.SourceGeneratorFramework | Warning | Extension class name does
 PSGFR36 | Purview.SourceGeneratorFramework | Warning | Extension class is not placed in the extended type's namespace/folder
 PSGFR37 | Purview.SourceGeneratorFramework | Warning | Extension class extends multiple receiver types
 PSGFR38 | Purview.SourceGeneratorFramework | Warning | Extension class is missing EditorBrowsable
+PSGFR39 | Purview.SourceGeneratorFramework | Error | Roslyn component must produce a self-contained analyzer
 TLB0014 | TypeLibrary | Warning | Type library partial extension is declared in a different namespace
 TLB0015 | TypeLibrary | Info | Type library partial extension must be declared 'public static partial'
 TLB0016 | TypeLibrary | Error | Enum value member type must be TypeIdentity or EnumValueDefinition
