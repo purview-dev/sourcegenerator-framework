@@ -53,7 +53,7 @@ public static class TypeSyntaxFacts
 				case ArrayTypeSyntax arrayType:
 				{
 					// `int[][,]` parses as a single node with a rank-specifier list, outermost-first.
-					modifiers ??= [with(arrayType.RankSpecifiers.Count)];
+					modifiers ??= new List<TypeModifier>(arrayType.RankSpecifiers.Count);
 
 					foreach (var rankSpecifier in arrayType.RankSpecifiers)
 						modifiers.Add(TypeModifier.Array(rankSpecifier.Rank));

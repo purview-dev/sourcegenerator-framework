@@ -74,7 +74,7 @@ public record SourceGeneratorTestOptions
 	//	DisableSourceGeneratorPropertyName = source.DisableSourceGeneratorPropertyName;
 	//	DisableSourceGeneratorValue = source.DisableSourceGeneratorValue;
 
-	//	AnalyzerConfigOptions = [with(source.AnalyzerConfigOptions)];
+	//	AnalyzerConfigOptions = new(source.AnalyzerConfigOptions)];
 
 	//	TestOutput = source.TestOutput;
 	//	CompilationAssemblyName = source.CompilationAssemblyName;

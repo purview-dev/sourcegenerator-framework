@@ -20,3 +20,4 @@ TLB0016 | TypeLibrary | Error | Enum value member type must be TypeIdentity or E
 TLB0017 | TypeLibrary | Error | Enum value member references an enum type that is not declared
 TLB0018 | TypeLibrary | Error | Duplicate enum value member
 TLB0019 | TypeLibrary | Info | Duplicate enum value
+TLB0020 | TypeLibrary | Error | Enum values member references a type that is not an enum

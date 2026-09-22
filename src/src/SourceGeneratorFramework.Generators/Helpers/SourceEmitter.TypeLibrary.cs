@@ -210,7 +210,9 @@ partial class SourceEmitter
 		var writer = CreateTypeLibraryWriter(GeneratorTypeLibrary.Attirbutes.EnumValueAttribute);
 
 		return writer
-			.XmlSummary("Declares an enum value member for a generated type library.")
+			.XmlSummary(
+				"Declares an enum value member for a generated type library. May be declared multiple times on a single field."
+			)
 			.AttributeClass(
 				new(GeneratorTypeLibrary.Attirbutes.EnumValueAttribute),
 				AttributeTargets.Field,
@@ -251,10 +253,12 @@ partial class SourceEmitter
 						);
 
 					bodyWriter
-						.XmlSummary("Declares an enum value by the enum type's fully qualified name.")
+						.XmlSummary(
+							"Declares an enum value by the enum type's fully qualified name, or by the member name when applied on a [TypeRef] field."
+						)
 						.XmlParam(
 							"enumFullName",
-							"The fully qualified name of the enum type, such as 'Namespace.EnumName'."
+							"The fully qualified name of the enum type, such as 'Namespace.EnumName'. When this attribute is applied on a field that also carries [TypeRef], this is the enum member name and the enum type is inferred from the [TypeRef]."
 						)
 						.XmlParam(
 							"value",
@@ -318,6 +322,50 @@ partial class SourceEmitter
 					bodyWriter
 						.XmlSummary("Gets the optional alternate names used when matching.")
 						.Property(new("Aliases", StringArrayReference.Nullable(), TypeDeclarationAccessibility.Public));
+				},
+				allowMultiple: true
+			);
+	}
+
+	static SourceText EnumValuesAttribute()
+	{
+		var writer = CreateTypeLibraryWriter(GeneratorTypeLibrary.Attirbutes.EnumValuesAttribute);
+
+		return writer
+			.XmlSummary("Declares all enum values of a compile-time-available enum type for a generated type library.")
+			.AttributeClass(
+				new(GeneratorTypeLibrary.Attirbutes.EnumValuesAttribute),
+				AttributeTargets.Field,
+				bodyWriter =>
+				{
+					bodyWriter
+						.XmlSummary(
+							"Declares every member of the specified enum type. The enum type must also be declared by a sibling [TypeRef] member in the same namespace."
+						)
+						.XmlParam(
+							"enumType",
+							"The enum type, supplied as a typeof(...) value; its members become the generated enum values."
+						)
+						.Constructor(
+							new(
+								GeneratorTypeLibrary.Attirbutes.EnumValuesAttribute,
+								TypeDeclarationAccessibility.Public
+							)
+							{
+								Parameters = [new("enumType", PurviewTypeLibrary.System.Type)],
+							},
+							constructorWriter => constructorWriter.Assignment("EnumType", "enumType")
+						);
+
+					bodyWriter
+						.XmlSummary("Gets the enum type whose members are declared.")
+						.Property(
+							new(
+								"EnumType",
+								PurviewTypeLibrary.System.Type.MakeNullable(),
+								TypeDeclarationAccessibility.Public
+							)
+						);
 				}
 			);
 	}
@@ -644,8 +692,11 @@ partial class SourceEmitter
 
 		foreach (var group in node.EnumGroups)
 		{
-			foreach (var value in group.Values)
-				yield return value.MemberName;
+			// Each spec marker field that contributed to the group must be referenced so the compiler's
+			// unused-member analysis does not flag it. Enum member names generated from an [EnumValues]
+			// marker are not spec fields and must not be referenced.
+			foreach (var marker in group.MarkerFieldNames)
+				yield return marker;
 		}
 
 		foreach (var child in node.Children)

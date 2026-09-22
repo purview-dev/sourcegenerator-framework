@@ -1047,6 +1047,7 @@ static class AttributeDataModelLibrary
 				: typeSymbol.ContainingNamespace.ToDisplayString();
 		}
 
+		// The typeof(...) form is the only remaining valid form, which has a single constructor argument of type
 		return GetConstructorArgument(typeRef, 1, (string?)null);
 	}
 
@@ -1077,9 +1078,10 @@ static class AttributeDataModelLibrary
 		targetType = null;
 		targetIdentity = default;
 
-		var attributeSyntax =
-			generateAttribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken) as AttributeSyntax;
-		if (attributeSyntax is null)
+		if (
+			generateAttribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken)
+			is not AttributeSyntax attributeSyntax
+		)
 			return false;
 
 		var expression = attributeSyntax.ArgumentList?.Arguments.FirstOrDefault()?.Expression;

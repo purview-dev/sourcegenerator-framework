@@ -818,6 +818,11 @@ public readonly record struct TypeIdentity
 	public static readonly TypeIdentity Null = new("null", null);
 
 	/// <summary>
+	/// Represents the `void` type identity.
+	/// </summary>
+	public static readonly TypeIdentity Void = new("void", null);
+
+	/// <summary>
 	/// Creates a <see cref="TypeIdentity"/> from a runtime type.
 	/// </summary>
 	/// <remarks>

@@ -170,6 +170,27 @@ type — `byte`, `sbyte`, `short`, `ushort`, `int` (default), `uint`, `long` or 
 `EnumValueDefinition.UnderlyingType`, and `EnumValueDefinition.Value` is stored as a `decimal` so every
 underlying type (including `ulong.MaxValue`) is represented exactly.
 
+#### Declaring values inline on the enum's `[TypeRef]` field
+
+When the enum type is declared by a `[TypeRef]` in the same spec, `[EnumValue]` can be applied directly on
+that `[TypeRef]` field — the enum type is inferred from the sibling `[TypeRef]` and each attribute's first
+argument is the enum member name. This works even when the enum type is not available as a compile-time
+type, and multiple `[EnumValue]` attributes may be declared on the field (`AllowMultiple`):
+
+```csharp
+[GenerateTypeLibrary(ClassName = "TypeLibrary", Namespace = "MyGenerator")]
+static partial class TypeLibraryModel
+{
+    [TypeRef("Aspire.Hosting.AspireC4.LikeC4Severity", GenerateFullNameConst = true)]
+    [EnumValue("Inherit", 0)]
+    [EnumValue("Warning", 3)]
+    static readonly TypeIdentity LikeC4Severity = default;
+}
+```
+
+This is equivalent to declaring the enum type with a standalone `[TypeRef]` marker and each value with a
+separate `[EnumValue]` marker field; the two styles can be mixed for the same enum.
+
 The generator emits a nested `public static partial class {EnumName}Values` alongside the enum's `TypeIdentity`:
 
 ```csharp
@@ -217,6 +238,34 @@ new("severity", TypeLibrary.Aspire.Hosting.AspireC4.LikeC4Severity)
 Enum value marker fields must be declared `private static readonly` (`TLB0008`), with an optional explicit
 `= default` (`TLB0010`), and use a `TypeIdentity` or `EnumValueDefinition` field type (`TLB0016`). Duplicate
 member names in a group are `TLB0018`; duplicate numeric values are flagged as `TLB0019`.
+
+#### Declaring all values of an available enum type
+
+When the enum type is available at compile time, use `[EnumValues(typeof(...))]` to declare every member in
+one marker instead of listing individual `[EnumValue]` markers. The enum type must still be declared by a
+sibling `[TypeRef]` marker in the same namespace (`TLB0017`), and the referenced type must actually be an
+enum (`TLB0020`):
+
+```csharp
+[GenerateTypeLibrary(ClassName = "TypeLibrary", Namespace = "MyGenerator")]
+static partial class TypeLibraryModel
+{
+    [TypeRef("ServiceLifetime", "MyGenerator", GenerateFullNameConst = true)]
+    static readonly TypeIdentity ServiceLifetime = default;
+
+    // Enum type is available, so one marker declares Singleton, Scoped, Transient, ...
+    [EnumValues(typeof(ServiceLifetime))]
+    static readonly TypeIdentity ServiceLifetimeValues = default;
+}
+```
+
+The generator emits the same `{EnumName}Values` nested class that the equivalent `[EnumValue]` markers
+produce: a `EnumValueDefinition` field per enum member (with its numeric value and underlying type taken
+from the enum declaration, and XML documentation copied from each member), the per-value `{Member}FullName`
+constants when the enum's `[TypeRef]` sets `GenerateFullNameConst`, and the `Get(string)` matcher. The
+marker field's name is arbitrary and ignored — the member names come from the enum itself. The two
+declaration styles can be combined for the same enum; an `[EnumValues]` marker that collides with an
+existing member or another bulk marker is flagged (`TLB0018`).
 
 ### Using full-name constants as attribute-data model targets
 
@@ -284,7 +333,7 @@ Set the MSBuild property `DisablePurviewTypeLibraryGenerator` to `true` to disab
 
 ## Validation
 
-`TypeLibraryValidationAnalyzer` reports `TLB0001`–`TLB0019` for invalid specs, enum value members, and
+`TypeLibraryValidationAnalyzer` reports `TLB0001`–`TLB0020` for invalid specs, enum value members, and
 type library partial extensions (non-static class, member type that is not `TypeIdentity`/`TypeReference`,
 unresolvable type/namespace, duplicate members, invalid class name, invalid namespace, invalid member
 accessibility, value members without an initializer, marker members without an explicit `= default`, a spec
@@ -292,9 +341,10 @@ that is not declared `partial`, and a spec class whose name collides with the ge
 `TLB0012` when they share a namespace, `TLB0013` when they do not). It also reports `TLB0014` when a
 source partial class shares the generated library's name but is declared in a different namespace
 (so it will not merge), `TLB0015` when a same-namespace partial does not match the generated
-`public static partial` modifiers, and `TLB0016`–`TLB0019` for invalid `[EnumValue]` members (member type,
-a missing sibling enum declaration, and duplicate members/values). `TLB0002`, `TLB0008`, `TLB0010`,
-`TLB0011`, `TLB0012`, and `TLB0013` have code fixes.
+`public static partial` modifiers, `TLB0016`–`TLB0019` for invalid `[EnumValue]`/`[EnumValues]` members
+(member type, a missing sibling enum declaration, a non-enum type, and duplicate members/values), and
+`TLB0020` when an `[EnumValues]` marker references a type that is not an enum. `TLB0002`, `TLB0008`,
+`TLB0010`, `TLB0011`, `TLB0012`, and `TLB0013` have code fixes.
 
 The generator carries these same diagnostics on its `GeneratorResult` and gates generation on
 `ShouldProcess`. Most are blocking (`IsBlocking: true`) and stop generation, but the non-blocking rules —
