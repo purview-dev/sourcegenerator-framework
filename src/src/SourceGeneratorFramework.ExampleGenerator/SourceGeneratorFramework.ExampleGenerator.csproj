@@ -32,4 +32,12 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" />
 	</ItemGroup>
+
+	<PropertyGroup>
+		<_PurviewSourceGeneratorFrameworkAssembly>$(TargetDir)Purview.SourceGeneratorFramework.dll</_PurviewSourceGeneratorFrameworkAssembly>
+		<_PurviewSourceGeneratorFrameworkMergeTool>..\SourceGeneratorFramework.MergeTool\bin\$(Configuration)\net10.0\Purview.SourceGeneratorFramework.MergeTool.dll</_PurviewSourceGeneratorFrameworkMergeTool>
+		<_PurviewSourceGeneratorFrameworkMergeToolProject>..\SourceGeneratorFramework.MergeTool\SourceGeneratorFramework.MergeTool.csproj</_PurviewSourceGeneratorFrameworkMergeToolProject>
+		<PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles>false</PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles>
+	</PropertyGroup>
+	<Import Project="..\SourceGeneratorFramework\Sdk\build\Purview.SourceGeneratorFramework.targets" />
 </Project>

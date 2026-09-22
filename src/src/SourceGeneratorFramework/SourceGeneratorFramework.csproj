@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<IsPackable>true</IsPackable>
-		<IsRoslynComponent>true</IsRoslynComponent>
+		<IsRoslynComponent>false</IsRoslynComponent>
+		<TargetFrameworks>netstandard2.0</TargetFrameworks>
 		<!--
-			The SDK defaults these to false for Roslyn components so that only an analyzer asset is
-			produced. This project is dual-role: the built framework assembly ships in lib/ so
-			consumers can compile generators against it, and the analyzers/ folder carries the
-			generator + analyzer assemblies and their runtime dependencies. PDBs must only be
+			This project is the compile-time framework library rather than a Roslyn component itself.
+			The built framework assembly ships in lib/ so consumers can compile generators against it,
+			and the analyzers/ folder carries self-contained generator + analyzer assemblies. PDBs must only be
 			delivered through the .snupkg, so symbols are explicitly enabled.
 		-->
 		<IncludeBuildOutput>true</IncludeBuildOutput>
@@ -15,6 +15,7 @@
 		<!-- The repo's pack validation requires PDBs to be delivered only through the .snupkg, so the
 		     analyzer PDB must not ship inside the .nupkg under analyzers/dotnet/cs. -->
 		<PurviewPackAnalyzerPdb>false</PurviewPackAnalyzerPdb>
+		<PurviewEmbedSourceGeneratorFramework>false</PurviewEmbedSourceGeneratorFramework>
 		<TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);BuildAndPackBundledAnalyzerAssemblies</TargetsForTfmSpecificContentInPackage>
 	</PropertyGroup>
 
@@ -48,9 +49,9 @@
 	>
 		<MSBuild
 			Projects="..\SourceGeneratorFramework.Generators\SourceGeneratorFramework.Generators.csproj;..\SourceGeneratorFramework.Analyzers\SourceGeneratorFramework.Analyzers.csproj;..\SourceGeneratorFramework.CodeFixers\SourceGeneratorFramework.CodeFixers.csproj"
-			Targets="GetSourceGeneratorAnalyzerFiles"
+			Targets="GetPurviewMergedAnalyzerFile"
 			Properties="Configuration=$(Configuration)"
-			BuildInParallel="true"
+			BuildInParallel="false"
 		>
 			<Output TaskParameter="TargetOutputs" ItemName="_PurviewBundledAnalyzerFile" />
 		</MSBuild>
@@ -61,6 +62,10 @@
 			>
 				<PackagePath>analyzers/dotnet/cs/</PackagePath>
 			</TfmSpecificPackageFile>
+			<_PurviewMergeToolPackageFile Include="..\SourceGeneratorFramework.MergeTool\bin\$(Configuration)\net10.0\*.dll;..\SourceGeneratorFramework.MergeTool\bin\$(Configuration)\net10.0\*.json">
+				<PackagePath>tools/net10.0/%(_PurviewMergeToolPackageFile.Filename)%(_PurviewMergeToolPackageFile.Extension)</PackagePath>
+			</_PurviewMergeToolPackageFile>
+			<TfmSpecificPackageFile Include="@(_PurviewMergeToolPackageFile)" />
 		</ItemGroup>
 	</Target>
 </Project>

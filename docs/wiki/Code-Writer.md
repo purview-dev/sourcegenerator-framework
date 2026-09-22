@@ -583,6 +583,47 @@ writer.Property("Name", TypeReference.Create<string>(), TypeDeclarationAccessibi
 - Keep every value emitted through the structured API so layout stays deterministic and the analyzers
   can guide callers back to the best practice.
 
+## Generators embedded in another package
+
+When a generator built with this framework is embedded into a different NuGet package (rather than
+shipped as its own package), the outer package must make the framework's compiler-visible properties
+available to its consumers, because build assets from `Purview.SourceGeneratorFramework` are not
+automatically copied into the outer package.
+
+Ship a `.props` file with the outer package that declares each property and its
+`CompilerVisibleProperty` entry, and pack it under `buildTransitive/` using the outer package's ID so
+NuGet imports it for consumers:
+
+```xml
+<PropertyGroup>
+  <PurviewSourceGeneratorFrameworkValidateCodeWriterScopes
+    Condition="'$(PurviewSourceGeneratorFrameworkValidateCodeWriterScopes)' == ''"
+    >false</PurviewSourceGeneratorFrameworkValidateCodeWriterScopes>
+</PropertyGroup>
+
+<ItemGroup>
+  <CompilerVisibleProperty Include="PurviewSourceGeneratorFrameworkValidateCodeWriterScopes">
+    <Description>Throws when generated source is materialized while CodeWriter scopes remain undisposed.</Description>
+  </CompilerVisibleProperty>
+</ItemGroup>
+```
+
+```xml
+<None
+  Include="Sdk\Sdk.props"
+  Pack="true"
+  PackagePath="buildTransitive\$(PackageId).props"
+  Visible="false"
+/>
+```
+
+The framework's public compiler-visible properties are
+`PurviewSourceGeneratorFrameworkValidateCodeWriterScopes`,
+`PurviewSourceGeneratorFrameworkEnableLogging`,
+`PurviewSourceGeneratorFrameworkLoggingSessionId`, and
+`PurviewSourceGeneratorFrameworkLanguageVersion`. See [Packaging.md](Packaging.md) for the full
+self-contained generator packaging guidance.
+
 ## Samples
 
 The [`SourceGeneratorFramework.ExampleGenerator`](../../src/src/SourceGeneratorFramework.ExampleGenerator)

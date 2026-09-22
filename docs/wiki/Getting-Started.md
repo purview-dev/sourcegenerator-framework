@@ -38,10 +38,14 @@ analyzer inputs. Use an analyzer project reference:
 />
 ```
 
-The Purview SDK automatically invokes `GetSourceGeneratorAnalyzerFiles`, which returns both the
-generator and its framework dependency without adding either file to the consuming application's
-runtime references. Specifying `Targets="GetSourceGeneratorAnalyzerFiles"` explicitly remains
-supported but is not required.
+The Purview SDK automatically invokes `GetSourceGeneratorAnalyzerFiles`, which returns the generator
+assembly together with its framework dependency (the loose `Purview.SourceGeneratorFramework.dll`)
+without adding either file to the consuming application's runtime references. The framework keeps the
+generator's own output unmerged so its in-process test harness retains shared framework type identity.
+Specifying `Targets="GetSourceGeneratorAnalyzerFiles"` explicitly remains supported but is not
+required. Set `PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles` to `true` to opt into a merged,
+self-contained generator from `GetSourceGeneratorAnalyzerFiles` instead (see
+[Packaging.md](Packaging.md)).
 
 ### Referencing a generator from its test project
 
@@ -75,7 +79,8 @@ Add two project references with deliberately different metadata:
 
 Do not put `OutputItemType="Analyzer"` on the normal reference. The Purview SDK automatically
 uses `GetSourceGeneratorAnalyzerFiles` for the analyzer reference and supplies the generator's
-runtime dependencies to Roslyn.
+runtime dependencies (the loose `Purview.SourceGeneratorFramework.dll`) to Roslyn so the generator
+loads correctly.
 
 Because the second reference is a normal assembly reference, the generator's Roslyn dependencies
 also become visible to the test compilation. For a multi-target test project, build the generator
