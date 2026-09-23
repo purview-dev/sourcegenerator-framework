@@ -2,6 +2,7 @@
 	<PropertyGroup>
 		<TestingTargetFrameworks>net8.0;net9.0;net10.0;</TestingTargetFrameworks>
 		<TargetFrameworks>netstandard2.1;$(TestingTargetFrameworks)</TargetFrameworks>
+		<MergeToolTFM>net10.0</MergeToolTFM>
 		<NamespacePrefix>Purview.SourceGeneratorFramework</NamespacePrefix>
 		<ExcludePurviewTelemetry>true</ExcludePurviewTelemetry>
 		<RepositoryUrl>https://github.com/purview-dev/sourcegenerator-framework</RepositoryUrl>

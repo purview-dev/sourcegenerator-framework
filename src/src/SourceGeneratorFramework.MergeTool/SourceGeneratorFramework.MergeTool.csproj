@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFrameworks>net10.0</TargetFrameworks>
+		<TargetFrameworks>$(MergeToolTFM)</TargetFrameworks>
 		<OutputType>Exe</OutputType>
 		<IsPackable>false</IsPackable>
 	</PropertyGroup>
@@ -8,5 +8,9 @@
 	<ItemGroup>
 		<PackageReference Include="ILRepack.Lib" />
 		<PackageReference Include="Mono.Cecil" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Purview.SourceGeneratorFramework.MergeTool.UnitTests" />
 	</ItemGroup>
 </Project>

@@ -144,8 +144,18 @@ arrangements is an error.
 The framework assembly defines `System.Runtime.CompilerServices.IsExternalInit` **publicly** so the
 framework's own bundled generators can emit `init`-based attribute types into any consumer
 compilation, and so the merge step has a single marker definition to internalize. Consumers
-(generator projects) must **not** declare their own `IsExternalInit`: doing so produces a duplicate
-type definition against the framework reference.
+(generator projects) should not declare their own `IsExternalInit`.
+
+A generator-local marker gives calls to the framework's `init` setters a different required custom
+modifier identity from the setter definitions. Older merge-tool versions passed both identities to
+ILRepack, which could emit `Method reference is used with definition return type / parameter`
+warnings while rewriting the component.
+
+For compatibility with generators that still receive a local marker from legacy source or build
+tooling, the merge tool normalizes those required modifiers to the framework marker in a temporary
+copy before merging. The generator's bin output is not changed, and the shipped self-contained
+analyzer contains one internalized `IsExternalInit` definition. Removing the redundant marker from
+the generator project remains the preferred configuration.
 
 ### Generators embedded in another package
 

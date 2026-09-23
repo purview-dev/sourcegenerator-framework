@@ -62,8 +62,8 @@
 			>
 				<PackagePath>analyzers/dotnet/cs/</PackagePath>
 			</TfmSpecificPackageFile>
-			<_PurviewMergeToolPackageFile Include="..\SourceGeneratorFramework.MergeTool\bin\$(Configuration)\net10.0\*.dll;..\SourceGeneratorFramework.MergeTool\bin\$(Configuration)\net10.0\*.json">
-				<PackagePath>tools/net10.0/%(_PurviewMergeToolPackageFile.Filename)%(_PurviewMergeToolPackageFile.Extension)</PackagePath>
+			<_PurviewMergeToolPackageFile Include="..\SourceGeneratorFramework.MergeTool\bin\$(Configuration)\$(MergeToolTFM)\*.dll;..\SourceGeneratorFramework.MergeTool\bin\$(Configuration)\$(MergeToolTFM)\*.json">
+				<PackagePath>tools/$(MergeToolTFM)/%(_PurviewMergeToolPackageFile.Filename)%(_PurviewMergeToolPackageFile.Extension)</PackagePath>
 			</_PurviewMergeToolPackageFile>
 			<TfmSpecificPackageFile Include="@(_PurviewMergeToolPackageFile)" />
 		</ItemGroup>
