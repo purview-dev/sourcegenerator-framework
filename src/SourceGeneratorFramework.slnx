@@ -37,6 +37,7 @@
 			Id="006ab41c-5588-49d6-8d3f-5b14ae3e6396"
 		/>
 		<Project Path="tests/SourceGeneratorFramework.Generators.UnitTests/SourceGeneratorFramework.Generators.UnitTests.csproj" />
+		<Project Path="tests/SourceGeneratorFramework.MergeTool.UnitTests/SourceGeneratorFramework.MergeTool.UnitTests.csproj" />
 		<Project Path="tests/SourceGeneratorFramework.UnitTests/SourceGeneratorFramework.UnitTests.csproj" />
 		<Project Path="tests/SourceGeneratorShared.UnitTests/SourceGeneratorShared.UnitTests.csproj" />
 	</Folder>
