@@ -10,35 +10,41 @@
 		"RequireSymbolFiles": true,
 		"RequiredContent": {
 			"purview.sourcegeneratorframework": [
-				"lib/netstandard2.0/Purview.SourceGeneratorFramework.dll",
-				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.Generators.dll",
+				".agents/**/*",
 				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.Analyzers.dll",
 				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.CodeFixers.dll",
+				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.Generators.dll",
 				"build/Purview.SourceGeneratorFramework.props",
 				"build/Purview.SourceGeneratorFramework.targets",
-				"tools/net10.0/Purview.SourceGeneratorFramework.MergeTool.dll",
+				"lib/netstandard2.0/Purview.SourceGeneratorFramework.dll",
+				"lib/netstandard2.0/Purview.SourceGeneratorFramework.xml",
+				"purview-logo-light.png",
 				"README.md",
-				"LICENSE.md",
-				"purview-logo-light.png"
+				"tools/*/ILRepack.dll",
+				"tools/*/Mono.Cecil.dll",
+				"tools/*/Mono.Cecil.Mdb.dll",
+				"tools/*/Mono.Cecil.Pdb.dll",
+				"tools/*/Mono.Cecil.Rocks.dll",
+				"tools/*/Purview.SourceGeneratorFramework.MergeTool.deps.json",
+				"tools/*/Purview.SourceGeneratorFramework.MergeTool.dll",
+				"tools/*/Purview.SourceGeneratorFramework.MergeTool.runtimeconfig.json",
+				"tools/*/System.IO.Hashing.dll"
 			],
 			"purview.sourcegeneratorframework.testing": [
-				"lib/netstandard2.0/Purview.SourceGeneratorFramework.Testing.dll",
+				".agents/**/*",
 				"build/Purview.SourceGeneratorFramework.Testing.props",
-				"README.md",
-				"LICENSE.md",
-				"purview-logo-light.png"
+				"lib/*/Purview.SourceGeneratorFramework.Testing.dll",
+				"lib/*/Purview.SourceGeneratorFramework.Testing.xml",
+				"purview-logo-light.png",
+				"README.md"
 			],
 			"purview.sourcegeneratorframework.testing.tunit": [
-				"lib/netstandard2.0/Purview.SourceGeneratorFramework.Testing.TUnit.dll",
+				".agents/**/*",
 				"build/Purview.SourceGeneratorFramework.Testing.TUnit.props",
-				"README.md",
-				"LICENSE.md",
-				"purview-logo-light.png"
-			]
-		},
-		"ForbiddenContent": {
-			"*": [
-				"*.pdb"
+				"lib/*/Purview.SourceGeneratorFramework.Testing.TUnit.dll",
+				"lib/*/Purview.SourceGeneratorFramework.Testing.TUnit.xml",
+				"purview-logo-light.png",
+				"README.md"
 			]
 		}
 	},
