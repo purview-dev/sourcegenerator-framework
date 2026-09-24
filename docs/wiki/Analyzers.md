@@ -51,6 +51,7 @@ The analyzers enforce two families of rules:
 | `PSGFR37` | One extension class per receiver type; split classes that extend multiple types. |
 | `PSGFR38` | Extension classes should carry `[EditorBrowsable(EditorBrowsableState.Never)]`. |
 | `PSGFR39` | A non-packable Roslyn component that explicitly opts out of the default self-contained analyzer output (`PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles=false`) while embedding the framework, otherwise the package embeds the loose framework DLL under `analyzers/`. |
+| `PSGFR40` | In Roslyn components (`IsRoslynComponent=true`), qualify XML doc `cref` references to SGF public types with `global::Purview.SourceGeneratorFramework...`. |
 
 ## Type-library and attribute-model diagnostics
 
@@ -80,6 +81,7 @@ analyzer rules above, including:
 - `PreferStructuredCodeWriterIfBlockCodeFixProvider` — rewrites raw `if`/`else if`/`else` block text
   to the structured `IfBlock`/`ElseIf`/`Else` APIs (`PSGFR23`).
 - `CodeWriterToStringCodeFixProvider` — replaces embedded `CodeWriter` string interpolation (`PSGFR29`).
+- `QualifyFrameworkCrefCodeFixProvider` — rewrites SGF XML doc `cref` targets to fully qualified `global::Purview.SourceGeneratorFramework...` names (`PSGFR40`).
 - `AttributeDataModelSymbolPropertyCodeFixProvider` — fixes attribute-data-model symbol properties.
 - `ReorganizeExtensionClassCodeFixProvider` — renames (`PSGFR35`), splits multi-receiver classes
   (`PSGFR37`), moves the class under `Extensions/{ReceiverNamespace}/`, and updates referencing files

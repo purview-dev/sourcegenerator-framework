@@ -34,10 +34,51 @@ public abstract class RoslynTestRunner
 			);
 		}
 
+		if (options.CompilationWithAnalyzersOptions is null && options.AnalyzerOptions is null)
+		{
+			var analyzerConfigOptions = BuildAnalyzerConfig(options);
+			if (analyzerConfigOptions.Count > 0)
+			{
+				return compilation.WithAnalyzers(
+					analyzers,
+					new AnalyzerOptions(
+						ImmutableArray<AdditionalText>.Empty,
+						new TestAnalyzerConfigOptionsProvider(analyzerConfigOptions)
+					)
+				);
+			}
+		}
+
 		// If the caller provided CompilationWithAnalyzersOptions, use that; otherwise, use AnalyzerOptions.
 		return options.CompilationWithAnalyzersOptions is not null
 			? compilation.WithAnalyzers(analyzers, options.CompilationWithAnalyzersOptions)
 			: compilation.WithAnalyzers(analyzers, options.AnalyzerOptions);
+	}
+
+	static Dictionary<string, string> BuildAnalyzerConfig(SourceGeneratorTestOptions options)
+	{
+		Dictionary<string, string> analyzerOptions = new(options.AnalyzerConfigOptions)
+		{
+			[SourceGeneratorBuildProperties.ValidateCodeWriterScopes] = options.ValidateCodeWriterScopes.ToString(),
+			[SourceGeneratorBuildProperties.EnableLogging] = options.EnableLogging.ToString(),
+		};
+
+		foreach (var pair in options.AnalyzerConfigOptions)
+		{
+			if (!pair.Key.StartsWith(SourceGeneratorBuildProperties.BuildProperty, StringComparison.Ordinal))
+				analyzerOptions[SourceGeneratorBuildProperties.BuildProperty + pair.Key] = pair.Value;
+		}
+
+		if (options.DisableSourceGeneratorPropertyName is not null && options.DisableSourceGeneratorValue is not null)
+		{
+			var disablePropertyName = options.DisableSourceGeneratorPropertyName;
+			if (!disablePropertyName.StartsWith(SourceGeneratorBuildProperties.BuildProperty, StringComparison.Ordinal))
+				disablePropertyName = SourceGeneratorBuildProperties.BuildProperty + disablePropertyName;
+
+			analyzerOptions[disablePropertyName] = options.DisableSourceGeneratorValue.Value.ToString();
+		}
+
+		return analyzerOptions;
 	}
 
 	/// <summary>

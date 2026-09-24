@@ -10,7 +10,6 @@ namespace Purview.SourceGeneratorFramework.MergeTool;
 public sealed class MergeToolRunnerTests
 {
 	const string MarkerFullName = "System.Runtime.CompilerServices.IsExternalInit";
-
 	const string FrameworkSource = """
 		namespace System.Runtime.CompilerServices
 		{
@@ -19,6 +18,13 @@ public sealed class MergeToolRunnerTests
 
 		namespace Fixture.Framework
 		{
+			public sealed class TypeReference
+			{
+				public string Name { get; }
+
+				public TypeReference(string name) => Name = name;
+			}
+
 			public enum OptionKind
 			{
 				None,
@@ -45,6 +51,8 @@ public sealed class MergeToolRunnerTests
 			public static class Consumer
 			{
 				public static Options Create() => new() { Kind = OptionKind.Enabled };
+
+				public static string Describe() => new TypeReference("Merged").Name;
 			}
 
 			public sealed class ComponentOptions
@@ -62,6 +70,8 @@ public sealed class MergeToolRunnerTests
 			public static class Consumer
 			{
 				public static Options Create() => new() { Kind = OptionKind.Enabled };
+
+				public static string Describe() => new TypeReference("Merged").Name;
 			}
 		}
 		""";
@@ -150,6 +160,10 @@ public sealed class MergeToolRunnerTests
 			.That(merged.MainModule.AssemblyReferences.Any(static reference => reference.Name == "Fixture.Framework"))
 			.IsFalse();
 
+		var mergedTypeReference = merged.MainModule.GetType("Fixture.Framework.TypeReference");
+		await Assert.That(mergedTypeReference).IsNotNull();
+		await Assert.That(mergedTypeReference!.IsNotPublic).IsTrue();
+
 		var consumer = merged.MainModule.GetType("Fixture.Component.Consumer");
 		var create = consumer.Methods.Single(static method => method.Name == "Create");
 		var setter = create
@@ -183,6 +197,11 @@ public sealed class MergeToolRunnerTests
 				.Invoke(null, null);
 			var kind = created!.GetType().GetProperty("Kind")!.GetValue(created);
 			await Assert.That(kind!.ToString()).IsEqualTo("Enabled");
+			var described = loaded
+				.GetType("Fixture.Component.Consumer", throwOnError: true)!
+				.GetMethod("Describe", BindingFlags.Public | BindingFlags.Static)!
+				.Invoke(null, null);
+			await Assert.That(described).IsEqualTo("Merged");
 		}
 		finally
 		{
@@ -274,23 +293,29 @@ public sealed class MergeToolRunnerTests
 
 		static string GetNetStandardReferenceDirectory()
 		{
-			var packageRoot = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
-			if (string.IsNullOrWhiteSpace(packageRoot))
+			var candidateRoots = new[]
 			{
-				packageRoot = Path.Combine(
-					Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-					".nuget",
-					"packages"
-				);
+				Environment.GetEnvironmentVariable("NUGET_PACKAGES"),
+				Environment.GetEnvironmentVariable("RestorePackagesPath"),
+				Environment.GetEnvironmentVariable("NuGetPackageRoot"),
+				Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages"),
+			}
+				.Where(static path => !string.IsNullOrWhiteSpace(path))
+				.Select(static path => path!)
+				.Select(static path => path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+				.Distinct(StringComparer.OrdinalIgnoreCase);
+
+			foreach (var packageRoot in candidateRoots)
+			{
+				var path = Path.Combine(packageRoot, "netstandard.library", "2.0.3", "build", "netstandard2.0", "ref");
+
+				if (Directory.Exists(path))
+					return path;
 			}
 
-			var path = Path.Combine(packageRoot, "netstandard.library", "2.0.3", "build", "netstandard2.0", "ref");
-
-			return Directory.Exists(path)
-				? path
-				: throw new DirectoryNotFoundException(
-					$"The .NET Standard 2.0 reference directory was not found: {path}"
-				);
+			throw new DirectoryNotFoundException(
+				$"The .NET Standard 2.0 reference directory was not found under any known package roots: {string.Join(", ", candidateRoots)}"
+			);
 		}
 	}
 }
