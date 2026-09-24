@@ -94,6 +94,53 @@ that supports its API usage; this framework is built against Roslyn 5.0, which s
 generator as an analyzer must be Roslyn 5.0 or later (`.NET 10` SDK / Visual Studio 2026). Do not
 force a newer `System.Collections.Immutable` version through central package management.
 
+## Running a packaged (merged) generator in tests
+
+A component that ships as a self-contained analyzer must **not** be added as a compile-time
+`<Reference>`. Its assembly carries the framework implementation merged into itself, and — because
+ILRepack cannot internalize a framework type that reaches the component's public API surface — some
+packages expose framework types publicly. Referencing such an assembly from a test project that also
+loads the real `Purview.SourceGeneratorFramework.dll` (which the Testing packages do) makes every
+framework type ambiguous (`CS0433`). From framework `1.0.0-prerelease.51` the merge tool guarantees a
+merged component exposes no framework types apart from its own Roslyn entry points, but a merged
+component remains an analyzer artifact and should still be consumed out of band.
+
+To register a packaged generator as an additional generator/analyzer:
+
+1. copy the analyzer DLL from the package beside the test binaries, without referencing it:
+
+```xml
+<PackageReference Include="My.Generator.Package" GeneratePathProperty="true" />
+
+<ItemGroup>
+  <None
+    Include="$(PkgMy_Generator_Package)\analyzers\dotnet\cs\My.Generator.dll"
+    Link="My.Generator.dll"
+    CopyToOutputDirectory="PreserveNewest"
+    Visible="false" />
+</ItemGroup>
+```
+
+2. resolve the types out of band and pass them through the options:
+
+```csharp
+var assembly = Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory, "My.Generator.dll"));
+
+options.AdditionalGeneratorTypes =
+    [.. options.AdditionalGeneratorTypes, assembly.GetType("My.Namespace.MyGenerator", throwOnError: true)!];
+options.AnalyzerTypes = [assembly.GetType("My.Namespace.MyAnalyzer", throwOnError: true)!];
+```
+
+`SourceGeneratorTestRunner` instantiates the supplied types with `Activator.CreateInstance`, so this is
+equivalent to `typeof(...)` without the compile-time reference. Two consequences: the loaded
+generator's framework copy owns its own logging registry and CodeWriter scope validation (do not
+assert on its `LogEntries`, and leave `ValidateCodeWriterScopes` off for that run), and the loaded
+assembly must be built against a Roslyn version compatible with the test host.
+
+For a component in the same repository, prefer a project reference to the component project: it
+resolves the **unmerged** bin output plus the loose framework DLL, so framework types keep a single
+identity and `typeof(...)`, `InternalsVisibleTo`, and every assertion API keep working.
+
 ## Which base class and method
 
 | Roslyn type | Base class | Method |

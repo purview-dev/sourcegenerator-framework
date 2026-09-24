@@ -7,25 +7,32 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Purview.SourceGeneratorFramework.Analyzers;
 
 /// <summary>
-/// Flags unqualified XML documentation cref references to SGF public types in Roslyn components.
-/// Qualifying these cref targets avoids the duplicate-framework ambiguity that can arise when the
-/// same SGF type is visible through multiple assembly identities.
+/// Flags unqualified XML documentation cref references to SGF public types in Roslyn components, and
+/// points at inline code (<c>&lt;c&gt;</c>) instead of a cref.
+/// <para>
+/// A cref has to resolve in every compilation that contains the documentation. Component documentation
+/// is copied into generated code (<c>TypeLibraryGenerator</c> re-emits the spec, member, and enum-value
+/// docs) whose namespace and using set differ from the author's source, so a cref to an SGF type can
+/// end up unresolvable (CS1574) or resolve through a second assembly identity — the duplicate-framework
+/// ambiguity this rule was originally added for. Inline code carries the type as text, which never
+/// depends on a symbol, a namespace, or an assembly identity.
+/// </para>
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class AmbiguousFrameworkCrefAnalyzer : DiagnosticAnalyzer
+public sealed class UnqualifiedFrameworkCrefAnalyzer : DiagnosticAnalyzer
 {
 	public const string DiagnosticId = "PSGFR40";
-	internal const string QualifiedTypePropertyName = "QualifiedTypeName";
+
 	const string FrameworkAssemblyName = "Purview.SourceGeneratorFramework";
 
 	static readonly DiagnosticDescriptor Rule = new(
 		DiagnosticId,
-		"Qualify SGF cref with global::",
-		"XML documentation cref '{0}' refers to SGF type '{1}'; qualify the cref with 'global::'",
+		"Reference SGF types as inline code",
+		"XML documentation cref '{0}' refers to SGF type '{1}'; use <c>{1}</c> so the documentation stays resolvable when it is copied into generated code",
 		"Purview.SourceGeneratorFramework",
 		DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
-		description: "Detects unqualified XML documentation cref references to Purview.SourceGeneratorFramework public types in Roslyn components so they can be rewritten to a fully qualified global:: name."
+		description: "Detects XML documentation cref references to Purview.SourceGeneratorFramework public types in Roslyn components so they can be rewritten to inline code, which stays valid wherever the documentation is emitted."
 	);
 
 	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
@@ -90,16 +97,8 @@ public sealed class AmbiguousFrameworkCrefAnalyzer : DiagnosticAnalyzer
 				if (!ReferencesFrameworkType(semanticModel, cref.Cref, frameworkType, context.CancellationToken))
 					continue;
 
-				var qualifiedTypeName = frameworkType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-				var diagnostic = Diagnostic.Create(
-					Rule,
-					cref.GetLocation(),
-					ImmutableDictionary<string, string?>.Empty.Add(QualifiedTypePropertyName, qualifiedTypeName),
-					cref.Cref.ToString(),
-					qualifiedTypeName.Substring("global::".Length)
-				);
-
-				context.ReportDiagnostic(diagnostic);
+				var crefText = cref.Cref.ToString();
+				context.ReportDiagnostic(Diagnostic.Create(Rule, cref.GetLocation(), crefText, crefText));
 			}
 		}
 	}

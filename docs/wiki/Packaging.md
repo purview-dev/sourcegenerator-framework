@@ -115,7 +115,40 @@ substituting the merged path into `TargetPathWithTargetPlatformMoniker` immediat
 runs, leaving `GetTargetPath` — which resolves assembly references — pointing at the unmerged bin.
 This is what keeps the in-repo test harness working while shipped assemblies stay self-contained.
 
-### Self-contained analyzer validation (PSGFR39)
+### Framework type internalization in merged components
+
+ILRepack's `Internalize` is best-effort: a framework type that reaches the merged component's public
+API surface stays public, and the types the framework's own generators emit into the component (the
+`Purview.SourceGeneratorFramework.Generators` attribute set, generated type libraries, marker
+attributes) are not part of the merged framework assembly at all, so ILRepack never sees them. Either
+gap leaks framework types out of what must be a self-contained analyzer, and any project that loads
+that analyzer alongside the real framework assembly fails with `CS0433` ambiguity for every leaked
+type.
+
+The merge tool therefore runs a deterministic internalization pass over the merged output
+(`FrameworkTypeInternalizer`) after `ILRepack` finishes:
+
+- every type in a framework-owned namespace (`Purview.SourceGeneratorFramework` and its children,
+  including the generated `Generators` attribute set) becomes non-public;
+- `Microsoft.CodeAnalysis.EmbeddedAttribute` (the framework-emitted marker) becomes non-public;
+- **Roslyn component entry points are never internalized** — a generator, analyzer, code fix
+  provider, or refactoring provider that is reachable from the framework namespace stays public,
+  because Roslyn only instantiates public components (PSGFR27). This is what keeps the framework's
+  own bundled analyzers working after the pass;
+- the pass reports the merge result: leftover public framework types fail the merge (exit code `5`),
+  and public component members whose signature exposes a framework type are logged as warnings so the
+  component author can make them (or their declaring type) non-public.
+
+The component's own generated types (the type library, attribute data models) keep their accessibility
+in the component assembly: TLB0015 requires a hand-written partial to be declared
+`public static partial` so it can merge with the generated library, and in-repo consumers such as code
+fixers and sibling assemblies compile against it. Self-containment is therefore enforced at the merge
+boundary rather than by rewriting generated accessibility. See [Type-Library.md](Type-Library.md).
+
+> A merged component is an analyzer artifact and must never be referenced as a compile-time
+> dependency. Tests that need to run a *packaged* generator load it out of band — see
+> [Testing-TUnit.md](Testing-TUnit.md).
+
 
 The bundled `SelfContainedGeneratorAnalyzer` (PSGFR39) runs on every project that references the
 framework and errors when a **non-packable** Roslyn component explicitly opts out of the default
@@ -303,9 +336,15 @@ The exact Roslyn baseline is a product-support decision.
 
 The following checks are the acceptance criteria for the self-contained packaging:
 
-1. **No assembly reference** — every shipped Roslyn component DLL
-   (`analyzers/dotnet/cs/*.dll`) has no assembly reference to `Purview.SourceGeneratorFramework`.
-   Inspect the metadata directly; do not rely on "the sample compiled".
+1. **No assembly reference and no public framework types** — every shipped Roslyn component DLL
+   (`analyzers/dotnet/cs/*.dll`) has no assembly reference to `Purview.SourceGeneratorFramework` and
+   exposes **no public type** in a framework-owned namespace (`Purview.SourceGeneratorFramework` and
+   its children, including the generated `Generators` attribute set, plus the framework-emitted
+   `Microsoft.CodeAnalysis.EmbeddedAttribute`). The only exception is the component's own Roslyn
+   component entry points, which must stay public because Roslyn only instantiates public components.
+   Inspect the metadata directly; do not rely on "the sample compiled". The merge tool fails with exit
+   code `5` when a merge leaves public framework types behind, and logs a warning naming any public
+   member that still exposes a framework type.
 2. **No loose framework DLL in packages** — no `.nupkg` contains
    `Purview.SourceGeneratorFramework.dll` under `analyzers/`, and `*.pdb` files are forbidden in the
    `.nupkg` (symbols ship only through the `.snupkg`).

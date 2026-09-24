@@ -1,11 +1,12 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using Purview.SourceGeneratorFramework.Testing;
 using Purview.SourceGeneratorFramework.Testing.TUnit;
 
 namespace Purview.SourceGeneratorFramework.Analyzers;
 
-public sealed class AmbiguousFrameworkCrefAnalyzerTests
-	: TUnitDiagnosticAnalyzerTestBase<AmbiguousFrameworkCrefAnalyzer>
+public sealed class UnqualifiedFrameworkCrefAnalyzerTests
+	: TUnitDiagnosticAnalyzerTestBase<UnqualifiedFrameworkCrefAnalyzer>
 {
 	static readonly AnalyzerTestOptions RoslynComponentOptions = new()
 	{
@@ -26,7 +27,7 @@ public sealed class AmbiguousFrameworkCrefAnalyzerTests
 	};
 
 	[Test]
-	public async Task BareSgfCrefs_ReportDiagnosticsForMultipleTypes(CancellationToken cancellationToken)
+	public async Task BareSgfCrefs_ReportInlineCodeGuidanceForMultipleTypes(CancellationToken cancellationToken)
 	{
 		const string source = """
 			using Purview.SourceGeneratorFramework;
@@ -49,17 +50,54 @@ public sealed class AmbiguousFrameworkCrefAnalyzerTests
 		var result = await AnalyzeAsync(source, RoslynComponentOptions, cancellationToken);
 
 		await Assert.That(result).HasDiagnostics(7);
-		await Assert.That(result).HasDiagnostic(AmbiguousFrameworkCrefAnalyzer.DiagnosticId);
+		await Assert.That(result).HasDiagnostic(UnqualifiedFrameworkCrefAnalyzer.DiagnosticId);
 	}
 
 	[Test]
-	public async Task QualifiedSgfCrefs_DoNotReportDiagnostic(CancellationToken cancellationToken)
+	public async Task BareSgfCref_MessageRecommendsInlineCode(CancellationToken cancellationToken)
 	{
 		const string source = """
 			using Purview.SourceGeneratorFramework;
 
 			/// <summary>
-			/// Shared <see cref="global::Purview.SourceGeneratorFramework.TypeReference"/> building blocks.
+			/// Shared <see cref="TypeReference"/> building blocks.
+			/// </summary>
+			public static class TypeRefs
+			{
+			}
+			""";
+
+		var result = await AnalyzeAsync(source, RoslynComponentOptions, cancellationToken);
+
+		var diagnostic = result.Diagnostics.Single();
+		await Assert.That(diagnostic.GetMessage(CultureInfo.InvariantCulture)).Contains("<c>TypeReference</c>");
+	}
+
+	[Test]
+	public async Task FrameworkQualifiedSgfCref_DoesNotReportDiagnostic(CancellationToken cancellationToken)
+	{
+		const string source = """
+			/// <summary>
+			/// Shared <see cref="Purview.SourceGeneratorFramework.TypeReference"/> building blocks.
+			/// </summary>
+			public static class TypeRefs
+			{
+			}
+			""";
+
+		var result = await AnalyzeAsync(source, RoslynComponentOptions, cancellationToken);
+
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task MemberCref_DoesNotReportDiagnostic(CancellationToken cancellationToken)
+	{
+		const string source = """
+			using Purview.SourceGeneratorFramework;
+
+			/// <summary>
+			/// Writes with <see cref="CodeWriter.Write"/>.
 			/// </summary>
 			public static class TypeRefs
 			{

@@ -12,6 +12,19 @@ generated type library) whose nested `public static partial` classes mirror the 
 members. Every class — the root and each nested namespace class — exposes a `public const string Namespace`
 and the leaf classes expose the members as `public static readonly` fields:
 
+The generated type library is always `public` in the component's own assembly so a hand-written
+partial can merge with it (TLB0015 enforces the matching `public static partial` declaration) and so
+in-repo consumers such as code fixers and sibling assemblies can compile against it. When the
+component is packaged, the merge tool internalizes every framework-owned type in the shipped analyzer
+(including the `TypeIdentity`/`TypeReference`/`PurviewTypeLibrary` members this library exposes), so
+nothing leaks out of the package; see [Packaging.md](Packaging.md).
+
+Author documentation is copied into the generated library. A `cref` that targets a framework type is
+rendered as inline code (`<c>TypeReference</c>`) while it is copied, because the generated file's
+namespace and using set differ from the author's source and an unresolvable cref would produce
+`CS1574`. `PSGFR40` reports the same pattern in the editor and its code fix applies the same
+rewrite.
+
 ```csharp
 namespace MyGenerator;
 
@@ -32,7 +45,7 @@ public static partial class TypeLibrary
 ```
 
 No `extension(...)` blocks are emitted. The generated types are `public static partial` so you can expand
-them with your own methods in a separate partial file — but the extension partial must be declared
+them with your own methods in a separate partial file — the extension partial must be declared
 `public static partial` in the **same** namespace as the generated type. The generated type is emitted in
 the namespace given by the `Namespace` argument, or the **global namespace** when it is omitted, so a
 partial declared inside your project namespace will not merge with it (it silently shadows the generated

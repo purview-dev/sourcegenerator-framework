@@ -1526,6 +1526,44 @@ public class TypeLibraryGeneratorTests : TUnitSourceGeneratorTestBase<TypeLibrar
 			);
 	}
 
+	[Test]
+	public async Task Generate_CopiedDocumentation_RendersFrameworkTypesAsInlineCode(
+		CancellationToken cancellationToken
+	)
+	{
+		const string source = """
+			using Purview.SourceGeneratorFramework;
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test;
+
+			/// <summary>
+			/// Spec that documents <see cref="TypeReference"/> and <see cref="String"/>.
+			/// </summary>
+			[GenerateTypeLibrary(ClassName = "SampleTypeLibrary", Namespace = "Test")]
+			static partial class TypeLibraryModel
+			{
+				/// <summary>
+				/// Identity for <see cref="CodeWriter">the writer</see>.
+				/// </summary>
+				[TypeRef("Purview.Telemetry")]
+				static readonly TypeIdentity ActivitySourceGenerationAttribute = default;
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		var generated = await GetGeneratedStringAsync(result, "Test.TypeLibraryModel.g.cs", cancellationToken);
+
+		await Assert.That(generated).IsNotNull();
+		// Framework types become inline code so the copied documentation cannot fail to resolve.
+		await Assert.That(generated).Contains("<c>TypeReference</c>");
+		await Assert.That(generated).Contains("<c>the writer</c>");
+		// Non-framework crefs keep their original form (Roslyn expands them when docs are captured).
+		await Assert.That(generated).Contains("cref=\"T:System.String\"");
+		await Assert.That(generated).DoesNotContain("<c>System.String</c>");
+	}
+
 	static async Task<string?> GetGeneratedStringAsync(
 		DriverRunResult result,
 		string fileName,
