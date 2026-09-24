@@ -20,7 +20,7 @@ sealed class TestAnalyzerConfigOptionsProvider(Dictionary<string, string> option
 	public override AnalyzerConfigOptions GlobalOptions => _globalOptions;
 
 	/// <inheritdoc />
-	public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => TestAnalyzerConfigOptions.Empty;
+	public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => _globalOptions;
 
 	/// <inheritdoc />
 	public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => TestAnalyzerConfigOptions.Empty;

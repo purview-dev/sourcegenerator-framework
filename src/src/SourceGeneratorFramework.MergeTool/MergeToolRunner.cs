@@ -3,6 +3,9 @@ using Mono.Cecil;
 
 static class MergeToolRunner
 {
+	const string IsExternalInitName = "IsExternalInit";
+	const string IsExternalInitNamespace = "System.Runtime.CompilerServices";
+
 	public static int Run(string[] args, TextWriter error, ILogger? logger = null)
 	{
 		if (args.Length < 3)
@@ -64,7 +67,6 @@ static class MergeToolRunner
 				SearchDirectories = searchDirectories,
 				Internalize = true,
 				InternalizeAssemblies = [Path.GetFileNameWithoutExtension(frameworkPath)],
-				RenameInternalized = false,
 				UnionMerge = true,
 				Parallel = true,
 				DebugInfo = File.Exists(
@@ -82,61 +84,14 @@ static class MergeToolRunner
 				new ILRepack(options, logger).Repack();
 			}
 
-			var frameworkTypeNames = ReadTypeNames(frameworkPath, searchDirectories);
-			InternalizeFrameworkTypes(outputPath, frameworkTypeNames, searchDirectories);
+			RestoreCanonicalIsExternalInit(outputPath, searchDirectories);
+
 			return 0;
 		}
 		finally
 		{
 			normalizedComponent?.Dispose();
 		}
-	}
-
-	static HashSet<string> ReadTypeNames(string assemblyPath, IEnumerable<string> searchDirectories)
-	{
-		using var resolver = CreateResolver(searchDirectories);
-		using var assembly = AssemblyDefinition.ReadAssembly(
-			assemblyPath,
-			new ReaderParameters { AssemblyResolver = resolver }
-		);
-		return assembly
-			.MainModule.Types.SelectMany(Flatten)
-			.Select(static type => type.FullName)
-			.ToHashSet(StringComparer.Ordinal);
-	}
-
-	static void InternalizeFrameworkTypes(
-		string assemblyPath,
-		HashSet<string> frameworkTypeNames,
-		IEnumerable<string> searchDirectories
-	)
-	{
-		var pdbPath = Path.ChangeExtension(assemblyPath, ".pdb");
-		var hasSymbols = File.Exists(pdbPath);
-		using var resolver = CreateResolver(searchDirectories);
-		using var assembly = AssemblyDefinition.ReadAssembly(
-			assemblyPath,
-			new ReaderParameters
-			{
-				AssemblyResolver = resolver,
-				ReadSymbols = hasSymbols,
-				InMemory = true,
-			}
-		);
-
-		foreach (var type in assembly.MainModule.Types.SelectMany(Flatten))
-		{
-			if (!frameworkTypeNames.Contains(type.FullName))
-			{
-				continue;
-			}
-
-			type.Attributes = type.IsNested
-				? (type.Attributes & ~TypeAttributes.VisibilityMask) | TypeAttributes.NestedAssembly
-				: (type.Attributes & ~TypeAttributes.VisibilityMask) | TypeAttributes.NotPublic;
-		}
-
-		assembly.Write(assemblyPath, new WriterParameters { WriteSymbols = hasSymbols });
 	}
 
 	internal static IEnumerable<TypeDefinition> Flatten(TypeDefinition type)
@@ -157,5 +112,43 @@ static class MergeToolRunner
 		}
 
 		return resolver;
+	}
+
+	static void RestoreCanonicalIsExternalInit(string assemblyPath, IEnumerable<string> searchDirectories)
+	{
+		var pdbPath = Path.ChangeExtension(assemblyPath, ".pdb");
+		var hasSymbols = File.Exists(pdbPath);
+		using var resolver = CreateResolver(searchDirectories);
+		using var assembly = AssemblyDefinition.ReadAssembly(
+			assemblyPath,
+			new ReaderParameters
+			{
+				AssemblyResolver = resolver,
+				ReadSymbols = hasSymbols,
+				InMemory = true,
+			}
+		);
+
+		var marker = assembly
+			.MainModule.Types.SelectMany(Flatten)
+			.SingleOrDefault(static type =>
+				type.Name == IsExternalInitName
+				|| type.Name.EndsWith(IsExternalInitName, StringComparison.Ordinal)
+				|| (
+					type.Namespace.Contains(IsExternalInitNamespace, StringComparison.Ordinal)
+					&& type.Name.Contains(IsExternalInitName, StringComparison.Ordinal)
+				)
+			);
+
+		if (marker is null)
+			return;
+
+		marker.Namespace = IsExternalInitNamespace;
+		marker.Name = IsExternalInitName;
+		marker.Attributes = marker.IsNested
+			? (marker.Attributes & ~TypeAttributes.VisibilityMask) | TypeAttributes.NestedAssembly
+			: (marker.Attributes & ~TypeAttributes.VisibilityMask) | TypeAttributes.NotPublic;
+
+		assembly.Write(assemblyPath, new WriterParameters { WriteSymbols = hasSymbols });
 	}
 }
