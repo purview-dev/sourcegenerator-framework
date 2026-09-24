@@ -385,6 +385,11 @@ partial class SourceEmitter
 				?? $"Represents the {model.ClassName} type library, containing type identity/ reference information."
 		);
 
+		// The generated type library is deliberately public: the framework's TLB0015 validation
+		// requires a hand-written partial to be declared `public static partial` so the two can merge,
+		// and in-repo consumers (code fixers, sibling assemblies) compile against it. Self-containment
+		// is enforced at the merge boundary instead — see FrameworkTypeInternalizer, which
+		// internalizes every framework-owned type in the shipped analyzer.
 		TypeDeclarationOptions options = new(model.ClassName, TypeDeclarationAccessibility.Public)
 		{
 			IsStatic = true,

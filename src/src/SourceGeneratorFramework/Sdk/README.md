@@ -989,7 +989,7 @@ The `Purview.SourceGeneratorFramework` package includes the `Purview.SourceGener
 | `PSGFR36` | Extension classes must be placed in the extended type's namespace under an `Extensions` folder. |
 | `PSGFR37` | One extension class per receiver type; split classes that extend multiple types. |
 | `PSGFR38` | Extension classes should carry `[EditorBrowsable(EditorBrowsableState.Never)]`. |
-| `PSGFR40` | In Roslyn components (`IsRoslynComponent=true`), qualify XML doc `cref` references to SGF public types with `global::Purview.SourceGeneratorFramework...`. |
+| `PSGFR40` | In Roslyn components (`IsRoslynComponent=true`), reference SGF types as inline code (`<c>Type</c>`) instead of a `cref`: copied documentation must not depend on cref resolution. |
 
 ## Documentation
 

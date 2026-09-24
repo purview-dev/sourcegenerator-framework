@@ -86,6 +86,23 @@ static class MergeToolRunner
 
 			RestoreCanonicalIsExternalInit(outputPath, searchDirectories);
 
+			// ILRepack's internalize is best-effort and cannot reach framework types the component's
+			// own generators emit, so force self-containment deterministically and fail the build
+			// rather than shipping an analyzer that leaks framework types.
+			var internalization = FrameworkTypeInternalizer.Apply(
+				outputPath,
+				searchDirectories,
+				logger is not null ? logger.Warn : message => error.WriteLine(message)
+			);
+
+			if (internalization.PublicFrameworkTypesRemaining.Length > 0)
+			{
+				error.WriteLine(
+					$"The merged component '{outputPath}' still exposes public Purview.SourceGeneratorFramework types: {string.Join(", ", internalization.PublicFrameworkTypesRemaining)}."
+				);
+				return 5;
+			}
+
 			return 0;
 		}
 		finally

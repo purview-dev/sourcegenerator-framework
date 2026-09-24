@@ -46,6 +46,9 @@
 				"purview-logo-light.png",
 				"README.md"
 			]
+		},
+		"ForbiddenContent": {
+			"*": ["analyzers/**/Purview.SourceGeneratorFramework.dll"]
 		}
 	},
 	"Release": {

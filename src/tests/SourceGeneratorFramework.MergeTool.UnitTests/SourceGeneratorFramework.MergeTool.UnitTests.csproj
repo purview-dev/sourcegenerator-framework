@@ -7,4 +7,9 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
 		<PackageReference Include="Mono.Cecil" />
 	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Locates the real framework assembly so a merge can be asserted end-to-end. -->
+		<ProjectReference Include="..\..\src\SourceGeneratorFramework\SourceGeneratorFramework.csproj" />
+	</ItemGroup>
 </Project>

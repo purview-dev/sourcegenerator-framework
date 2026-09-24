@@ -14,9 +14,10 @@ static class TypeLibraryModelLibrary
 	{
 		// The framework PurviewTypeLibrary shape is fixed for a given compilation, so it is walked once per
 		// compilation and cached as a value-equatable model instead of being re-walked for every
-		// [GenerateTypeLibrary] spec in the compilation.
+		// [GenerateTypeLibrary] spec in the compilation. The framework's public type names travel with it
+		// because copied documentation renders framework-type cref references as inline code.
 		var frameworkTree = context
-			.CompilationProvider.Select(static (compilation, _) => BuildFrameworkTree(compilation))
+			.CompilationProvider.Select(static (compilation, _) => BuildFrameworkModel(compilation))
 			.WithTrackingName("GetFrameworkTypeLibraryTree");
 
 		return IncrementalPipeline
@@ -26,13 +27,22 @@ static class TypeLibraryModelLibrary
 				static (ctx, _) => (INamedTypeSymbol)ctx.TargetSymbol,
 				predicate: static (ctx, _) => ctx is ClassDeclarationSyntax
 			)
-			.CombineWith(frameworkTree, static (specSymbol, tree, ct) => BuildTarget(specSymbol, tree, ct))
+			.CombineWith(frameworkTree, static (specSymbol, framework, ct) => BuildTarget(specSymbol, framework, ct))
 			.WithTrackingName("GetTypeLibraryTargets");
 	}
 
+	/// <summary>
+	/// The framework information a type-library target needs: the fixed <c>PurviewTypeLibrary</c> shape
+	/// and the framework assembly's public type names.
+	/// </summary>
+	sealed record FrameworkTypeLibraryModel(
+		EquatableArray<TypeLibraryNamespaceNode> Tree,
+		EquatableArray<string> PublicTypeNames
+	);
+
 	static GeneratorResult<TypeLibraryModel> BuildTarget(
 		INamedTypeSymbol specSymbol,
-		EquatableArray<TypeLibraryNamespaceNode> frameworkTree,
+		FrameworkTypeLibraryModel framework,
 		CancellationToken cancellationToken
 	)
 	{
@@ -53,7 +63,7 @@ static class TypeLibraryModelLibrary
 		// The generated type library inherits the full framework PurviewTypeLibrary shape, so every
 		// framework member is present before the user's [TypeRef] members are merged in. The shape was
 		// already walked (once per compilation) by the GetFrameworkTypeLibraryTree stage.
-		AddFrameworkTree(frameworkTree, root, nodeLookup);
+		AddFrameworkTree(framework.Tree, root, nodeLookup);
 
 		foreach (var field in specSymbol.GetMembers().OfType<IFieldSymbol>())
 			ProcessTypeRefField(field, root, nodeLookup, diagnostics, cancellationToken);
@@ -70,6 +80,12 @@ static class TypeLibraryModelLibrary
 
 		if (diagnostics.Any(d => d.IsBlocking))
 			return GeneratorResult<TypeLibraryModel>.Create([.. diagnostics]);
+
+		// Author documentation is copied into generated files whose namespace and using set differ from
+		// the source, so framework-type cref references are rendered as inline code before they are
+		// emitted. Non-framework crefs keep their original form.
+		RewriteFrameworkCrefs(root, framework.PublicTypeNames);
+		specDocumentation = FrameworkCrefRewriter.RewriteDocumentation(specDocumentation, framework.PublicTypeNames);
 
 		TypeLibraryModel model = new(
 			Specifier: specSymbol.ContainingNamespace.IsGlobalNamespace
@@ -282,6 +298,107 @@ static class TypeLibraryModelLibrary
 		}
 
 		return false;
+	}
+
+	/// <summary>
+	/// Builds the framework model consumed by every type-library target: the fixed
+	/// <c>PurviewTypeLibrary</c> shape plus the public type names the framework owns.
+	/// </summary>
+	static FrameworkTypeLibraryModel BuildFrameworkModel(Compilation compilation) =>
+		new(BuildFrameworkTree(compilation), BuildFrameworkOwnedPublicTypeNames(compilation));
+
+	/// <summary>
+	/// Collects the public type names of the framework assembly and of the framework's
+	/// <c>Generators</c> namespace, whose attribute types the framework emits into the component itself.
+	/// </summary>
+	static EquatableArray<string> BuildFrameworkOwnedPublicTypeNames(Compilation compilation)
+	{
+		List<string> names = [];
+
+		foreach (var reference in compilation.References)
+		{
+			if (compilation.GetAssemblyOrModuleSymbol(reference) is not IAssemblySymbol assembly)
+				continue;
+
+			if (string.Equals(assembly.Identity.Name, "Purview.SourceGeneratorFramework", StringComparison.Ordinal))
+				CollectPublicTypeNames(assembly.GlobalNamespace, names);
+		}
+
+		var generatedNamespace = compilation
+			.GlobalNamespace.GetNamespaceMembers()
+			.FirstOrDefault(static @namespace => @namespace.Name == "Purview")
+			?.GetNamespaceMembers()
+			.FirstOrDefault(static @namespace => @namespace.Name == "SourceGeneratorFramework")
+			?.GetNamespaceMembers()
+			.FirstOrDefault(static @namespace => @namespace.Name == "Generators");
+
+		if (generatedNamespace is not null)
+			CollectPublicTypeNames(generatedNamespace, names);
+
+		return new EquatableArray<string>([
+			.. names.Distinct(StringComparer.Ordinal).OrderBy(static name => name, StringComparer.Ordinal),
+		]);
+	}
+
+	/// <summary>
+	/// Collects public type names from a namespace. Nested types are skipped: <c>PurviewTypeLibrary</c>
+	/// mirrors the BCL as nested classes, none of which are framework types.
+	/// </summary>
+	static void CollectPublicTypeNames(INamespaceSymbol @namespace, List<string> names)
+	{
+		foreach (var member in @namespace.GetMembers())
+		{
+			if (member is INamespaceSymbol childNamespace)
+			{
+				CollectPublicTypeNames(childNamespace, names);
+				continue;
+			}
+
+			if (member is INamedTypeSymbol { DeclaredAccessibility: Accessibility.Public } namedType)
+				names.Add(namedType.Name);
+		}
+	}
+
+	/// <summary>
+	/// Renders framework-type cref references in copied documentation as inline code for every member
+	/// and enum value in the type-library tree.
+	/// </summary>
+	static void RewriteFrameworkCrefs(List<NamespaceNodeBuilder> nodes, EquatableArray<string> frameworkTypeNames)
+	{
+		if (frameworkTypeNames.IsEmpty)
+			return;
+
+		foreach (var node in nodes)
+		{
+			for (var index = 0; index < node.Members.Count; index++)
+			{
+				var member = node.Members[index];
+				node.Members[index] = member with
+				{
+					Documentation = FrameworkCrefRewriter.RewriteDocumentation(
+						member.Documentation,
+						frameworkTypeNames
+					),
+				};
+			}
+
+			foreach (var group in node.EnumGroups)
+			{
+				for (var index = 0; index < group.Values.Count; index++)
+				{
+					var value = group.Values[index];
+					group.Values[index] = value with
+					{
+						Documentation = FrameworkCrefRewriter.RewriteDocumentation(
+							value.Documentation,
+							frameworkTypeNames
+						),
+					};
+				}
+			}
+
+			RewriteFrameworkCrefs(node.Children, frameworkTypeNames);
+		}
 	}
 
 	/// <summary>
