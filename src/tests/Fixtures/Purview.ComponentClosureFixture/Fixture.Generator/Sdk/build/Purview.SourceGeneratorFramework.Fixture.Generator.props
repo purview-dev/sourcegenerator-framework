@@ -1,0 +1,12 @@
+<Project>
+	<!--
+		Build assets of the Fixture.Generator package. The generator reads
+		build_property.Fixture_Disable, so it must be compiler-visible to consumers. The B2 fixture
+		build uses this file to prove PSGF0003 clears once the property is declared here.
+	-->
+	<ItemGroup Label="Compiler Visible Properties">
+		<CompilerVisibleProperty Include="Fixture_Disable">
+			<Description>When true, the Fixture.Generator source generator is disabled.</Description>
+		</CompilerVisibleProperty>
+	</ItemGroup>
+</Project>

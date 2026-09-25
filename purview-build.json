@@ -16,8 +16,11 @@
 				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.Generators.dll",
 				"build/Purview.SourceGeneratorFramework.props",
 				"build/Purview.SourceGeneratorFramework.targets",
+				"content/Packaging.md",
+				"contentFiles/any/netstandard2.0/Packaging.md",
 				"lib/netstandard2.0/Purview.SourceGeneratorFramework.dll",
 				"lib/netstandard2.0/Purview.SourceGeneratorFramework.xml",
+				"packaging.md",
 				"purview-logo-light.png",
 				"README.md",
 				"tools/*/ILRepack.dll",
@@ -48,7 +51,9 @@
 			]
 		},
 		"ForbiddenContent": {
-			"*": ["analyzers/**/Purview.SourceGeneratorFramework.dll"]
+			"*": [
+				"analyzers/**/Purview.SourceGeneratorFramework.dll"
+			]
 		}
 	},
 	"Release": {

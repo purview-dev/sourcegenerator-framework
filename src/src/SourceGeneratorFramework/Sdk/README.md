@@ -25,6 +25,41 @@ type identity. Specifying `Targets="GetSourceGeneratorAnalyzerFiles"` explicitly
 is not required. Set `PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles` to `false` only when the
 unmerged assembly + loose framework DLL shape is required (see [Packaging.md](Packaging.md)).
 
+### A component that references another component
+
+A code-fix component can reference the generator component normally (`ProjectReference`,
+`ReferenceOutputAssembly` not `false`) when it needs the generator's internal diagnostic identity.
+Only the generator references the framework, so:
+
+- the generator merges to a **merged, self-contained analyzer artifact** while its **bin output stays
+  unmerged**;
+- the framework assembly is copied beside the generator's bin output and flows transitively through
+  `ProjectReference`, so the dependent component's bin folder is self-sufficient — the IDE can load
+  the code-fix provider without a `FileNotFoundException` for the framework assembly; and
+- the dependent component's analyzer closure includes the referenced component's merged artifact (it
+  is never IL-merged a second time, which would duplicate its types).
+
+The analyzer closure is validated at build time: every `AssemblyRef` must resolve inside the closure
+or to a compiler-host assembly, otherwise `PRSGD0005` fails the build (see
+[Packaging.md](Packaging.md#build-time-analyzer-closure-validation)).
+
+### Generator-read MSBuild properties
+
+Declare each MSBuild property the generator reads so it is validated against
+`CompilerVisibleProperty`:
+
+```xml
+<ItemGroup>
+  <PurviewGeneratorVisibleProperty Include="MyGenerator_Disable" />
+</ItemGroup>
+```
+
+`PSGF0003` fails the build when a declared property is not compiler-visible in the project or its
+`Sdk/build`/`Sdk/buildTransitive` assets. In-repo `ProjectReference` consumers additionally receive a
+referenced project's `Sdk/buildTransitive` `CompilerVisibleProperty` items, which NuGet would only
+register for `PackageReference` consumers (see
+[Packaging.md](Packaging.md#generator-read-msbuild-properties)).
+
 ### Referencing a generator from its test project
 
 A test project can need the source-generator project in two different roles at the same time:

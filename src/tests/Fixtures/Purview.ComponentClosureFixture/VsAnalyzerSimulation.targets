@@ -1,0 +1,24 @@
+<Project>
+	<!--
+		Regression probe for the Visual Studio analyzer-reference shape.
+
+		Visual Studio's project system resolves an OutputItemType=Analyzer ProjectReference to the
+		referenced project's default target path - the component's *unmerged* bin assembly - and adds
+		it to the compiler's analyzers. The command-line build does not. This probe reproduces that
+		extra analyzer and exposes the resulting analyzer set so the integration test can assert that
+		BuildSdk removed it and handed Roslyn only the merged artifact.
+
+		Used via -p:CustomAfterMicrosoftCommonTargets=<this file>.
+	-->
+	<Target
+		Name="SimulateVisualStudioAnalyzerReference"
+		BeforeTargets="ResolveSourceGeneratorProjectReferenceFiles"
+		Condition="'$(MSBuildProjectName)' == 'Fixture.Consumer'"
+	>
+		<ItemGroup>
+			<Analyzer Include="$(MSBuildThisFileDirectory)Fixture.Generator\bin\$(Configuration)\netstandard2.0\Fixture.Generator.dll" />
+		</ItemGroup>
+	</Target>
+
+	<Target Name="GetFixtureAnalyzerItems" Returns="@(Analyzer)" />
+</Project>

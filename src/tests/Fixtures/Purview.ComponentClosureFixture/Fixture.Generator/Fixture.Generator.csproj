@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<!--
+		Regression fixture: a Roslyn component that is consumed from a *package-shaped* reference
+		(the framework assembly is resolvable at build time but is never copied next to this
+		component's output). It reproduces the on-disk shape of a NuGet package consumer without
+		needing a published package.
+
+		Not part of the solution: it is built on demand by
+		SourceGeneratorFramework.BuildIntegrationTests.
+	-->
+	<PropertyGroup>
+		<IsRoslynComponent>true</IsRoslynComponent>
+		<AssemblyName>Fixture.Generator</AssemblyName>
+		<RootNamespace>Fixture.Generator</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Private="false" keeps the framework assembly out of this component's bin output, exactly
+		     as the NuGet lock-file copy does for a netstandard2.0 library package consumer. -->
+		<ProjectReference
+			Include="..\..\..\..\src\SourceGeneratorFramework\SourceGeneratorFramework.csproj"
+			Private="false"
+		/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The companion code-fix component consumes this assembly's internal diagnostic identity. -->
+		<InternalsVisibleTo Include="Fixture.Generator.CodeFixers" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(FixtureGeneratorVisiblePropertyName)' != ''">
+		<!-- B2 fixture: declares a generator-read property so PSGF0003 validation can be exercised. -->
+		<PurviewGeneratorVisibleProperty Include="$(FixtureGeneratorVisiblePropertyName)" />
+	</ItemGroup>
+
+	<PropertyGroup>
+		<!-- Mirrors the framework package's resolved lib/ path for a PackageReference consumer. -->
+		<_PurviewSourceGeneratorFrameworkAssembly>..\..\..\..\src\SourceGeneratorFramework\bin\$(Configuration)\netstandard2.0\Purview.SourceGeneratorFramework.dll</_PurviewSourceGeneratorFrameworkAssembly>
+		<_PurviewSourceGeneratorFrameworkMergeTool>..\..\..\..\src\SourceGeneratorFramework.MergeTool\bin\$(Configuration)\net10.0\Purview.SourceGeneratorFramework.MergeTool.dll</_PurviewSourceGeneratorFrameworkMergeTool>
+		<_PurviewSourceGeneratorFrameworkMergeToolProject>..\..\..\..\src\SourceGeneratorFramework.MergeTool\SourceGeneratorFramework.MergeTool.csproj</_PurviewSourceGeneratorFrameworkMergeToolProject>
+	</PropertyGroup>
+	<Import Project="..\..\..\..\src\SourceGeneratorFramework\Sdk\build\Purview.SourceGeneratorFramework.targets" />
+</Project>

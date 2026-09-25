@@ -1,0 +1,16 @@
+<Project>
+	<!--
+		Re-import the repository props explicitly. The repository-wide package-icon item is declared
+		relative to src/src/* and does not resolve for a project this deep in the tree, so drop it.
+	-->
+	<Import Project="$(MSBuildThisFileDirectory)..\..\..\..\Directory.Build.props" />
+
+	<ItemGroup>
+		<None Remove="..\..\..\assets\images\purview-logo-light.png" />
+	</ItemGroup>
+
+	<PropertyGroup>
+		<!-- No icon asset is packed for the fixture package. -->
+		<PackageIcon></PackageIcon>
+	</PropertyGroup>
+</Project>

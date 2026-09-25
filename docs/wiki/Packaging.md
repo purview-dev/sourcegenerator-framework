@@ -99,10 +99,70 @@ different shape:
 
 | Path | Trigger | Output |
 | --- | --- | --- |
-| `GetSourceGeneratorAnalyzerFiles` (default) | A consuming project references the component as an analyzer | The **merged**, self-contained component, returned from the intermediate `purview-merged/` directory. The component's bin output stays unmerged, so its in-process test harness retains shared framework type identity and `InternalsVisibleTo` access without `CS0433` collisions. |
+| `GetSourceGeneratorAnalyzerFiles` (default) | A consuming project references the component as an analyzer | The **merged**, self-contained component, returned from the content-addressed intermediate `purview-merged/<contentTag>/` directory. The component's bin output stays unmerged, so its in-process test harness retains shared framework type identity and `InternalsVisibleTo` access without `CS0433` collisions. |
 | `GetSourceGeneratorAnalyzerFiles` (opt-out) | Same, with `PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles=false` | Unmerged component + the loose `Purview.SourceGeneratorFramework.dll` copied from the framework package `lib/`. |
 | `GetPurviewMergedAnalyzerFile` | The framework package's own bundled-component pack, or a third-party package embedding the generator | The **merged** component from the intermediate output; the component's bin is never overwritten. |
-| `GenerateNuspec` (`EmbedPurviewSourceGeneratorFrameworkForPack`) | Packing a standalone, packable generator project | The generator's bin is replaced by the **merged** self-contained DLL and the loose framework DLL is deleted before the package is written. |
+| `GetPurviewMergedAnalyzerFileForPack` (pack-time, via `TargetsForTfmSpecificContentInPackage`) | Packing a standalone, packable generator project | The **merged**, self-contained DLL (and its PDB) is contributed directly to `analyzers/dotnet/cs`. The component's bin output is never mutated, so its on-disk shape does not depend on whether `build` or `pack` ran last. |
+
+### A component that references another component
+
+A code-fix (or analyzer) component can reference the generator component normally
+(`ProjectReference`, `ReferenceOutputAssembly` not `false`) when it needs the generator's internal
+diagnostic identity. Both components are `IsRoslynComponent`; only the generator references the
+framework.
+
+- The generator component merges at build time. Its **analyzer artifact** is the merged,
+  self-contained assembly from `obj/.../purview-merged/<contentTag>/`; its **bin output** stays unmerged and
+  references `Purview.SourceGeneratorFramework`.
+- Because a package consumer's framework `lib/` asset is not copied to output, the framework
+  assembly is declared as copy-to-output content beside the generator's bin output. Content with
+  `CopyToOutputDirectory` flows transitively through `ProjectReference`, so the dependent code-fix
+  component's bin folder is self-sufficient too — that is what lets Visual Studio load the code-fix
+  provider from its own bin without a `FileNotFoundException` for the framework assembly.
+- The dependent component's **analyzer closure** (what `GetSourceGeneratorAnalyzerFiles` returns)
+  includes the referenced component's analyzer artifact. The referenced component is returned as its
+  own merged assembly and is **never** IL-merged into the dependent component, which would duplicate
+  its types (including `InternalsVisibleTo`-visible internals) inside a second analyzer in the same
+  host.
+- Visual Studio's project system resolves an `OutputItemType=Analyzer` project reference to the
+  referenced project's default target path — the component's **unmerged** bin assembly — and adds it
+  to the compiler's analyzers, which the command-line build does not. `Purview.BuildSdk` removes that
+  item before adding the resolved closure, so Roslyn only ever receives the merged artifact.
+  Otherwise the unmerged copy drags `Purview.SourceGeneratorFramework` into the compiler host
+  (`CS8784 FileNotFoundException: Could not load file or assembly 'Purview.SourceGeneratorFramework'`)
+  and the generators are registered twice.
+
+### Build-time analyzer-closure validation
+
+`Purview.BuildSdk` validates the whole closure returned by `GetSourceGeneratorAnalyzerFiles`: every
+file's PE `AssemblyRef` must resolve to another file in the returned set or to a compiler-host
+assembly (`Microsoft.CodeAnalysis*`, `System.Composition.*`, `System.*`, `netstandard`, …). A missing
+component artifact fails the build with `PRSGD0005`. Extend the permitted set with
+`<PurviewAnalyzerClosurePermittedReference Include="..." />` (or the
+`PurviewAnalyzerClosurePermittedReferences` property). Opt out with
+`PurviewSourceGeneratorFrameworkAnalyzerValidation=false`.
+
+### Generator-read MSBuild properties
+
+A generator that reads `build_property.<Name>` is only correct if `<Name>` is a
+`CompilerVisibleProperty` wherever the generator runs. Declare the properties a component reads:
+
+```xml
+<ItemGroup>
+  <PurviewGeneratorVisibleProperty Include="MyGenerator_Disable" />
+</ItemGroup>
+```
+
+`PSGF0003` fails the build when a declared property is neither a `CompilerVisibleProperty` in the
+project nor declared by the project's own `Sdk/build` or `Sdk/buildTransitive` assets (which is what
+consumers receive). Opt out with
+`PurviewSourceGeneratorFrameworkGeneratorPropertyValidation=false`.
+
+NuGet imports `buildTransitive` assets for **PackageReference** consumers only. While developing the
+package repository itself every project uses `ProjectReference`, so
+`Purview.BuildSdk`'s `ImportProjectReferencedBuildTransitiveAssets` target registers the referenced
+project's `Sdk/buildTransitive/*.props|*.targets` `CompilerVisibleProperty` items for in-repo
+consumers. Opt out with `PurviewImportProjectReferenceBuildTransitive=false`.
 
 In the opt-out path the loose framework DLL is declared as a `SourceGeneratorRuntimeDependency`
 (statically from the framework package `lib/` for package consumers, with a target-time fallback for
@@ -110,10 +170,36 @@ in-repo `ProjectReference` components) so the SDK copies it beside the generator
 it. The merged paths never declare it.
 
 The merge itself (`_PurviewMergeSourceGeneratorFramework`) only writes to the component's
-intermediate `purview-merged/` directory. `GetSourceGeneratorAnalyzerFiles` returns that result by
-substituting the merged path into `TargetPathWithTargetPlatformMoniker` immediately before its body
-runs, leaving `GetTargetPath` — which resolves assembly references — pointing at the unmerged bin.
-This is what keeps the in-repo test harness working while shipped assemblies stay self-contained.
+intermediate output. `GetSourceGeneratorAnalyzerFiles` returns that result by substituting the merged
+path into `TargetPathWithTargetPlatformMoniker` immediately before its body runs, leaving
+`GetTargetPath` — which resolves assembly references — pointing at the unmerged bin. This is what
+keeps the in-repo test harness working while shipped assemblies stay self-contained.
+
+The merged artifact is **content-addressed**: it lives in
+`$(IntermediateOutputPath)purview-merged/<contentTag>/$(TargetFileName)`, where `<contentTag>` is a
+SHA-256 of the component, the framework assembly and the merge tool (the merge tool computes it via
+its `--tag` mode). The tag is in the *directory*, never the file name, because ILRepack derives the
+merged assembly's simple name from the output file name and an analyzer must keep
+`<AssemblyName>.dll`.
+
+That gives two properties the earlier fixed-name output could not:
+
+- a rebuild with identical inputs reuses the existing file and **skips the merge**, keeping
+  `_PurviewMergeSourceGeneratorFramework` idempotent across the per-consumer (and potentially
+  parallel) invocations of `GetSourceGeneratorAnalyzerFiles`; and
+- changed inputs select a **new directory**, so the merge never overwrites a merged assembly that a
+  compiler host (csc/`VBCSCompiler`/Visual Studio) already has loaded. Overwriting such a file fails
+  on Windows with a sharing violation, which surfaced as `MSB3073` (merge tool exit code
+  `-532462766`) and left consumers loading a stale or partially written analyzer — the root cause of
+  `CS8784 FileNotFoundException: Could not load file or assembly 'Purview.SourceGeneratorFramework'`.
+
+The merge tool merges into a per-process `.staging-<pid>` directory and publishes it with a
+non-overwriting directory rename; a concurrent invocation that loses the race simply observes the
+published artifact instead of failing.
+
+Packaging needs the stable `<AssemblyName>.dll` name, so the pack paths
+(`GetPurviewMergedAnalyzerFile`, `GetPurviewMergedAnalyzerFileForPack`) copy the content-addressed
+artifact into `$(IntermediateOutputPath)purview-pack/` and pack that plainly named staging copy.
 
 ### Framework type internalization in merged components
 
