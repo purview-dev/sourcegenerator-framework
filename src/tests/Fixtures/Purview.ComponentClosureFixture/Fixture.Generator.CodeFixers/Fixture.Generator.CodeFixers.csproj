@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<!--
+		Regression fixture: a code-fix component that references another Roslyn component
+		(component -> component). It deliberately does NOT reference the framework, mirroring the
+		real consumer layout, so it only acquires the framework assembly transitively through
+		Fixture.Generator.
+	-->
+	<PropertyGroup>
+		<IsRoslynComponent>true</IsRoslynComponent>
+		<AssemblyName>Fixture.Generator.CodeFixers</AssemblyName>
+		<RootNamespace>Fixture.Generator.CodeFixers</RootNamespace>
+		<!-- A NuGet package consumer of the framework does not flow the framework assembly through a
+		     ProjectReference chain (netstandard2.0 libraries do not copy package lib assets). Disabling
+		     transitive project references emulates that shape without a published package. -->
+		<DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
+		<!-- This component does not reference the framework, so the SDK's NamespacePrefix global
+		     using does not resolve here. -->
+		<AutoIncludeUsings>false</AutoIncludeUsings>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- A normal project reference: the code-fix assembly has a genuine runtime dependency on
+		     the generator assembly's internal diagnostic identity. -->
+		<ProjectReference Include="..\Fixture.Generator\Fixture.Generator.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+	</ItemGroup>
+</Project>

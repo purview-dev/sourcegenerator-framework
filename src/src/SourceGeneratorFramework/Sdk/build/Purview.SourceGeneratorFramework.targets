@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
 	<PropertyGroup>
 		<_PurviewSourceGeneratorFrameworkAssembly Condition="'$(_PurviewSourceGeneratorFrameworkAssembly)' == ''"
 			>$(MSBuildThisFileDirectory)..\lib\netstandard2.0\Purview.SourceGeneratorFramework.dll</_PurviewSourceGeneratorFrameworkAssembly>
@@ -42,6 +42,51 @@
 		<PropertyGroup Condition="'$(_PurviewResolvedFrameworkAssembly)' == ''">
 			<_PurviewResolvedFrameworkAssembly>@(_PurviewSourceGeneratorFrameworkReference->'%(FullPath)')</_PurviewResolvedFrameworkAssembly>
 		</PropertyGroup>
+	</Target>
+
+	<!--
+		Resolves the framework assembly early enough for content assignment. This deliberately does
+		not depend on ResolveAssemblyReferences (which runs after AssignTargetPaths): the framework
+		package lib path and the component's explicit override are both available at evaluation time.
+	-->
+	<Target Name="_PurviewResolveFrameworkAssemblyForOutputCopy">
+		<PropertyGroup>
+			<_PurviewFrameworkOutputCopyAssembly>$([System.IO.Path]::GetFullPath('$(_PurviewSourceGeneratorFrameworkAssembly)'))</_PurviewFrameworkOutputCopyAssembly>
+		</PropertyGroup>
+	</Target>
+
+	<!--
+		A merged component's analyzer artifact is self-contained, but its bin output is not: the
+		unmerged bin assembly references Purview.SourceGeneratorFramework, and package consumers do
+		not copy the framework's lib asset to output (netstandard2.0 libraries do not copy package
+		lib assets). A dependent component that references this component normally resolves the
+		unmerged bin copy at runtime, so the framework assembly must sit beside it.
+
+		Declare the resolved framework assembly as copy-to-output content. Content with
+		CopyToOutputDirectory flows transitively through ProjectReference, so a dependent component's
+		bin folder becomes self-sufficient without any consumer-side configuration, while the merged
+		analyzer artifact stays the only thing returned to Roslyn.
+
+		This is deliberately *not* a SourceGeneratorRuntimeDependency: that item feeds the analyzer
+		closure and the package, where the loose framework DLL must never appear.
+	-->
+	<Target
+		Name="DeclarePurviewFrameworkOutputCopy"
+		BeforeTargets="AssignTargetPaths;GetCopyToOutputDirectoryItems"
+		DependsOnTargets="_PurviewResolveFrameworkAssemblyForOutputCopy"
+		Condition="'$(PurviewEmbedSourceGeneratorFramework)' == 'true' AND '$(PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles)' == 'true'"
+		Label="Copies the framework assembly beside the component's bin output."
+	>
+		<ItemGroup Condition="'$(_PurviewFrameworkOutputCopyAssembly)' != '' AND Exists('$(_PurviewFrameworkOutputCopyAssembly)')">
+			<None
+				Include="$(_PurviewFrameworkOutputCopyAssembly)"
+				Link="Purview.SourceGeneratorFramework.dll"
+				TargetPath="Purview.SourceGeneratorFramework.dll"
+				CopyToOutputDirectory="PreserveNewest"
+				Pack="false"
+				Visible="false"
+			/>
+		</ItemGroup>
 	</Target>
 
 	<!--
@@ -109,8 +154,10 @@
 	>
 		<PropertyGroup>
 			<_PurviewMergedComponentDirectory>$(IntermediateOutputPath)purview-merged\</_PurviewMergedComponentDirectory>
-			<_PurviewMergedComponent>$(_PurviewMergedComponentDirectory)$(TargetFileName)</_PurviewMergedComponent>
-			<_PurviewMergedComponentPdb>$(_PurviewMergedComponentDirectory)$(TargetName).pdb</_PurviewMergedComponentPdb>
+			<_PurviewMergedAnalyzerStagingDirectory>$(IntermediateOutputPath)purview-pack\</_PurviewMergedAnalyzerStagingDirectory>
+			<!-- Returned to the calling project, so it must be absolute: a relative path would be
+			     resolved against the caller's directory when it tests Exists(). -->
+			<_PurviewMergedAnalyzerStagingDirectoryFullPath>$([System.IO.Path]::GetFullPath('$(_PurviewMergedAnalyzerStagingDirectory)'))</_PurviewMergedAnalyzerStagingDirectoryFullPath>
 		</PropertyGroup>
 
 		<Error
@@ -123,7 +170,83 @@
 		/>
 
 		<MakeDir Directories="$(_PurviewMergedComponentDirectory)" />
-		<Exec Command="dotnet exec &quot;$(_PurviewSourceGeneratorFrameworkMergeTool)&quot; &quot;$(TargetPath)&quot; &quot;$(_PurviewResolvedFrameworkAssembly)&quot; &quot;$(_PurviewMergedComponent)&quot; @(ReferencePath->'&quot;%(FullPath)&quot;', ' ')" />
+
+		<!--
+			Content-addressed merged artifact. The tag is a content hash of the merge inputs, so:
+
+			  * a rebuild with identical inputs reuses the existing directory and skips the merge
+			    (idempotent across the per-consumer, possibly parallel invocations of
+			    GetSourceGeneratorAnalyzerFiles); and
+			  * changed inputs select a new directory, so the merge never has to overwrite a merged
+			    assembly that a compiler host (csc/VBCSCompiler/Visual Studio) already has loaded.
+			    Overwriting it fails on Windows with a sharing violation, which surfaced as MSB3073
+			    (merge tool exit code -532462766) and left consumers loading a stale or partially
+			    written analyzer - the cause of CS8784 FileNotFoundException at runtime.
+
+			The tag goes in the directory, never the file name: ILRepack derives the merged assembly's
+			simple name from the output file name and an analyzer must keep <AssemblyName>.dll.
+		-->
+		<Exec
+			Command="dotnet exec &quot;$(_PurviewSourceGeneratorFrameworkMergeTool)&quot; --tag &quot;$(TargetPath)&quot; &quot;$(_PurviewResolvedFrameworkAssembly)&quot; &quot;$(_PurviewSourceGeneratorFrameworkMergeTool)&quot;"
+			ConsoleToMSBuild="true"
+			StandardOutputImportance="low"
+		>
+			<Output TaskParameter="ConsoleOutput" PropertyName="_PurviewMergedComponentTagRaw" />
+		</Exec>
+		<Error
+			Condition="'$(_PurviewMergedComponentTagRaw)' == ''"
+			Text="Could not compute the merge content tag for '$(TargetPath)'."
+		/>
+		<PropertyGroup>
+			<_PurviewMergedComponentTag>$([System.String]::Copy('$(_PurviewMergedComponentTagRaw)').Substring(0, 16).Trim())</_PurviewMergedComponentTag>
+			<_PurviewMergedComponentTagDirectory>$(_PurviewMergedComponentDirectory)$(_PurviewMergedComponentTag)\</_PurviewMergedComponentTagDirectory>
+			<_PurviewMergedComponent>$(_PurviewMergedComponentTagDirectory)$(TargetFileName)</_PurviewMergedComponent>
+			<_PurviewMergedComponentPdb>$(_PurviewMergedComponentTagDirectory)$(TargetName).pdb</_PurviewMergedComponentPdb>
+		</PropertyGroup>
+
+		<!--
+			The tagged directory is created by the merge tool as part of publishing (it renames its
+			staging directory into place); creating it here would make that rename fail.
+		-->
+		<Exec
+			Condition="!Exists('$(_PurviewMergedComponent)')"
+			Command="dotnet exec &quot;$(_PurviewSourceGeneratorFrameworkMergeTool)&quot; &quot;$(TargetPath)&quot; &quot;$(_PurviewResolvedFrameworkAssembly)&quot; &quot;$(_PurviewMergedComponent)&quot; @(ReferencePath->'&quot;%(FullPath)&quot;', ' ')"
+		/>
+	</Target>
+
+	<!--
+		Copies the content-addressed merged artifact to a stable, plainly named staging file.
+
+		Packages must expose analyzers/dotnet/cs/<AssemblyName>.dll (the framework package's pack
+		validation and the SDK's analyzer conventions depend on it), but the merge target deliberately
+		never writes that name into the component output. Staging in the intermediate directory keeps
+		the packed name stable without ever overwriting a file the compiler host may hold open.
+	-->
+	<Target
+		Name="_PurviewStageMergedAnalyzerFile"
+		DependsOnTargets="_PurviewMergeSourceGeneratorFramework"
+		Returns="@(_PurviewStagedMergedAnalyzerFile)"
+		Condition="'$(PurviewEmbedSourceGeneratorFramework)' == 'true'"
+	>
+		<MakeDir Directories="$(_PurviewMergedAnalyzerStagingDirectory)" />
+		<Copy
+			SourceFiles="$(_PurviewMergedComponent)"
+			DestinationFiles="$(_PurviewMergedAnalyzerStagingDirectory)$(TargetFileName)"
+			SkipUnchangedFiles="true"
+			Condition="Exists('$(_PurviewMergedComponent)')"
+		/>
+		<Copy
+			SourceFiles="$(_PurviewMergedComponentPdb)"
+			DestinationFiles="$(_PurviewMergedAnalyzerStagingDirectory)$(TargetName).pdb"
+			SkipUnchangedFiles="true"
+			Condition="Exists('$(_PurviewMergedComponentPdb)')"
+		/>
+		<ItemGroup>
+			<_PurviewStagedMergedAnalyzerFile
+				Include="$(_PurviewMergedAnalyzerStagingDirectoryFullPath)$(TargetFileName)"
+				Condition="Exists('$(_PurviewMergedAnalyzerStagingDirectoryFullPath)$(TargetFileName)')"
+			/>
+		</ItemGroup>
 	</Target>
 
 	<!--
@@ -139,8 +262,8 @@
 		GetSourceGeneratorAnalyzerFiles reads @(TargetPathWithTargetPlatformMoniker) in its body, so
 		the merged assembly is substituted there at the last moment. This target runs before the
 		target's body but after its dependencies (Build;GetTargetPathWithTargetPlatformMoniker) have
-		populated the item. GetTargetPath — which project references use to resolve the component's
-		assembly — is unaffected, so referencing projects keep the unmerged bin output.
+		populated the item. GetTargetPath â€” which project references use to resolve the component's
+		assembly â€” is unaffected, so referencing projects keep the unmerged bin output.
 	-->
 	<Target
 		Name="EmbedPurviewSourceGeneratorFramework"
@@ -166,46 +289,186 @@
 	-->
 	<Target
 		Name="GetPurviewMergedAnalyzerFile"
-		DependsOnTargets="Build;GetTargetPathWithTargetPlatformMoniker;_PurviewMergeSourceGeneratorFramework"
+		DependsOnTargets="Build;GetTargetPathWithTargetPlatformMoniker;_PurviewStageMergedAnalyzerFile"
 		Returns="@(_PurviewMergedAnalyzerFileOutput)"
 		Condition="'$(PurviewEmbedSourceGeneratorFramework)' == 'true'"
 	>
-		<PropertyGroup>
-			<_PurviewMergedComponentFullPath>$([System.IO.Path]::GetFullPath('$(_PurviewMergedComponent)'))</_PurviewMergedComponentFullPath>
-		</PropertyGroup>
 		<ItemGroup>
-			<_PurviewMergedAnalyzerFileOutput
-				Include="$(_PurviewMergedComponentFullPath)"
-				Condition="Exists('$(_PurviewMergedComponentFullPath)')"
-			/>
+			<_PurviewMergedAnalyzerFileOutput Include="@(_PurviewStagedMergedAnalyzerFile)" />
+		</ItemGroup>
+	</Target>
+
+	<PropertyGroup Condition="'$(PurviewEmbedSourceGeneratorFramework)' == 'true' AND '$(IsPackable)' == 'true'">
+		<TargetsForTfmSpecificContentInPackage
+			Condition="!$([System.String]::Copy(';$(TargetsForTfmSpecificContentInPackage);').Contains(';GetPurviewMergedAnalyzerFileForPack;'))"
+			>$(TargetsForTfmSpecificContentInPackage);GetPurviewMergedAnalyzerFileForPack</TargetsForTfmSpecificContentInPackage>
+	</PropertyGroup>
+
+	<ItemGroup Condition="'$(PurviewEmbedSourceGeneratorFramework)' == 'true' AND '$(IsPackable)' == 'true'">
+		<!--
+			The SDK's default "packable Roslyn component" asset packs $(TargetPath) (and its PDB).
+			For an embedded component that is the unmerged assembly, so suppress it and contribute the
+			merged assembly instead (GetPurviewMergedAnalyzerFileForPack).
+		-->
+		<None Remove="$(TargetPath)" />
+		<None Remove="$(TargetDir)$(TargetName).pdb" />
+	</ItemGroup>
+
+	<!--
+		Also suppress at target time: a component that imports the framework targets from its own
+		project body is evaluated before the SDK's targets (Directory.Build.targets is imported last),
+		so the evaluation-time removal above cannot see the SDK's analyzer asset in that ordering.
+	-->
+	<Target
+		Name="SuppressPurviewUnmergedAnalyzerPackageAssets"
+		BeforeTargets="_GetPackageFiles;_GetTfmSpecificContentForPackage;GenerateNuspec"
+		Condition="'$(PurviewEmbedSourceGeneratorFramework)' == 'true' AND '$(IsPackable)' == 'true'"
+	>
+		<ItemGroup>
+			<None Remove="$(TargetPath)" />
+			<None Remove="$(TargetDir)$(TargetName).pdb" />
 		</ItemGroup>
 	</Target>
 
 	<!--
-		Pack-time path: replaces the component output with a self-contained merged assembly and removes
-		the loose framework runtime dependency, so packages that pack $(TargetPath) ship only the
-		merged DLL under analyzers/dotnet/cs.
+		Pack-time path: contributes the merged, self-contained component to analyzers/dotnet/cs
+		without touching the component's bin output. Mutating $(TargetPath) made the bin shape depend
+		on whether "build" or "pack" ran last and left MSBuild's incremental copy state â€” and a
+		dependent code-fix component's bin folder â€” inconsistent.
 	-->
 	<Target
-		Name="EmbedPurviewSourceGeneratorFrameworkForPack"
-		BeforeTargets="GenerateNuspec"
-		DependsOnTargets="_PurviewMergeSourceGeneratorFramework"
+		Name="GetPurviewMergedAnalyzerFileForPack"
+		DependsOnTargets="_PurviewStageMergedAnalyzerFile"
 		Condition="'$(PurviewEmbedSourceGeneratorFramework)' == 'true' AND '$(IsPackable)' == 'true'"
-		Label="Produces a self-contained Roslyn component for packaging."
+		Label="Contributes the merged, self-contained component to analyzers/dotnet/cs."
 	>
-		<Copy SourceFiles="$(_PurviewMergedComponent)" DestinationFiles="$(TargetPath)" />
-		<Copy
-			Condition="Exists('$(_PurviewMergedComponentPdb)')"
-			SourceFiles="$(_PurviewMergedComponentPdb)"
-			DestinationFiles="$(TargetDir)$(TargetName).pdb"
-		/>
-		<Delete
-			Condition="Exists('$(TargetDir)Purview.SourceGeneratorFramework.dll')"
-			Files="$(TargetDir)Purview.SourceGeneratorFramework.dll"
-		/>
-		<Delete
-			Condition="Exists('$(TargetDir)Purview.SourceGeneratorFramework.pdb')"
-			Files="$(TargetDir)Purview.SourceGeneratorFramework.pdb"
+		<ItemGroup>
+			<TfmSpecificPackageFile
+				Include="@(_PurviewStagedMergedAnalyzerFile)"
+				Condition="'@(_PurviewStagedMergedAnalyzerFile)' != ''"
+			>
+				<PackagePath>analyzers/dotnet/cs/</PackagePath>
+			</TfmSpecificPackageFile>
+			<TfmSpecificPackageFile
+				Include="$(_PurviewMergedAnalyzerStagingDirectoryFullPath)$(TargetName).pdb"
+				Condition="'$(PurviewPackAnalyzerPdb)' != 'false' AND Exists('$(_PurviewMergedAnalyzerStagingDirectoryFullPath)$(TargetName).pdb')"
+			>
+				<PackagePath>analyzers/dotnet/cs/</PackagePath>
+			</TfmSpecificPackageFile>
+			<TfmSpecificPackageFile
+				Include="$(TargetDir)$(TargetName).pdb"
+				Condition="'$(PurviewPackAnalyzerPdb)' != 'false' AND !Exists('$(_PurviewMergedAnalyzerStagingDirectoryFullPath)$(TargetName).pdb') AND '$(DebugType)' != 'embedded' AND '$(DebugType)' != 'none' AND Exists('$(TargetDir)$(TargetName).pdb')"
+			>
+				<PackagePath>analyzers/dotnet/cs/</PackagePath>
+			</TfmSpecificPackageFile>
+		</ItemGroup>
+	</Target>
+
+	<!--
+		Validates that every property this project declares as generator-read
+		(<PurviewGeneratorVisibleProperty Include="..." />) is actually compiler-visible: either it is
+		a CompilerVisibleProperty item in this build, or this project's own Sdk/build /
+		Sdk/buildTransitive assets declare it (so PackageReference consumers receive it). This is the
+		build-time guard for a generator that reads build_property.* while being developed inside the
+		package repo, where NuGet never imports the project's own buildTransitive assets.
+	-->
+	<UsingTask
+		TaskName="ValidatePurviewGeneratorVisibleProperties"
+		TaskFactory="RoslynCodeTaskFactory"
+		AssemblyFile="$([System.IO.Path]::Combine('$(MSBuildToolsPath)', 'Microsoft.Build.Tasks.Core.dll'))"
+	>
+		<ParameterGroup>
+			<Declared ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+			<CompilerVisible ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="false" />
+			<AssetFiles ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="false" />
+			<ProjectName ParameterType="System.String" Required="true" />
+		</ParameterGroup>
+		<Task>
+			<Using Namespace="System" />
+			<Using Namespace="System.Collections.Generic" />
+			<Using Namespace="System.IO" />
+			<Using Namespace="System.Text.RegularExpressions" />
+			<Using Namespace="Microsoft.Build.Framework" />
+			<Using Namespace="Microsoft.Build.Utilities" />
+			<Reference Include="$([System.IO.Path]::Combine('$(MSBuildToolsPath)', 'Microsoft.Build.Framework.dll'))" />
+			<Reference Include="$([System.IO.Path]::Combine('$(MSBuildToolsPath)', 'Microsoft.Build.Utilities.Core.dll'))" />
+			<Code Type="Fragment" Language="cs">
+				<![CDATA[
+					var compilerVisiblePropertyPattern = new Regex(
+						"<CompilerVisibleProperty\\s+Include\\s*=\\s*[\"'](?<name>[^\"']+)[\"']",
+						RegexOptions.IgnoreCase
+					);
+
+					var available = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+					if (CompilerVisible != null)
+					{
+						foreach (var item in CompilerVisible)
+							available.Add(item.ItemSpec);
+					}
+
+					if (AssetFiles != null)
+					{
+						foreach (var file in AssetFiles)
+						{
+							if (!File.Exists(file.ItemSpec))
+								continue;
+
+							string text;
+							try
+							{
+								text = File.ReadAllText(file.ItemSpec);
+							}
+							catch (Exception)
+							{
+								continue;
+							}
+
+							foreach (Match match in compilerVisiblePropertyPattern.Matches(text))
+							{
+								var include = match.Groups["name"].Value;
+								if (!string.IsNullOrWhiteSpace(include))
+									available.Add(include.Trim());
+							}
+						}
+					}
+
+					foreach (var item in Declared)
+					{
+						if (available.Contains(item.ItemSpec))
+							continue;
+
+						Log.LogError(null, "PSGF0003", null, null, 0, 0, 0, 0,
+							"The project '{0}' declares that its generator reads the MSBuild property '{1}', but '{1}' is not compiler-visible here: there is no CompilerVisibleProperty item for it and no build/buildTransitive asset declares it. Add <CompilerVisibleProperty Include=\"{1}\" /> to the project's Sdk/build or Sdk/buildTransitive assets (or to the outer package that embeds the generator) so consumers can read build_property.{1}.",
+							ProjectName, item.ItemSpec);
+					}
+				]]>
+			</Code>
+		</Task>
+	</UsingTask>
+
+	<Target
+		Name="ValidatePurviewGeneratorVisibleProperties"
+		BeforeTargets="GenerateMSBuildEditorConfigFileCore;CoreCompile"
+		Condition="'$(PurviewSourceGeneratorFrameworkGeneratorPropertyValidation)' != 'false' AND '@(PurviewGeneratorVisibleProperty)' != ''"
+		Label="Validates that generator-read MSBuild properties are compiler-visible (PSGF0003)."
+	>
+		<ItemGroup>
+			<_PurviewGeneratorVisiblePropertyAsset Include="$(MSBuildProjectDirectory)\Sdk\build\**\*.props" />
+			<_PurviewGeneratorVisiblePropertyAsset Include="$(MSBuildProjectDirectory)\Sdk\build\**\*.targets" />
+			<_PurviewGeneratorVisiblePropertyAsset Include="$(MSBuildProjectDirectory)\Sdk\buildTransitive\**\*.props" />
+			<_PurviewGeneratorVisiblePropertyAsset Include="$(MSBuildProjectDirectory)\Sdk\buildTransitive\**\*.targets" />
+		</ItemGroup>
+		<ValidatePurviewGeneratorVisibleProperties
+			Declared="@(PurviewGeneratorVisibleProperty)"
+			CompilerVisible="@(CompilerVisibleProperty)"
+			AssetFiles="@(_PurviewGeneratorVisiblePropertyAsset)"
+			ProjectName="$(MSBuildProjectName)"
 		/>
 	</Target>
+
+	<!--
+		Returns the generator-visible properties the current project declares. BuildSdk (and a package
+		that embeds a generator) can consume it to require re-declaration in the outer package.
+	-->
+	<Target Name="GetPurviewGeneratorVisibleProperties" Returns="@(PurviewGeneratorVisibleProperty)" />
 </Project>

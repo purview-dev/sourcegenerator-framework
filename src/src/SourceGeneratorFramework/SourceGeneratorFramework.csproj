@@ -38,6 +38,14 @@
 	-->
 	<Import Project="..\SourceGeneratorShared\SourceGeneratorShared.Link.targets" />
 
+	<ItemGroup Label="Packaged documentation">
+		<!--
+			The packaged README links Packaging.md; the wiki page is the single source of truth and
+			must ship so the relative link resolves inside the package.
+		-->
+		<None Include="..\..\..\docs\wiki\Packaging.md" Link="Sdk\Packaging.md" Pack="true" Visible="true" />
+	</ItemGroup>
+
 	<!--
 		The generator, analyzer, and code-fix assemblies were previously consumed as analyzer
 		ProjectReferences. They now reference this assembly for the shared types, which would form

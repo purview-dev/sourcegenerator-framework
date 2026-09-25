@@ -47,6 +47,21 @@ type identity. Specifying `Targets="GetSourceGeneratorAnalyzerFiles"` explicitly
 is not required. Set `PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles` to `false` only when the
 unmerged assembly + loose framework DLL shape is required (see [Packaging.md](Packaging.md)).
 
+### A component that references another component
+
+A code-fix component can reference the generator component normally (`ProjectReference`,
+`ReferenceOutputAssembly` not `false`) when it needs the generator's internal diagnostic identity.
+The generator's **analyzer artifact** is the merged, self-contained assembly, while its **bin output**
+stays unmerged; the framework assembly is copied beside that bin output and flows transitively
+through `ProjectReference`, so the dependent component's bin folder is self-sufficient. The dependent
+component's analyzer closure includes the referenced component's merged artifact — it is never
+IL-merged a second time, which would duplicate its types. See
+[Packaging.md](Packaging.md#a-component-that-references-another-component).
+
+Declare each MSBuild property the generator reads with
+`<PurviewGeneratorVisibleProperty Include="MyGenerator_Disable" />`; `PSGF0003` fails the build when
+the property is not compiler-visible.
+
 ### Referencing a generator from its test project
 
 A test project can need the source-generator project in two different roles at the same time:

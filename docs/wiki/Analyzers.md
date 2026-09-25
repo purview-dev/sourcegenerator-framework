@@ -19,6 +19,20 @@ The analyzers enforce two families of rules:
 - **C# 14 extension-member conventions** — `PSGFR34`–`PSGFR38`, plus the associated
   `ReorganizeExtensionClassCodeFixProvider` and `ConvertToExtensionBlockCodeFixProvider`.
 
+## Build-time validation diagnostics
+
+These are MSBuild diagnostics rather than compiler analyzers, so they are not tracked in
+`AnalyzerReleases.*.md`:
+
+| Code | Raised by | Summary |
+|------|-----------|---------|
+| `PSGF0001` | `Purview.BuildSdk` | A Roslyn component did not produce (or did not declare) a source-generator analyzer file. |
+| `PSGF0003` | `Purview.SourceGeneratorFramework` | A `PurviewGeneratorVisibleProperty` is not compiler-visible in the declaring project or its `Sdk/build`/`Sdk/buildTransitive` assets, so consumers cannot read `build_property.<Name>`. |
+| `PRSGD0005` | `Purview.BuildSdk` | A file in the returned analyzer closure references an assembly that is neither part of the closure nor a compiler-host assembly. |
+
+Opt out with `PurviewSourceGeneratorFrameworkAnalyzerValidation=false` (`PRSGD0005`) or
+`PurviewSourceGeneratorFrameworkGeneratorPropertyValidation=false` (`PSGF0003`).
+
 ## Rule reference
 
 | Rule | Summary |

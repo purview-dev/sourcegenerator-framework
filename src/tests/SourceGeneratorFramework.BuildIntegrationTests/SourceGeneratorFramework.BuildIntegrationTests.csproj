@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<!--
+		Builds the checked-in Purview.ComponentClosureFixture with the real MSBuild toolchain and
+		inspects the resulting metadata. It intentionally does not reference the fixture projects so
+		the fixture's on-disk shape stays independent of this assembly's project graph.
+
+		The test framework packages (TUnit) are supplied automatically by Purview.BuildSdk for test
+		projects, so they must not be declared here.
+	-->
+	<ItemGroup>
+		<PackageReference Include="System.Reflection.Metadata" />
+	</ItemGroup>
+</Project>

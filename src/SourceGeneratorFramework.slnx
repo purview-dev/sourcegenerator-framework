@@ -40,6 +40,7 @@
 		<Project Path="tests/SourceGeneratorFramework.MergeTool.UnitTests/SourceGeneratorFramework.MergeTool.UnitTests.csproj" />
 		<Project Path="tests/SourceGeneratorFramework.UnitTests/SourceGeneratorFramework.UnitTests.csproj" />
 		<Project Path="tests/SourceGeneratorShared.UnitTests/SourceGeneratorShared.UnitTests.csproj" />
+		<Project Path="tests/SourceGeneratorFramework.BuildIntegrationTests/SourceGeneratorFramework.BuildIntegrationTests.csproj" />
 	</Folder>
 	<Folder Name="/tests/examples/">
 		<Project Path="tests/SourceGeneratorFramework.ExampleGenerator.CodeFixers.UnitTests/SourceGeneratorFramework.ExampleGenerator.CodeFixers.UnitTests.csproj" />

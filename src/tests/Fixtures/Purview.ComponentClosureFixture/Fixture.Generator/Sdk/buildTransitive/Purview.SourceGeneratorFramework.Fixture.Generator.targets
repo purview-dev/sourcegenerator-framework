@@ -1,0 +1,12 @@
+<Project>
+	<!--
+		buildTransitive assets are imported by PackageReference consumers only. Inside the package
+		repository every project uses ProjectReference, so the B1 fixture proves that an in-repo
+		consumer still receives this CompilerVisibleProperty.
+	-->
+	<ItemGroup Label="Compiler Visible Properties">
+		<CompilerVisibleProperty Include="Fixture_TransitiveProperty">
+			<Description>Property that an in-repo ProjectReference consumer must be able to read.</Description>
+		</CompilerVisibleProperty>
+	</ItemGroup>
+</Project>

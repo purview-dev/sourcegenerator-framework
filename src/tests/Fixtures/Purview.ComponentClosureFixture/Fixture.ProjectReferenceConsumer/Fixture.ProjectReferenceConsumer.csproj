@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<!--
+		Regression fixture for the in-repo buildTransitive gap: a ProjectReference consumer must
+		receive the referenced project's CompilerVisibleProperty items while the package is still
+		being developed (NuGet only imports buildTransitive for PackageReference consumers).
+	-->
+	<PropertyGroup>
+		<TargetFrameworks></TargetFrameworks>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<AssemblyName>Fixture.ProjectReferenceConsumer</AssemblyName>
+		<RootNamespace>Fixture.ProjectReferenceConsumer</RootNamespace>
+		<AutoIncludeUsings>false</AutoIncludeUsings>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Fixture.Generator\Fixture.Generator.csproj" PrivateAssets="all" />
+	</ItemGroup>
+</Project>

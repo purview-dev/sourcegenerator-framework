@@ -36,6 +36,9 @@
 		<CompilerVisibleProperty Include="PurviewSourceGeneratorFrameworkAnalyzerValidation">
 			<Description>False to opt out of PSGFR39 self-contained analyzer validation.</Description>
 		</CompilerVisibleProperty>
+		<CompilerVisibleProperty Include="PurviewSourceGeneratorFrameworkGeneratorPropertyValidation">
+			<Description>False to opt out of PSGF0003 generator-visible property validation.</Description>
+		</CompilerVisibleProperty>
 	</ItemGroup>
 
 	<ItemGroup>

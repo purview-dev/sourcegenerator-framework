@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<!--
+		Regression fixture: the consuming project references both components as analyzers, exactly
+		like a real package consumer.
+	-->
+	<PropertyGroup>
+		<TargetFrameworks></TargetFrameworks>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<AssemblyName>Fixture.Consumer</AssemblyName>
+		<RootNamespace>Fixture.Consumer</RootNamespace>
+		<!-- The consumer does not reference the framework, so the SDK's NamespacePrefix global
+		     using does not resolve here. -->
+		<AutoIncludeUsings>false</AutoIncludeUsings>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference
+			Include="..\Fixture.Generator\Fixture.Generator.csproj"
+			PrivateAssets="all"
+			OutputItemType="Analyzer"
+			ReferenceOutputAssembly="false"
+		/>
+		<ProjectReference
+			Include="..\Fixture.Generator.CodeFixers\Fixture.Generator.CodeFixers.csproj"
+			PrivateAssets="all"
+			OutputItemType="Analyzer"
+			ReferenceOutputAssembly="false"
+		/>
+	</ItemGroup>
+</Project>

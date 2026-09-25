@@ -1,0 +1,12 @@
+<Project>
+	<!--
+		Re-import the repository targets explicitly, then clear the package icon: the repository sets
+		it for packable projects but the icon asset is declared relative to src/src/* and is not
+		packed for this fixture.
+	-->
+	<Import Project="$(MSBuildThisFileDirectory)..\..\..\..\Directory.Build.targets" />
+
+	<PropertyGroup Condition="'$(IsPackable)' == 'true'">
+		<PackageIcon></PackageIcon>
+	</PropertyGroup>
+</Project>
