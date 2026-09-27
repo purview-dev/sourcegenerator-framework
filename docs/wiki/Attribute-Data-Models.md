@@ -17,7 +17,7 @@ The generator emits marker attributes into your compilation:
 | --- | --- |
 | `[Generate(Type targetAttribute)]` | Placed on a `readonly partial record struct` to opt into generation. |
 | `[Generate(string targetAttribute)]` | Resolves the attribute by fully-qualified name. Use when the attribute type is not available in the generator's compilation (e.g. `LengthAttribute` in .NET 8+ or a self-generated attribute). |
-| `[Property]` | A record parameter is populated from a named attribute property (the property name is inferred from the parameter name unless overridden). |
+| `[Property]` | A record parameter is populated from a named attribute property (the property name is inferred from the parameter name unless overridden). When combined with `[Argument]` on the same parameter, the named argument is read first. |
 | `[Property(string name)]` | Explicit named property source. |
 | `[Property(..., DefaultValue = ...)]` | Fallback value when the named property is not present. |
 | `[Argument]` | Populated from a constructor argument by parameter name. |
@@ -104,6 +104,33 @@ public readonly partial record struct StringLengthAttributeData(
     int MinimumLength
 );
 ```
+
+## Constructor and named arguments on the same property
+
+A property can declare both sources:
+
+```csharp
+[Generate(typeof(GenerateServiceAttribute))]
+public readonly partial record struct GenerateServiceAttributeData(
+    [Argument("lifetime", IsEnum = true, DefaultValue = "…ServiceLifetime.Singleton")] string? Lifetime,
+    [Argument("name")] [Property] string? Name
+);
+```
+
+The named argument is read first. A named argument assigns the property/field *after* the constructor
+runs, so it is the effective value whenever a caller supplies both — mirroring the attribute instance's
+own assignment order. Reading it first also prevents an omitted optional constructor parameter's default
+from shadowing an explicitly set property:
+
+```csharp
+[GenerateService(Name = "Billing")]                        // reads "Billing"
+[GenerateService(ServiceLifetime.Scoped, "Billing")]       // reads "Billing"
+```
+
+> [!IMPORTANT]
+> Before this rule, the constructor argument was read first, so
+> `[GenerateService(Name = "Billing")]` resolved to the `name` parameter's default (`null`) and the
+> explicitly set property was silently ignored.
 
 ## Nested models
 

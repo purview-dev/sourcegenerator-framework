@@ -423,6 +423,13 @@ static class AttributeDataModelLibrary
 
 		var ctorAttribute = GetAttribute(parameter, GeneratorTypeLibrary.Attirbutes.ArgumentAttribute);
 		var isEnum = false;
+
+		// Constructor sources are added from this index so the named-argument source below can be placed
+		// ahead of them. A named argument assigns the property/field after the constructor runs, so it is
+		// the effective value whenever both map to the same model property. Reading it first also stops an
+		// omitted optional constructor parameter's default from shadowing an explicitly set property.
+		var constructorSourceIndex = sources.Count;
+
 		if (ctorAttribute is not null && !hasExclusive)
 		{
 			var ctorName = GetCtorPropertyName(ctorAttribute);
@@ -457,7 +464,10 @@ static class AttributeDataModelLibrary
 			);
 			isEnum = isEnum || GetNamedArgument(namedAttribute, "IsEnum", false);
 
-			sources.Add(new PropertySource(AttributePropertySource.NamedArgument, namedName ?? propertyName, -1));
+			sources.Insert(
+				constructorSourceIndex,
+				new PropertySource(AttributePropertySource.NamedArgument, namedName ?? propertyName, -1)
+			);
 
 			if (namedDefaultValue is not null)
 			{

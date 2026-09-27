@@ -58,10 +58,18 @@ static class ServiceRegistrationEmitter
 									{
 										DefaultValue = lifetimeValues[0].FullName,
 									},
+									new("name", PurviewTypeLibrary.System.String.MakeNullable(cw))
+									{
+										DefaultValue = "null",
+									},
 								],
 							}
 						),
-					body => body.Assignment("Lifetime", "lifetime")
+					body =>
+					{
+						body.Assignment("Lifetime", "lifetime");
+						body.Assignment("Name", "name");
+					}
 				);
 
 				cw.Property(

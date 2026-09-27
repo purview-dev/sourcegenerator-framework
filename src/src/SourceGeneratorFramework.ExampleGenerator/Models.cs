@@ -28,8 +28,10 @@ public enum ServiceLifetime
 /// Initializes a new instance of the <see cref="GenerateServiceAttribute"/> class.
 /// </remarks>
 /// <param name="lifetime">The service lifetime.</param>
+/// <param name="name">The optional service name.</param>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-public sealed class GenerateServiceAttribute(ServiceLifetime lifetime = ServiceLifetime.Singleton) : Attribute
+public sealed class GenerateServiceAttribute(ServiceLifetime lifetime = ServiceLifetime.Singleton, string? name = null)
+	: Attribute
 {
 	/// <summary>
 	/// Gets the service lifetime.
@@ -37,14 +39,21 @@ public sealed class GenerateServiceAttribute(ServiceLifetime lifetime = ServiceL
 	public ServiceLifetime Lifetime { get; } = lifetime;
 
 	/// <summary>
-	/// Gets or sets the optional service name.
+	/// Gets or sets the optional service name. This property can be supplied either as the constructor's
+	/// <c>name</c> argument or as a named argument (<c>[GenerateService(Name = "…")]</c>); the named
+	/// argument wins when both are supplied because it is assigned after the constructor runs.
 	/// </summary>
-	public string? Name { get; set; }
+	public string? Name { get; set; } = name;
 }
 
 /// <summary>
 /// Attribute data model for <see cref="GenerateServiceAttribute"/>.
 /// </summary>
+/// <remarks>
+/// <see cref="Name"/> demonstrates a property mapped from both a constructor argument and a named
+/// argument: the named argument is read first so an explicitly set property is never shadowed by the
+/// constructor parameter's default.
+/// </remarks>
 [Generate(typeof(GenerateServiceAttribute))]
 public readonly partial record struct GenerateServiceAttributeData(
 	[Argument(
@@ -53,7 +62,7 @@ public readonly partial record struct GenerateServiceAttributeData(
 		DefaultValue = "Purview.SourceGeneratorFramework.Examples.ServiceLifetime.Singleton"
 	)]
 		string? Lifetime,
-	[Property] string? Name
+	[Argument("name")] [Property] string? Name
 );
 
 /// <summary>
