@@ -209,6 +209,21 @@ public class AttributeDataModelGeneratorTests
 			.That(generated)
 			.Contains("if (!attributeData.TryGetNamedArgument<bool>(\"GenerateOptions\", out generateOptions))");
 		await Assert.That(generated).Contains("generateOptions = true");
+
+		// A named argument is assigned after the constructor runs, so when both a constructor argument and
+		// a named argument map to the same property the named argument must be read first. This also stops
+		// an omitted optional constructor parameter's default from shadowing an explicitly set property.
+		var namedIndex = generated!.IndexOf("TryGetNamedArgument<bool>(\"GenerateOptions\"", StringComparison.Ordinal);
+		var ctorIndex = generated.IndexOf(
+			"TryGetConstructorArgument<bool>(\"generateOptions\"",
+			StringComparison.Ordinal
+		);
+		await Assert.That(namedIndex).IsGreaterThanOrEqualTo(0);
+		await Assert.That(ctorIndex).IsGreaterThanOrEqualTo(0);
+		await Assert
+			.That(namedIndex)
+			.IsLessThan(ctorIndex)
+			.Because("the named argument must be read before the constructor argument");
 	}
 
 	[Test]
