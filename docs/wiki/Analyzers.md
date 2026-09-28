@@ -29,6 +29,8 @@ These are MSBuild diagnostics rather than compiler analyzers, so they are not tr
 | `PSGF0001` | `Purview.BuildSdk` | A Roslyn component did not produce (or did not declare) a source-generator analyzer file. |
 | `PSGF0003` | `Purview.SourceGeneratorFramework` | A `PurviewGeneratorVisibleProperty` is not compiler-visible in the declaring project or its `Sdk/build`/`Sdk/buildTransitive` assets, so consumers cannot read `build_property.<Name>`. |
 | `PRSGD0005` | `Purview.BuildSdk` | A file in the returned analyzer closure references an assembly that is neither part of the closure nor a compiler-host assembly. |
+| `PSGFR41` | `Purview.SourceGeneratorFramework` merge tool | A component's public surface exposes framework types that the merge internalizes. Raised by the compiler analyzer of the same id at design time and by the merge pass as a `message` (default), `warning` or `error`. |
+| `PSGFR42` | `Purview.SourceGeneratorFramework` merge tool | The merged analyzer still exposes a public framework type, so it is not self-contained. Always an error; the merge fails with exit code 5. |
 
 Opt out with `PurviewSourceGeneratorFrameworkAnalyzerValidation=false` (`PRSGD0005`) or
 `PurviewSourceGeneratorFrameworkGeneratorPropertyValidation=false` (`PSGF0003`).
@@ -66,6 +68,7 @@ Opt out with `PurviewSourceGeneratorFrameworkAnalyzerValidation=false` (`PRSGD00
 | `PSGFR38` | Extension classes should carry `[EditorBrowsable(EditorBrowsableState.Never)]`. |
 | `PSGFR39` | A non-packable Roslyn component that explicitly opts out of the default self-contained analyzer output (`PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles=false`) while embedding the framework, otherwise the package embeds the loose framework DLL under `analyzers/`. |
 | `PSGFR40` | In Roslyn components (`IsRoslynComponent=true`), reference SGF types as inline code (`<c>Type</c>`) instead of a `cref`: copied documentation must not depend on cref resolution. |
+| `PSGFR41` | In Roslyn components whose framework implementation is merged, a public member (or generic constraint) whose signature references an SGF type: the merge internalizes every SGF type, so the signature is left referring to an internal type. Make the member or its declaring type non-public. |
 
 ## Type-library and attribute-model diagnostics
 
@@ -96,6 +99,10 @@ analyzer rules above, including:
   to the structured `IfBlock`/`ElseIf`/`Else` APIs (`PSGFR23`).
 - `CodeWriterToStringCodeFixProvider` — replaces embedded `CodeWriter` string interpolation (`PSGFR29`).
 - `PreferInlineCodeForFrameworkCrefCodeFixProvider` — rewrites SGF XML doc `cref` targets to inline code (`<c>Type</c>`) (`PSGFR40`).
+- `MakeComponentSurfaceNonPublicCodeFixProvider` — makes the exposing member, or its declaring type,
+  non-public (`PSGFR41`).
+- `MakeTypeLibrarySpecNonPublicCodeFixProvider` — declares a type-library spec non-public in a merged
+  component (`TLB0021`).
 - `AttributeDataModelSymbolPropertyCodeFixProvider` — fixes attribute-data-model symbol properties.
 - `ReorganizeExtensionClassCodeFixProvider` — renames (`PSGFR35`), splits multi-receiver classes
   (`PSGFR37`), moves the class under `Extensions/{ReceiverNamespace}/`, and updates referencing files

@@ -10,6 +10,19 @@
 		<PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles
 			Condition="'$(PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles)' == ''"
 			>true</PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles>
+		<!--
+			How the merge pass reports a component whose public surface exposes framework types. The
+			artifact stays self-contained either way; a public signature over an internalized framework
+			type is simply unusable. 'message' (the default) keeps the historical plain-text log output,
+			'warning'/'error' emit MSBuild diagnostics (PSGFR41) attributed to the component, and 'none'
+			drops the findings. A *leaked* public framework type always fails the merge (PSGFR42), because
+			that artifact is not self-contained.
+		-->
+		<PurviewMergePublicSurfaceSeverity
+			Condition="'$(PurviewMergePublicSurfaceSeverity)' == '' AND '$(PurviewMergePublicSurfaceValidation)' == 'false'"
+			>none</PurviewMergePublicSurfaceSeverity>
+		<PurviewMergePublicSurfaceSeverity Condition="'$(PurviewMergePublicSurfaceSeverity)' == ''"
+			>message</PurviewMergePublicSurfaceSeverity>
 		<ProduceReferenceAssembly Condition="'$(ProduceReferenceAssembly)' == '' AND '$(IsRoslynComponent)' == 'true'"
 			>true</ProduceReferenceAssembly>
 	</PropertyGroup>
@@ -158,6 +171,14 @@
 			<!-- Returned to the calling project, so it must be absolute: a relative path would be
 			     resolved against the caller's directory when it tests Exists(). -->
 			<_PurviewMergedAnalyzerStagingDirectoryFullPath>$([System.IO.Path]::GetFullPath('$(_PurviewMergedAnalyzerStagingDirectory)'))</_PurviewMergedAnalyzerStagingDirectoryFullPath>
+			<!-- Reported as the diagnostic origin, so the IDE and CI can attribute a finding. Defaults to
+			     the component assembly being merged; set PurviewMergePublicSurfaceOrigin to a source or
+			     project path for IDE navigation. -->
+			<_PurviewMergePublicSurfaceOrigin Condition="'$(PurviewMergePublicSurfaceOrigin)' == ''"
+				>$(TargetPath)</_PurviewMergePublicSurfaceOrigin>
+			<!-- Ownership extensions and reporting options participate in the content tag, so changing
+			     them re-runs the merge (and re-emits its findings) instead of reusing a cached artifact. -->
+			<_PurviewMergeConfigurationTagValues>$(PurviewMergeOwnedNamespaces)|$(PurviewMergeOwnedTypeFullNames)|$(PurviewMergePublicSurfaceSeverity)|$(_PurviewMergePublicSurfaceOrigin)</_PurviewMergeConfigurationTagValues>
 		</PropertyGroup>
 
 		<Error
@@ -187,7 +208,7 @@
 			simple name from the output file name and an analyzer must keep <AssemblyName>.dll.
 		-->
 		<Exec
-			Command="dotnet exec &quot;$(_PurviewSourceGeneratorFrameworkMergeTool)&quot; --tag &quot;$(TargetPath)&quot; &quot;$(_PurviewResolvedFrameworkAssembly)&quot; &quot;$(_PurviewSourceGeneratorFrameworkMergeTool)&quot;"
+			Command="dotnet exec &quot;$(_PurviewSourceGeneratorFrameworkMergeTool)&quot; --tag &quot;$(TargetPath)&quot; &quot;$(_PurviewResolvedFrameworkAssembly)&quot; &quot;$(_PurviewSourceGeneratorFrameworkMergeTool)&quot; --input-value &quot;$(_PurviewMergeConfigurationTagValues)&quot;"
 			ConsoleToMSBuild="true"
 			StandardOutputImportance="low"
 		>
@@ -207,10 +228,30 @@
 		<!--
 			The tagged directory is created by the merge tool as part of publishing (it renames its
 			staging directory into place); creating it here would make that rename fail.
+
+			Ownership extensions and reporting options are passed as options so a component with an
+			unusual shape can extend the pass, and so findings can be raised as MSBuild diagnostics.
 		-->
+		<ItemGroup>
+			<_PurviewMergeOwnedNamespace
+				Include="$(PurviewMergeOwnedNamespaces)"
+				Condition="'$(PurviewMergeOwnedNamespaces)' != ''"
+			/>
+			<_PurviewMergeOwnedType
+				Include="$(PurviewMergeOwnedTypeFullNames)"
+				Condition="'$(PurviewMergeOwnedTypeFullNames)' != ''"
+			/>
+		</ItemGroup>
+		<PropertyGroup>
+			<_PurviewMergeOwnedNamespaceArgs Condition="'@(_PurviewMergeOwnedNamespace)' != ''"
+				>@(_PurviewMergeOwnedNamespace->'--owned-namespace &quot;%(Identity)&quot;', ' ')</_PurviewMergeOwnedNamespaceArgs>
+			<_PurviewMergeOwnedTypeArgs Condition="'@(_PurviewMergeOwnedType)' != ''"
+				>@(_PurviewMergeOwnedType->'--owned-type &quot;%(Identity)&quot;', ' ')</_PurviewMergeOwnedTypeArgs>
+			<_PurviewMergePublicSurfaceArgs>--public-surface-severity &quot;$(PurviewMergePublicSurfaceSeverity)&quot; --origin &quot;$(_PurviewMergePublicSurfaceOrigin)&quot;</_PurviewMergePublicSurfaceArgs>
+		</PropertyGroup>
 		<Exec
 			Condition="!Exists('$(_PurviewMergedComponent)')"
-			Command="dotnet exec &quot;$(_PurviewSourceGeneratorFrameworkMergeTool)&quot; &quot;$(TargetPath)&quot; &quot;$(_PurviewResolvedFrameworkAssembly)&quot; &quot;$(_PurviewMergedComponent)&quot; @(ReferencePath->'&quot;%(FullPath)&quot;', ' ')"
+			Command="dotnet exec &quot;$(_PurviewSourceGeneratorFrameworkMergeTool)&quot; &quot;$(TargetPath)&quot; &quot;$(_PurviewResolvedFrameworkAssembly)&quot; &quot;$(_PurviewMergedComponent)&quot; @(ReferencePath->'&quot;%(FullPath)&quot;', ' ') $(_PurviewMergeOwnedNamespaceArgs) $(_PurviewMergeOwnedTypeArgs) $(_PurviewMergePublicSurfaceArgs)"
 		/>
 	</Target>
 

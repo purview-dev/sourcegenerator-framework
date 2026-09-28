@@ -75,6 +75,26 @@ public sealed class MergeToolRunnerTests
 		}
 		""";
 
+	/// <summary>
+	/// A component that uses framework types only inside method bodies, so its public surface stays
+	/// free of framework types and the merge reports no findings for it.
+	/// </summary>
+	const string InternalUsageComponentSource = """
+		namespace Fixture.Component
+		{
+			using Fixture.Framework;
+
+			public static class Consumer
+			{
+				public static string Describe()
+				{
+					var options = new Options { Kind = OptionKind.Enabled };
+					return new TypeReference(options.Kind.ToString()).Name;
+				}
+			}
+		}
+		""";
+
 	[Test]
 	public async Task GivenDuplicateIsExternalInit_MergeProducesCanonicalWarningFreeAssembly(
 		CancellationToken cancellationToken
@@ -145,8 +165,158 @@ public sealed class MergeToolRunnerTests
 
 		// Assert
 		await Assert.That(exitCode).IsEqualTo(0);
-		await Assert.That(logger.Warnings).IsEmpty();
 		await Assert.That(File.Exists(outputPath)).IsTrue();
+
+		// ILRepack must stay quiet (this test covers the no-duplicate normalizer path)...
+		await Assert
+			.That(logger.Warnings)
+			.DoesNotContain(static warning =>
+				warning.Contains(
+					"Method reference is used with definition return type / parameter",
+					StringComparison.Ordinal
+				)
+			);
+
+		// ...while the framework identity seeding now makes the fixture framework assembly
+		// framework-owned, so the component's public member returning a framework type is reported even
+		// though the fixture framework does not live in the framework namespace. The report is grouped
+		// by the real declaring type.
+		await Assert
+			.That(logger.Warnings)
+			.Contains(static warning =>
+				warning.Contains("'Fixture.Component.Consumer' is public and exposes", StringComparison.Ordinal)
+			);
+	}
+
+	[Test]
+	public async Task Run_GivenComponentUsingFrameworkTypesInternally_ReportsNoFindings(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		cancellationToken.ThrowIfCancellationRequested();
+		using TestWorkspace workspace = new();
+		var frameworkPath = workspace.Compile("Fixture.Framework", FrameworkSource);
+		var componentPath = workspace.Compile("Fixture.Component", InternalUsageComponentSource, frameworkPath);
+		var outputPath = workspace.GetPath("merged", "Fixture.Component.dll");
+		TestLogger logger = new();
+
+		// Act
+		var exitCode = MergeToolRunner.Run(
+			[componentPath, frameworkPath, outputPath, TestWorkspace.NetStandardReferenceDirectory],
+			TextWriter.Null,
+			logger
+		);
+
+		// Assert
+		await Assert.That(exitCode).IsEqualTo(0);
+		await Assert.That(logger.Warnings).IsEmpty();
+	}
+
+	[Test]
+	public async Task Run_GivenWarningSeverityAndOrigin_WritesMsBuildWarning(CancellationToken cancellationToken)
+	{
+		// Arrange
+		cancellationToken.ThrowIfCancellationRequested();
+		using TestWorkspace workspace = new();
+		var frameworkPath = workspace.Compile("Fixture.Framework", FrameworkSource);
+		var componentPath = workspace.Compile("Fixture.Component", ComponentWithoutMarkerSource, frameworkPath);
+		var outputPath = workspace.GetPath("merged", "Fixture.Component.dll");
+		var origin = workspace.GetPath("Fixture.Component", "Component.cs");
+		using StringWriter error = new();
+
+		// Act
+		var exitCode = MergeToolRunner.Run(
+			[
+				componentPath,
+				frameworkPath,
+				outputPath,
+				TestWorkspace.NetStandardReferenceDirectory,
+				"--public-surface-severity",
+				"warning",
+				"--origin",
+				origin,
+			],
+			error
+		);
+
+		// Assert
+		await Assert.That(exitCode).IsEqualTo(0);
+		await Assert.That(error.ToString()).Contains($"{origin} : warning PSGFR41:");
+	}
+
+	[Test]
+	public async Task Run_GivenDefaultSeverity_WritesPlainTextWithoutCode(CancellationToken cancellationToken)
+	{
+		// Arrange
+		cancellationToken.ThrowIfCancellationRequested();
+		using TestWorkspace workspace = new();
+		var frameworkPath = workspace.Compile("Fixture.Framework", FrameworkSource);
+		var componentPath = workspace.Compile("Fixture.Component", ComponentWithoutMarkerSource, frameworkPath);
+		var outputPath = workspace.GetPath("merged", "Fixture.Component.dll");
+		using StringWriter error = new();
+
+		// Act
+		var exitCode = MergeToolRunner.Run(
+			[componentPath, frameworkPath, outputPath, TestWorkspace.NetStandardReferenceDirectory],
+			error
+		);
+
+		// Assert
+		await Assert.That(exitCode).IsEqualTo(0);
+		await Assert.That(error.ToString()).Contains("is public and exposes");
+		await Assert.That(error.ToString()).DoesNotContain("PSGFR41");
+	}
+
+	[Test]
+	public async Task Run_GivenUnknownOption_ReturnsUsageError(CancellationToken cancellationToken)
+	{
+		// Arrange
+		cancellationToken.ThrowIfCancellationRequested();
+		using StringWriter error = new();
+
+		// Act
+		var exitCode = MergeToolRunner.Run(["--unknown"], error);
+
+		// Assert
+		await Assert.That(exitCode).IsEqualTo(2);
+		await Assert.That(error.ToString()).Contains("Unknown option '--unknown'.");
+	}
+
+	[Test]
+	public async Task Tag_GivenConfigurationValues_TracksThemInTheContentTag(CancellationToken cancellationToken)
+	{
+		// Arrange
+		cancellationToken.ThrowIfCancellationRequested();
+		using TestWorkspace workspace = new();
+		var frameworkPath = workspace.Compile("Fixture.Framework", FrameworkSource);
+		using StringWriter first = new();
+		using StringWriter repeated = new();
+		using StringWriter changed = new();
+
+		// Act
+		var firstExitCode = MergeToolRunner.Run(
+			["--tag", frameworkPath, "--input-value", "namespaces=a"],
+			TextWriter.Null,
+			output: first
+		);
+		var repeatedExitCode = MergeToolRunner.Run(
+			["--tag", frameworkPath, "--input-value", "namespaces=a"],
+			TextWriter.Null,
+			output: repeated
+		);
+		var changedExitCode = MergeToolRunner.Run(
+			["--tag", frameworkPath, "--input-value", "namespaces=b"],
+			TextWriter.Null,
+			output: changed
+		);
+
+		// Assert
+		await Assert.That(firstExitCode).IsEqualTo(0);
+		await Assert.That(repeatedExitCode).IsEqualTo(0);
+		await Assert.That(changedExitCode).IsEqualTo(0);
+		await Assert.That(first.ToString()).IsEqualTo(repeated.ToString());
+		await Assert.That(first.ToString()).IsNotEqualTo(changed.ToString());
 	}
 
 	static async Task AssertMergedMetadataAsync(string outputPath)

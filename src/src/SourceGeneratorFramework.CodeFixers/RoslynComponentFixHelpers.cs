@@ -145,4 +145,44 @@ static class RoslynComponentFixHelpers
 				or SyntaxKind.PrivateKeyword
 				or SyntaxKind.ProtectedKeyword
 				or SyntaxKind.FileKeyword;
+
+	/// <summary>
+	/// Makes a declaration non-public. A top-level type falls back to <c>internal</c> by removing its
+	/// accessibility modifier, because the repository convention is to omit the default accessibility; a
+	/// nested type or a member defaults to <c>private</c>, so <c>internal</c> is written explicitly.
+	/// </summary>
+	public static MemberDeclarationSyntax MakeInternal(MemberDeclarationSyntax declaration)
+	{
+		var modifiers = declaration.Modifiers;
+		var accessibilityIndex = IndexOfAccessibilityModifier(modifiers);
+
+		if (
+			declaration is BaseTypeDeclarationSyntax
+			&& declaration.Parent is CompilationUnitSyntax or BaseNamespaceDeclarationSyntax
+		)
+		{
+			return accessibilityIndex >= 0
+				? declaration.WithModifiers(modifiers.RemoveAt(accessibilityIndex))
+				: declaration;
+		}
+
+		var internalToken = SyntaxFactory.Token(SyntaxKind.InternalKeyword);
+		var updated =
+			accessibilityIndex >= 0
+				? modifiers.Replace(modifiers[accessibilityIndex], internalToken)
+				: modifiers.Insert(0, internalToken);
+
+		return declaration.WithModifiers(updated);
+	}
+
+	static int IndexOfAccessibilityModifier(SyntaxTokenList modifiers)
+	{
+		for (var index = 0; index < modifiers.Count; index++)
+		{
+			if (IsAccessibilityModifier(modifiers[index]))
+				return index;
+		}
+
+		return -1;
+	}
 }

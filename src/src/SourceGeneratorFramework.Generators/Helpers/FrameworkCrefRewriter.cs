@@ -163,6 +163,7 @@ static class FrameworkCrefRewriter
 		if (text.Length < 2 || text[1] != ':')
 			return text;
 
+		// The prefix is a single character, so the first two characters are dropped and the rest is trimmed
 		return text[0] switch
 		{
 			'N' or 'T' or 'F' or 'P' or 'M' or 'E' or 'O' or 'C' or '!' => text.Substring(2).TrimStart(),

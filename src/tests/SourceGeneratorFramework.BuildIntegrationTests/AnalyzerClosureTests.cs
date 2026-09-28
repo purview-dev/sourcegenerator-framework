@@ -35,7 +35,7 @@ public sealed class AnalyzerClosureTests
 	{
 		await BuildAsync(ProjectPath("Fixture.Consumer"), cancellationToken);
 
-		List<string> problems = new();
+		List<string> problems = [];
 		foreach (var component in new[] { "Fixture.Generator", "Fixture.Generator.CodeFixers" })
 		{
 			var binDirectory = BinDirectory(component);
@@ -55,7 +55,7 @@ public sealed class AnalyzerClosureTests
 	[Test]
 	public async Task ComponentClosure_ContainsNoUnresolvableAssemblyReferences(CancellationToken cancellationToken)
 	{
-		List<string> problems = new();
+		List<string> problems = [];
 
 		foreach (var component in new[] { "Fixture.Generator", "Fixture.Generator.CodeFixers" })
 		{
@@ -178,11 +178,11 @@ public sealed class AnalyzerClosureTests
 			.GetProperty("GetFixtureAnalyzerItems")
 			.GetProperty("Items");
 
-		List<string> analyzerPaths = new();
+		List<string> analyzerPaths = [];
 		foreach (var item in items.EnumerateArray())
 			analyzerPaths.Add(item.GetProperty("Identity").GetString()!);
 
-		List<string> problems = new();
+		List<string> problems = [];
 		if (!analyzerPaths.Any(static path => path.Contains("purview-merged", StringComparison.OrdinalIgnoreCase)))
 			problems.Add("The analyzer set does not contain the merged artifact.");
 
@@ -220,7 +220,7 @@ public sealed class AnalyzerClosureTests
 		using PEReader peReader = new(stream);
 		var metadata = peReader.GetMetadataReader();
 
-		List<string> names = new();
+		List<string> names = [];
 		foreach (var handle in metadata.AssemblyReferences)
 			names.Add(metadata.GetString(metadata.GetAssemblyReference(handle).Name));
 
@@ -258,7 +258,7 @@ public sealed class AnalyzerClosureTests
 			.GetProperty("GetSourceGeneratorAnalyzerFiles")
 			.GetProperty("Items");
 
-		List<string> files = new();
+		List<string> files = [];
 		foreach (var item in items.EnumerateArray())
 			files.Add(item.GetProperty("Identity").GetString()!);
 
@@ -326,6 +326,7 @@ public sealed class AnalyzerClosureTests
 			);
 		}
 
+		// Return the standard output only, since the standard error may contain warnings that are not relevant to the test.
 		return output;
 	}
 

@@ -16,13 +16,13 @@ public sealed class UnqualifiedFrameworkCrefAnalyzerTests
 		}.ToImmutableDictionary(),
 		AdditionalAssemblyTypes =
 		[
-			typeof(Purview.SourceGeneratorFramework.CodeWriter),
-			typeof(Purview.SourceGeneratorFramework.GenerationSettings),
-			typeof(Purview.SourceGeneratorFramework.TypeIdentity),
-			typeof(Purview.SourceGeneratorFramework.TypeReference),
-			typeof(Purview.SourceGeneratorFramework.XmlCommentWriter),
-			typeof(Purview.SourceGeneratorFramework.Helpers.IncrementalPipeline),
-			typeof(Purview.SourceGeneratorFramework.CodeWriterScopeValidationException),
+			typeof(CodeWriter),
+			typeof(GenerationSettings),
+			typeof(TypeIdentity),
+			typeof(TypeReference),
+			typeof(XmlCommentWriter),
+			typeof(Helpers.IncrementalPipeline),
+			typeof(CodeWriterScopeValidationException),
 		],
 	};
 

@@ -16,6 +16,7 @@ PSGFR37 | Purview.SourceGeneratorFramework | Warning | Extension class extends m
 PSGFR38 | Purview.SourceGeneratorFramework | Warning | Extension class is missing EditorBrowsable
 PSGFR39 | Purview.SourceGeneratorFramework | Error | Roslyn component must produce a self-contained analyzer
 PSGFR40 | Purview.SourceGeneratorFramework | Warning | SGF cref should be inline code
+PSGFR41 | Purview.SourceGeneratorFramework | Warning | Component public surface exposes framework types
 TLB0014 | TypeLibrary | Warning | Type library partial extension is declared in a different namespace
 TLB0015 | TypeLibrary | Info | Type library partial extension must be declared 'public static partial'
 TLB0016 | TypeLibrary | Error | Enum value member type must be TypeIdentity or EnumValueDefinition
@@ -23,3 +24,4 @@ TLB0017 | TypeLibrary | Error | Enum value member references an enum type that i
 TLB0018 | TypeLibrary | Error | Duplicate enum value member
 TLB0019 | TypeLibrary | Info | Duplicate enum value
 TLB0020 | TypeLibrary | Error | Enum values member references a type that is not an enum
+TLB0021 | TypeLibrary | Info | Type-library spec should not be public in a merged component

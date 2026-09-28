@@ -72,9 +72,7 @@ static class IsExternalInitNormalizer
 		TypeReference frameworkMarker
 	)
 	{
-		int _remainingComponentMarkerReferences;
-
-		public int RemainingComponentMarkerReferences => _remainingComponentMarkerReferences;
+		public int RemainingComponentMarkerReferences { get; private set; }
 
 		public void Rewrite()
 		{
@@ -246,7 +244,7 @@ static class IsExternalInitNormalizer
 
 			if (IsComponentMarker(type))
 			{
-				_remainingComponentMarkerReferences++;
+				RemainingComponentMarkerReferences++;
 			}
 
 			Rewrite(type.DeclaringType);
