@@ -42,12 +42,12 @@ public static class AnalyzerTestHelpers
 	static CSharpCompilation CreateTestCompilation(string source, bool referenceSourceGeneratorFramework)
 	{
 		var syntaxTree = CSharpSyntaxTree.ParseText(source);
-		List<MetadataReference> references = new()
-		{
+		List<MetadataReference> references =
+		[
 			MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
 			MetadataReference.CreateFromFile(typeof(Compilation).Assembly.Location),
 			MetadataReference.CreateFromFile(typeof(CSharpCompilation).Assembly.Location),
-		};
+		];
 		if (referenceSourceGeneratorFramework)
 		{
 			references.Add(MetadataReference.CreateFromFile(typeof(CodeWriter).Assembly.Location));
@@ -66,7 +66,7 @@ public static class AnalyzerTestHelpers
 static class TestAnalyzerConfigOptions
 {
 	public static AnalyzerOptions CreateAnalyzerOptions(IReadOnlyDictionary<string, string> buildProperties) =>
-		new(ImmutableArray<AdditionalText>.Empty, CreateProvider(buildProperties));
+		new([], CreateProvider(buildProperties));
 
 	public static AnalyzerConfigOptionsProvider CreateProvider(IReadOnlyDictionary<string, string> buildProperties) =>
 		new Provider(new Options(ImmutableDictionary.CreateRange(StringComparer.Ordinal, buildProperties)));

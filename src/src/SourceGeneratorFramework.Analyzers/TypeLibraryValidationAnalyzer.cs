@@ -62,6 +62,8 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 
 	public static DiagnosticDescriptor EnumValuesTypeNotEnum => TypeLibraryDiagnosticRules.EnumValuesTypeNotEnum;
 
+	public static DiagnosticDescriptor SpecShouldBeNonPublic => TypeLibraryDiagnosticRules.SpecShouldBeNonPublic;
+
 	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
 		[
 			SpecNotStaticClass,
@@ -83,6 +85,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 			EnumValueDuplicateMember,
 			EnumValueDuplicateValue,
 			EnumValuesTypeNotEnum,
+			SpecShouldBeNonPublic,
 		];
 
 	public override void Initialize(AnalysisContext context)
@@ -124,6 +127,10 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 				generateTypeLibraryAttributeType
 			);
 
+			// A public spec only matters when the framework implementation is merged into the shipped
+			// analyzer, because that is when the framework type identities it exposes are internalized.
+			var mergesFramework = FrameworkMergeFacts.WillBeMerged(context.Options);
+
 			context.RegisterSymbolAction(
 				context =>
 					AnalyzeNamedType(
@@ -135,7 +142,8 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 						enumValueAttributeType,
 						enumValuesAttributeType,
 						enumValueDefinitionType,
-						generatedTypeLibraries
+						generatedTypeLibraries,
+						mergesFramework
 					),
 				SymbolKind.NamedType
 			);
@@ -151,7 +159,8 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		INamedTypeSymbol? enumValueAttributeType,
 		INamedTypeSymbol? enumValuesAttributeType,
 		INamedTypeSymbol? enumValueDefinitionType,
-		IReadOnlyList<GeneratedTypeLibraryInfo> generatedTypeLibraries
+		IReadOnlyList<GeneratedTypeLibraryInfo> generatedTypeLibraries,
+		bool mergesFramework
 	)
 	{
 		if (context.Symbol is not INamedTypeSymbol typeSymbol)
@@ -203,6 +212,10 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		if (outputNamespace is not null && !IsValidNamespace(outputNamespace))
 			context.ReportDiagnostic(Diagnostic.Create(InvalidNamespace, typeLocation, outputNamespace));
 
+		// The generated TypeRefMarkers member is always public and typed as framework identities, so a
+		// public spec leaves a public signature over a type the merge internalizes.
+		ReportSpecAccessibility(context, typeSymbol, typeLocation, mergesFramework);
+
 		Dictionary<string, HashSet<string>> memberNamesByPath = new(StringComparer.Ordinal);
 		Dictionary<string, HashSet<string>> enumMemberNamesByGroup = new(StringComparer.Ordinal);
 		Dictionary<string, HashSet<decimal>> enumValuesByGroup = new(StringComparer.Ordinal);
@@ -242,6 +255,22 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 				typeLocation
 			);
 		}
+	}
+
+	/// <summary>
+	/// Reports <c>TLB0021</c> when the spec is public in a component whose framework implementation is
+	/// merged: the generated marker member is public and typed as framework identities, which the merge
+	/// internalizes.
+	/// </summary>
+	static void ReportSpecAccessibility(
+		SymbolAnalysisContext context,
+		INamedTypeSymbol typeSymbol,
+		Location typeLocation,
+		bool mergesFramework
+	)
+	{
+		if (mergesFramework && typeSymbol.DeclaredAccessibility == Accessibility.Public)
+			context.ReportDiagnostic(Diagnostic.Create(SpecShouldBeNonPublic, typeLocation, typeSymbol.Name));
 	}
 
 	static void AnalyzeMember(

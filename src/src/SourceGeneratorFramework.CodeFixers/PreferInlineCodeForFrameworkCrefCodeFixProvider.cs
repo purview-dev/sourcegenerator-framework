@@ -78,14 +78,17 @@ public sealed class PreferInlineCodeForFrameworkCrefCodeFixProvider : CodeFixPro
 			return document;
 
 		// The cref attribute lives on the <see>/<seealso> element; inline code replaces the element.
-		var owner =
+		if (
 			crefAttribute
 				.AncestorsAndSelf()
 				.FirstOrDefault(static ancestor => ancestor is XmlElementSyntax or XmlEmptyElementSyntax)
-			as XmlNodeSyntax;
-		if (owner is null)
+			is not XmlNodeSyntax owner
+		)
+		{
 			return document;
+		}
 
+		// Replace the <see cref="..."/> or <seealso cref="..."/> element with an inline <c>...</c> element.
 		return document.WithSyntaxRoot(root.ReplaceNode(owner, BuildInlineCodeElement(owner, inlineText)));
 	}
 
@@ -118,6 +121,7 @@ public sealed class PreferInlineCodeForFrameworkCrefCodeFixProvider : CodeFixPro
 			if (document is null)
 				return Task.FromResult<CodeAction?>(null);
 
+			// The fix-all action is a single rewrite of the document, so the equivalence key is the same as for a single fix.
 			return Task.FromResult<CodeAction?>(
 				CodeAction.Create(
 					"Use inline code for SGF cref references",
@@ -161,6 +165,7 @@ public sealed class PreferInlineCodeForFrameworkCrefCodeFixProvider : CodeFixPro
 			if (owners.Count == 0)
 				return document;
 
+			// Replace all the <see cref="..."/> and <seealso cref="..."/> elements with inline <c>...</c> elements.
 			return document.WithSyntaxRoot(
 				root.ReplaceNodes(
 					owners,

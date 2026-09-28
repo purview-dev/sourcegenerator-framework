@@ -243,4 +243,20 @@ public static class TypeLibraryDiagnosticRules
 		DiagnosticSeverity.Error,
 		isEnabledByDefault: true
 	);
+
+	/// <summary>
+	/// Diagnostic raised when a type-library spec is public in a component whose framework
+	/// implementation is merged into the shipped analyzer. The generated <c>TypeRefMarkers</c> member is
+	/// always public and typed as framework identities, so a public spec leaves a public signature over
+	/// a type the merge internalizes.
+	/// </summary>
+	public static readonly DiagnosticDescriptor SpecShouldBeNonPublic = new(
+		"TLB0021",
+		"Type-library spec should not be public in a merged component",
+		"Type-library spec '{0}' is public in a component whose framework implementation is merged; the generated marker member exposes framework type identities that the merged analyzer internalizes, so declare the spec non-public",
+		"TypeLibrary",
+		DiagnosticSeverity.Info,
+		isEnabledByDefault: true,
+		description: "The merge internalizes every Purview.SourceGeneratorFramework type in the shipped analyzer, so a public type-library spec leaves the generated public marker member typed over an internal type. Declaring the spec non-public keeps the merged analyzer's public surface self-contained."
+	);
 }

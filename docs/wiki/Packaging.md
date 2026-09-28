@@ -215,21 +215,53 @@ The merge tool therefore runs a deterministic internalization pass over the merg
 (`FrameworkTypeInternalizer`) after `ILRepack` finishes:
 
 - every type in a framework-owned namespace (`Purview.SourceGeneratorFramework` and its children,
-  including the generated `Generators` attribute set) becomes non-public;
+  including the generated `Generators` attribute set) becomes non-public. Ownership is evaluated
+  through the **declaring chain**, because Mono.Cecil reports an empty namespace for a nested type:
+  the framework's nested containers (the generated type-library namespace classes, the nested
+  operator/enum groups, the `CodeWriter` scopes) are only reachable through their declaring type;
+- the types the framework's own generators emit into the component — recognized by the tool name on
+  their `System.CodeDom.Compiler.GeneratedCodeAttribute` (`TypeLibraryGenerator`,
+  `AttributeDataModelGenerator`) — become non-public as well, so a generated type library can never
+  leak a `TypeIdentity`/`TypeReference` member as public API in the shipped analyzer;
 - `Microsoft.CodeAnalysis.EmbeddedAttribute` (the framework-emitted marker) becomes non-public;
 - **Roslyn component entry points are never internalized** — a generator, analyzer, code fix
   provider, or refactoring provider that is reachable from the framework namespace stays public,
   because Roslyn only instantiates public components (PSGFR27). This is what keeps the framework's
   own bundled analyzers working after the pass;
 - the pass reports the merge result: leftover public framework types fail the merge (exit code `5`),
-  and public component members whose signature exposes a framework type are logged as warnings so the
-  component author can make them (or their declaring type) non-public.
+  and public component members whose signature exposes a framework type are logged so the component
+  author can make them (or their declaring type) non-public. The report follows visibility through the
+  declaring chain too: a public nested type inside an internal type — for example the
+  compiler-synthesised `<G>$`/`<M>$` extension containers emitted for an extension class — is not
+  reachable from outside the component, so it is not part of the public surface and is not reported.
 
-The component's own generated types (the type library, attribute data models) keep their accessibility
-in the component assembly: TLB0015 requires a hand-written partial to be declared
+Ownership is seeded with the framework assembly's own type identities, so a framework type that lives
+outside the framework namespace (the `Microsoft.CodeAnalysis.*Extensions` and `System.StringExtensions`
+extension classes, for example) is internalized as well, and the artifact's assembly-level
+`InternalsVisibleTo` / `IgnoresAccessChecksTo` grants are removed because a shipped analyzer is not the
+component's own assembly.
+
+The pass is configurable from the component's project:
+
+| Property | Default | Effect |
+|----------|---------|--------|
+| `PurviewMergeOwnedNamespaces` | empty | Extra namespace prefixes (semicolon-separated) treated as framework-owned. |
+| `PurviewMergeOwnedTypeFullNames` | empty | Extra type full names (semicolon-separated) treated as framework-owned. |
+| `PurviewMergePublicSurfaceSeverity` | `message` | How a finding is reported: `message` (plain log text), `warning`/`error` (MSBuild diagnostics with code `PSGFR41`), or `none` (dropped). |
+| `PurviewMergePublicSurfaceValidation` | `true` | `false` sets the severity to `none`. |
+| `PurviewMergePublicSurfaceOrigin` | the merged component assembly | The origin reported with an MSBuild finding; set it to a source or project path for IDE navigation. |
+
+All five participate in the merge's content tag, so changing one re-runs the merge (and re-emits its
+findings) instead of reusing a cached artifact. The compiler analyzer of the same id (`PSGFR41`) reports
+the same condition while you edit, so the surface is fixed before the merge runs.
+
+The component's own generated types (the type library, attribute data models) keep their generated
+accessibility in the component's **bin output**: TLB0015 requires a hand-written partial to be declared
 `public static partial` so it can merge with the generated library, and in-repo consumers such as code
-fixers and sibling assemblies compile against it. Self-containment is therefore enforced at the merge
-boundary rather than by rewriting generated accessibility. See [Type-Library.md](Type-Library.md).
+fixers and sibling assemblies compile against it. Only the merged analyzer artifact internalizes them
+(see above), so self-containment is enforced at the merge boundary without rewriting the generated
+accessibility an in-repo consumer compiles against. A merged artifact is never referenced as a
+compile-time dependency, which is what makes that split safe. See [Type-Library.md](Type-Library.md).
 
 > A merged component is an analyzer artifact and must never be referenced as a compile-time
 > dependency. Tests that need to run a *packaged* generator load it out of band — see

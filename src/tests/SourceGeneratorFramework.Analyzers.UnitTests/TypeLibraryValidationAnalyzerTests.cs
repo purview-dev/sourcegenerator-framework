@@ -1,3 +1,4 @@
+using Purview.SourceGeneratorFramework.Testing;
 using Purview.SourceGeneratorFramework.Testing.TUnit;
 
 namespace Purview.SourceGeneratorFramework.Analyzers;
@@ -484,6 +485,90 @@ public sealed class TypeLibraryValidationAnalyzerTests : TUnitDiagnosticAnalyzer
 
 		var result = await AnalyzeAsync(source, cancellationToken);
 
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task Generate_PublicSpecInMergedComponent_ReportsSpecShouldBeNonPublic(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary]
+				public static partial class TypeLibraryModel
+				{
+					[TypeRef("Test")]
+					static readonly TypeIdentity MyAttribute = default!;
+				}
+				""";
+		var options = new AnalyzerTestOptions().WithAnalyzerConfigOptions(
+			("build_property.IsRoslynComponent", "true"),
+			("build_property.PurviewEmbedSourceGeneratorFramework", "true"),
+			("build_property.IsPackable", "true")
+		);
+
+		// Act
+		var result = await AnalyzeAsync(source, options, cancellationToken);
+
+		// Assert
+		await Assert.That(result).HasDiagnostic(TypeLibraryValidationAnalyzer.SpecShouldBeNonPublic.Id);
+	}
+
+	[Test]
+	public async Task Generate_NonPublicSpecInMergedComponent_DoesNotReportSpecShouldBeNonPublic(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary]
+				static partial class TypeLibraryModel
+				{
+					[TypeRef("Test")]
+					static readonly TypeIdentity MyAttribute = default!;
+				}
+				""";
+		var options = new AnalyzerTestOptions().WithAnalyzerConfigOptions(
+			("build_property.IsRoslynComponent", "true"),
+			("build_property.PurviewEmbedSourceGeneratorFramework", "true"),
+			("build_property.IsPackable", "true")
+		);
+
+		// Act
+		var result = await AnalyzeAsync(source, options, cancellationToken);
+
+		// Assert
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task Generate_PublicSpecOutsideAMergedComponent_DoesNotReportSpecShouldBeNonPublic(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		// Without the build properties the project does not merge the framework implementation, so a
+		// public spec keeps its framework-typed markers public in the component's own assembly.
+		var source =
+			AttributeDefinition
+			+ """
+				[GenerateTypeLibrary]
+				public static partial class TypeLibraryModel
+				{
+					[TypeRef("Test")]
+					static readonly TypeIdentity MyAttribute = default!;
+				}
+				""";
+
+		// Act
+		var result = await AnalyzeAsync(source, cancellationToken);
+
+		// Assert
 		await Assert.That(result).HasNoDiagnostics();
 	}
 

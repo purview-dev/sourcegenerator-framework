@@ -43,7 +43,7 @@ public sealed class GenerateServiceAttribute(ServiceLifetime lifetime = ServiceL
 	/// <c>name</c> argument or as a named argument (<c>[GenerateService(Name = "…")]</c>); the named
 	/// argument wins when both are supplied because it is assigned after the constructor runs.
 	/// </summary>
-	public string? Name { get; set; } = name;
+	public string? Name { get; init; } = name;
 }
 
 /// <summary>

@@ -346,7 +346,7 @@ Set the MSBuild property `DisablePurviewTypeLibraryGenerator` to `true` to disab
 
 ## Validation
 
-`TypeLibraryValidationAnalyzer` reports `TLB0001`–`TLB0020` for invalid specs, enum value members, and
+`TypeLibraryValidationAnalyzer` reports `TLB0001`–`TLB0021` for invalid specs, enum value members, and
 type library partial extensions (non-static class, member type that is not `TypeIdentity`/`TypeReference`,
 unresolvable type/namespace, duplicate members, invalid class name, invalid namespace, invalid member
 accessibility, value members without an initializer, marker members without an explicit `= default`, a spec
