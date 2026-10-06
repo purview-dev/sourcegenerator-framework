@@ -244,6 +244,24 @@ public sealed class FrameworkTypeInternalizerTests
 		}
 		""";
 
+	/// <summary>
+	/// A component carrying both a grant the merge copied in from the framework and the component's own
+	/// grant to its companion code-fix assembly.
+	/// </summary>
+	const string ComponentWithMixedInternalsGrantsSource = """
+		using System.Runtime.CompilerServices;
+
+		[assembly: InternalsVisibleTo("Purview.SourceGeneratorFramework.UnitTests")]
+		[assembly: InternalsVisibleTo("Fixture.Component.CodeFixers")]
+
+		namespace Fixture.Component
+		{
+			public sealed class PublicType
+			{
+			}
+		}
+		""";
+
 	[Test]
 	public async Task Apply_GivenOwnedPublicTypes_InternalizesThemAndKeepsComponentsPublic(
 		CancellationToken cancellationToken
@@ -549,6 +567,43 @@ public sealed class FrameworkTypeInternalizerTests
 				)
 			)
 			.IsFalse();
+	}
+
+	// The merge copies the framework assembly's own grants into the artifact, and those must go: a
+	// shipped analyzer is not the framework's assembly. A grant the *component* authored is different -
+	// it is what lets a companion code-fix component read the generator's internal diagnostic identity.
+	// Stripping it made the merged analyzer behave differently from the unmerged bin output the author
+	// compiled and tested against, so the code fix threw FieldAccessException only in the compiler host.
+	[Test]
+	public async Task Apply_GivenFrameworkGrants_StripsOnlyThoseAndKeepsTheComponentsOwn(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		cancellationToken.ThrowIfCancellationRequested();
+		using TestWorkspace workspace = new();
+		var componentPath = workspace.Compile("Fixture.Component", ComponentWithMixedInternalsGrantsSource);
+
+		// Act
+		var report = FrameworkTypeInternalizer.Apply(
+			componentPath,
+			[workspace.GetPath("Fixture.Component")],
+			ownedNamespaces: ["Purview.SourceGeneratorFramework"],
+			frameworkInternalsGrants: ["Purview.SourceGeneratorFramework.UnitTests"]
+		);
+
+		// Assert
+		await Assert.That(report.StrippedInternalsGrantCount).IsEqualTo(1);
+
+		using var component = AssemblyDefinition.ReadAssembly(componentPath);
+		var grants = component
+			.CustomAttributes.Where(static attribute =>
+				attribute.AttributeType.FullName == "System.Runtime.CompilerServices.InternalsVisibleToAttribute"
+			)
+			.Select(static attribute => (string)attribute.ConstructorArguments[0].Value)
+			.ToArray();
+
+		await Assert.That(grants).IsEquivalentTo(["Fixture.Component.CodeFixers"]);
 	}
 
 	[Test]

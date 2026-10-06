@@ -121,6 +121,46 @@ static class FrameworkTypeInternalizer
 	}
 
 	/// <summary>
+	/// Reads the assembly names an assembly grants internals access to. The merge uses the framework
+	/// assembly's grants to decide which grants in the merged component were copied in by the merge
+	/// (and must go) and which the component itself authored (and must stay) - see
+	/// <see cref="StripInternalsGrants"/>.
+	/// </summary>
+	/// <param name="assemblyPath">The assembly to read grants from.</param>
+	public static ImmutableArray<string> CollectInternalsGrants(string assemblyPath)
+	{
+		using var assembly = AssemblyDefinition.ReadAssembly(assemblyPath);
+
+		return
+		[
+			.. assembly
+				.CustomAttributes.Where(static attribute =>
+					s_internalsGrantAttributeFullNames.Contains(
+						attribute.AttributeType.FullName,
+						StringComparer.Ordinal
+					)
+				)
+				.Select(static attribute => GrantedAssemblyName(attribute))
+				.Where(static name => name.Length > 0),
+		];
+	}
+
+	/// <summary>
+	/// Reads the granted assembly's simple name from an internals-grant attribute, discarding any
+	/// <c>, PublicKey=...</c> suffix.
+	/// </summary>
+	static string GrantedAssemblyName(CustomAttribute attribute)
+	{
+		if (attribute.ConstructorArguments.Count == 0)
+			return string.Empty;
+
+		var value = attribute.ConstructorArguments[0].Value as string ?? string.Empty;
+		var comma = value.IndexOf(',', StringComparison.Ordinal);
+
+		return (comma < 0 ? value : value[..comma]).Trim();
+	}
+
+	/// <summary>
 	/// Internalizes every framework-owned type in the merged component, strips the assembly-level
 	/// internals grants the merge copied in, and returns a report of the changes plus anything that
 	/// could not be internalized.
@@ -130,12 +170,19 @@ static class FrameworkTypeInternalizer
 	/// <param name="warn">Optional sink for non-blocking findings, such as component members that expose framework types.</param>
 	/// <param name="ownedNamespaces">Namespace prefixes to internalize; defaults to the framework's own namespaces.</param>
 	/// <param name="ownedTypeFullNames">Additional type full names to internalize (normally the framework assembly's own type names).</param>
+	/// <param name="frameworkInternalsGrants">
+	/// The internals grants declared by the framework assembly. Only these are stripped from the merged
+	/// component, so a grant the component itself authored - the one that lets a companion code-fix
+	/// component read the generator's internal diagnostic identity - survives the merge. When
+	/// <see langword="null"/>, every grant is stripped.
+	/// </param>
 	public static FrameworkInternalizationReport Apply(
 		string assemblyPath,
 		IEnumerable<string> searchDirectories,
 		Action<string>? warn = null,
 		ImmutableArray<string>? ownedNamespaces = null,
-		ImmutableArray<string>? ownedTypeFullNames = null
+		ImmutableArray<string>? ownedTypeFullNames = null,
+		ImmutableArray<string>? frameworkInternalsGrants = null
 	)
 	{
 		var namespaces = ownedNamespaces ?? DefaultOwnedNamespaces;
@@ -190,7 +237,7 @@ static class FrameworkTypeInternalizer
 			CollectExposingMembers(type, namespaces, typeFullNames, exposingMembers);
 		}
 
-		var strippedGrantCount = StripInternalsGrants(assembly);
+		var strippedGrantCount = StripInternalsGrants(assembly, frameworkInternalsGrants);
 
 		if (internalizedTypeCount > 0 || strippedGrantCount > 0)
 			assembly.Write(assemblyPath, new WriterParameters { WriteSymbols = hasSymbols });
@@ -217,21 +264,36 @@ static class FrameworkTypeInternalizer
 	}
 
 	/// <summary>
-	/// Removes the assembly-level internals grants the merge copied into the artifact. The merged
-	/// component is a shipped analyzer, not the component's own assembly: a leftover grant would let
-	/// an unrelated assembly (such as the framework's own test assemblies) reach the internalized
-	/// framework types, while the component's bin output keeps its grants for in-repo tests.
+	/// Removes the assembly-level internals grants the merge copied into the artifact from the
+	/// framework assembly. The merged component is a shipped analyzer, not the framework's own
+	/// assembly: a leftover framework grant would let an unrelated assembly (such as the framework's
+	/// own test assemblies) reach the internalized framework types.
+	/// <para>
+	/// Grants the component itself authored are kept. Stripping those broke the supported
+	/// component-to-component arrangement: a code-fix component that reads its generator's internal
+	/// diagnostic identity compiles and passes in-repo tests against the generator's unmerged bin
+	/// output, which keeps the grant, and then fails at runtime in the compiler host with a
+	/// <c>FieldAccessException</c> because the merged analyzer it actually loads had the grant
+	/// removed. Keeping the component's own grants makes the merged artifact behave like the assembly
+	/// the author compiled against.
+	/// </para>
 	/// </summary>
-	static int StripInternalsGrants(AssemblyDefinition assembly)
+	/// <param name="assembly">The merged component.</param>
+	/// <param name="frameworkInternalsGrants">
+	/// Grants declared by the framework assembly, or <see langword="null"/> to strip every grant.
+	/// </param>
+	static int StripInternalsGrants(AssemblyDefinition assembly, ImmutableArray<string>? frameworkInternalsGrants)
 	{
 		var removed = 0;
 		for (var index = assembly.CustomAttributes.Count - 1; index >= 0; index--)
 		{
+			var attribute = assembly.CustomAttributes[index];
+			if (!s_internalsGrantAttributeFullNames.Contains(attribute.AttributeType.FullName, StringComparer.Ordinal))
+				continue;
+
 			if (
-				!s_internalsGrantAttributeFullNames.Contains(
-					assembly.CustomAttributes[index].AttributeType.FullName,
-					StringComparer.Ordinal
-				)
+				frameworkInternalsGrants is { } frameworkGrants
+				&& !frameworkGrants.Contains(GrantedAssemblyName(attribute), StringComparer.Ordinal)
 			)
 			{
 				continue;
