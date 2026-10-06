@@ -132,7 +132,12 @@ static class MergeToolRunner
 				ownedTypeFullNames: Extend(
 					FrameworkTypeInternalizer.DefaultOwnedTypeFullNames,
 					[.. FrameworkTypeInternalizer.CollectTypeFullNames(frameworkPath), .. options.OwnedTypeFullNames]
-				)
+				),
+				// Only the framework's own grants are stripped. A grant the component authored - the one
+				// that lets a companion code-fix component read the generator's internal diagnostic
+				// identity - has to survive, or the merged analyzer the compiler host loads behaves
+				// differently from the assembly the author compiled and tested against.
+				frameworkInternalsGrants: FrameworkTypeInternalizer.CollectInternalsGrants(frameworkPath)
 			);
 
 			if (internalization.PublicFrameworkTypesRemaining.Length > 0)
