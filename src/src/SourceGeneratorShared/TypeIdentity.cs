@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
@@ -140,30 +139,21 @@ public readonly record struct TypeIdentity
 			);
 		}
 
-		var assembly = namedType.ContainingAssembly;
-		if (assembly is not null)
-		{
-			var cache = AssemblySymbolCache.GetValue(assembly, AssemblyCacheFactory);
-			this = cache.GetOrAdd(typeSymbol, SymbolCacheFactory).Value;
-		}
-		else
-		{
-			this = CreateFromSymbol(typeSymbol).Value;
-		}
+		this = SymbolCache.GetValue(namedType, SymbolCacheFactory).Value;
 	}
 
-	static readonly ConditionalWeakTable<
-		IAssemblySymbol,
-		ConcurrentDictionary<ITypeSymbol, TypeIdentityCacheEntry>
-	> AssemblySymbolCache = new();
-	static readonly ConditionalWeakTable<
-		IAssemblySymbol,
-		ConcurrentDictionary<ITypeSymbol, TypeIdentityCacheEntry>
-	>.CreateValueCallback AssemblyCacheFactory = static assembly => new ConcurrentDictionary<
-		ITypeSymbol,
-		TypeIdentityCacheEntry
-	>(TypeSymbolEqualityComparer.Instance);
-	static readonly Func<ITypeSymbol, TypeIdentityCacheEntry> SymbolCacheFactory = CreateFromSymbol;
+	// Keyed weakly on the symbol itself, so a cached identity never outlives the symbol it was built from.
+	//
+	// The previous shape — a per-assembly ConcurrentDictionary keyed by ITypeSymbol — leaked: a constructed
+	// generic such as List<SourceType> reports its *definition's* assembly as the containing assembly, so the
+	// entry landed in the dictionary hanging off a long-lived metadata assembly (corlib) while the key
+	// strongly referenced a source symbol. That pinned the whole source compilation for the lifetime of the
+	// corlib assembly symbol — the entire compiler host session in an IDE, and the entire run in a test
+	// process now that metadata references (and therefore their assembly symbols) are shared across
+	// compilations.
+	static readonly ConditionalWeakTable<ITypeSymbol, TypeIdentityCacheEntry> SymbolCache = new();
+	static readonly ConditionalWeakTable<ITypeSymbol, TypeIdentityCacheEntry>.CreateValueCallback SymbolCacheFactory =
+		CreateFromSymbol;
 
 	static TypeIdentityCacheEntry CreateFromSymbol(ITypeSymbol typeSymbol)
 	{
@@ -192,15 +182,6 @@ public readonly record struct TypeIdentity
 					TypeArguments = [],
 				}
 			);
-	}
-
-	sealed class TypeSymbolEqualityComparer : IEqualityComparer<ITypeSymbol>
-	{
-		public static readonly TypeSymbolEqualityComparer Instance = new();
-
-		public bool Equals(ITypeSymbol? x, ITypeSymbol? y) => SymbolEqualityComparer.Default.Equals(x, y);
-
-		public int GetHashCode(ITypeSymbol obj) => SymbolEqualityComparer.Default.GetHashCode(obj);
 	}
 
 	sealed class TypeIdentityCacheEntry(TypeIdentity value)

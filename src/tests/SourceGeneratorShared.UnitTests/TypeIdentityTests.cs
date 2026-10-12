@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 
 namespace Purview.SourceGeneratorFramework;
@@ -589,5 +590,91 @@ public sealed class TypeIdentityTests
 
 		await Assert.That(resourceKitBase == TypeIdentity.Null).IsFalse();
 		await Assert.That(resourceKitBase == TypeIdentity.Empty).IsFalse();
+	}
+
+	// ---------------------------------------------------------------------------------------------
+	// Regression: the symbol cache must not conflate types that produce different identities
+	// ---------------------------------------------------------------------------------------------
+
+	[Test]
+	public async Task Create_GivenGenericArgumentsDifferingOnlyByNullability_DoesNotShareACachedIdentity()
+	{
+		// Arrange - a TypeIdentity records its type arguments as TypeReference values, and those carry the
+		// nullable reference annotation. SymbolEqualityComparer.Default ignores that annotation, so keying the
+		// cache with it made List<string?> and List<string> collide: whichever was built first won, for every
+		// later compilation in the process.
+		var compilation = TestCompilation.Create();
+		var list = compilation.GetTypeByMetadataName("System.Collections.Generic.List`1")!;
+		var @string = compilation.GetSpecialType(SpecialType.System_String);
+
+		var ofNullable = list.Construct(@string.WithNullableAnnotation(NullableAnnotation.Annotated));
+		var ofNonNullable = list.Construct(@string.WithNullableAnnotation(NullableAnnotation.NotAnnotated));
+
+		// Act - nullable first, so a collision would hand the annotated identity back for the second.
+		TypeIdentity nullable = new(ofNullable);
+		TypeIdentity nonNullable = new(ofNonNullable);
+
+		// Assert
+		await Assert.That(nullable.TypeArguments[0].IsNullable).IsTrue();
+		await Assert.That(nonNullable.TypeArguments[0].IsNullable).IsFalse();
+	}
+
+	// ---------------------------------------------------------------------------------------------
+	// Regression: the symbol cache must not outlive the symbols it is built from
+	// ---------------------------------------------------------------------------------------------
+
+	[Test]
+	public async Task Create_GivenConstructedGenericOverSourceType_DoesNotRetainTheCompilation()
+	{
+		// Arrange - an anchor compilation stands in for the rest of the run: because the harness shares its
+		// MetadataReference instances, every test compilation binds the *same* corlib assembly symbol, and
+		// that symbol stays alive as long as any compilation holds it.
+		var anchor = TestCompilation.Create();
+		var anchorCorlib = anchor.GetSpecialType(SpecialType.System_Int32).ContainingAssembly;
+
+		// List<Marker> reports its definition's assembly - corlib - as the containing assembly. Keying the
+		// cached identity off that assembly, rather than off the symbol, pinned the source compilation for as
+		// long as the anchor lived.
+		var (reference, name, corlib) = BuildIdentityAndDiscardCompilation();
+		await Assert.That(name).IsEqualTo("List");
+		await Assert.That(ReferenceEquals(corlib, anchorCorlib)).IsTrue();
+
+		// Act
+		for (var attempt = 0; attempt < 3; attempt++)
+		{
+			GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+			GC.WaitForPendingFinalizers();
+		}
+
+		// Assert
+		await Assert.That(reference.IsAlive).IsFalse();
+
+		GC.KeepAlive(anchorCorlib);
+		GC.KeepAlive(anchor);
+	}
+
+	// Kept out of the caller's frame so the compilation has no live root once this returns.
+	[MethodImpl(MethodImplOptions.NoInlining)]
+	static (WeakReference Compilation, string IdentityName, IAssemblySymbol Corlib) BuildIdentityAndDiscardCompilation()
+	{
+		var compilation = TestCompilation.Create(
+			"""
+			namespace Sample;
+
+			public class Marker { }
+
+			public class Owner
+			{
+				public System.Collections.Generic.List<Marker> Items = null!;
+			}
+			"""
+		);
+
+		var owner = compilation.GetTypeByMetadataName("Sample.Owner")!;
+		var itemsType = ((IFieldSymbol)owner.GetMembers("Items")[0]).Type;
+
+		TypeIdentity identity = new(itemsType);
+
+		return (new(compilation), identity.Name, itemsType.ContainingAssembly);
 	}
 }
