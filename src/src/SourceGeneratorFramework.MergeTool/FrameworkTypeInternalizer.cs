@@ -71,7 +71,7 @@ static class FrameworkTypeInternalizer
 	/// namespace, or the global namespace when the spec sets none), so they are only recognizable
 	/// through the tool name on their <c>GeneratedCodeAttribute</c>.
 	/// </summary>
-	static readonly ImmutableArray<string> s_frameworkGeneratorToolNames =
+	static readonly ImmutableArray<string> FrameworkGeneratorToolNames =
 	[
 		"TypeLibraryGenerator",
 		"AttributeDataModelGenerator",
@@ -80,13 +80,13 @@ static class FrameworkTypeInternalizer
 	/// <summary>
 	/// Assembly-level attributes that grant other assemblies access to a component's internals.
 	/// </summary>
-	static readonly ImmutableArray<string> s_internalsGrantAttributeFullNames =
+	static readonly ImmutableArray<string> InternalsGrantAttributeFullNames =
 	[
 		"System.Runtime.CompilerServices.InternalsVisibleToAttribute",
 		"System.Runtime.CompilerServices.IgnoresAccessChecksToAttribute",
 	];
 
-	static readonly ImmutableArray<string> s_roslynComponentAttributeFullNames =
+	static readonly ImmutableArray<string> RoslynComponentAttributeFullNames =
 	[
 		"Microsoft.CodeAnalysis.GeneratorAttribute",
 		"Microsoft.CodeAnalysis.Diagnostics.DiagnosticAnalyzerAttribute",
@@ -94,7 +94,7 @@ static class FrameworkTypeInternalizer
 		"Microsoft.CodeAnalysis.CodeRefactorings.ExportCodeRefactoringProviderAttribute",
 	];
 
-	static readonly ImmutableArray<string> s_roslynComponentInterfaceFullNames =
+	static readonly ImmutableArray<string> RoslynComponentInterfaceFullNames =
 	[
 		"Microsoft.CodeAnalysis.IIncrementalGenerator",
 		"Microsoft.CodeAnalysis.ISourceGenerator",
@@ -135,10 +135,7 @@ static class FrameworkTypeInternalizer
 		[
 			.. assembly
 				.CustomAttributes.Where(static attribute =>
-					s_internalsGrantAttributeFullNames.Contains(
-						attribute.AttributeType.FullName,
-						StringComparer.Ordinal
-					)
+					InternalsGrantAttributeFullNames.Contains(attribute.AttributeType.FullName, StringComparer.Ordinal)
 				)
 				.Select(static attribute => GrantedAssemblyName(attribute))
 				.Where(static name => name.Length > 0),
@@ -288,7 +285,7 @@ static class FrameworkTypeInternalizer
 		for (var index = assembly.CustomAttributes.Count - 1; index >= 0; index--)
 		{
 			var attribute = assembly.CustomAttributes[index];
-			if (!s_internalsGrantAttributeFullNames.Contains(attribute.AttributeType.FullName, StringComparer.Ordinal))
+			if (!InternalsGrantAttributeFullNames.Contains(attribute.AttributeType.FullName, StringComparer.Ordinal))
 				continue;
 
 			if (
@@ -476,7 +473,7 @@ static class FrameworkTypeInternalizer
 				continue;
 			}
 
-			if (s_frameworkGeneratorToolNames.Contains(toolName, StringComparer.Ordinal))
+			if (FrameworkGeneratorToolNames.Contains(toolName, StringComparer.Ordinal))
 				return true;
 		}
 
@@ -521,7 +518,7 @@ static class FrameworkTypeInternalizer
 	{
 		foreach (var attribute in type.CustomAttributes)
 		{
-			if (s_roslynComponentAttributeFullNames.Contains(attribute.AttributeType.FullName, StringComparer.Ordinal))
+			if (RoslynComponentAttributeFullNames.Contains(attribute.AttributeType.FullName, StringComparer.Ordinal))
 				return true;
 		}
 
@@ -546,8 +543,8 @@ static class FrameworkTypeInternalizer
 			return false;
 
 		// The type may be a generic instance, so check the element type as well.
-		return s_roslynComponentInterfaceFullNames.Contains(type.FullName, StringComparer.Ordinal)
-			|| s_roslynComponentInterfaceFullNames.Contains(
+		return RoslynComponentInterfaceFullNames.Contains(type.FullName, StringComparer.Ordinal)
+			|| RoslynComponentInterfaceFullNames.Contains(
 				Resolve(type)?.FullName ?? string.Empty,
 				StringComparer.Ordinal
 			);

@@ -186,7 +186,7 @@ public readonly record struct TypeIdentity
 
 	sealed class TypeIdentityCacheEntry(TypeIdentity value)
 	{
-		public TypeIdentity Value = value;
+		public TypeIdentity Value { get; } = value;
 	}
 
 	/// <summary>

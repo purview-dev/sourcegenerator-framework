@@ -3,6 +3,11 @@ using System.ComponentModel;
 
 namespace System;
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+	"Design",
+	"CA1034:Nested types should not be visible",
+	Justification = "The extension(...) block is lowered to an unnamed nested type; the language requires it to be nested in a static class, and PSGFR34 mandates extension blocks over classic 'this'-parameter methods."
+)]
 [EditorBrowsable(EditorBrowsableState.Never)]
 public static class StringExtensions
 {

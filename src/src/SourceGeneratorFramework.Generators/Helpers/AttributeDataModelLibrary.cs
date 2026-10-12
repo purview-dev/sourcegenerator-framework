@@ -408,15 +408,12 @@ static class AttributeDataModelLibrary
 		}
 		else
 		{
-			var (IsTypeArgument, Sources, DefaultValue, HasDefaultValue) = ReadTypeArgumentAttributeInfo(
-				parameter,
-				isExcluded
-			);
+			var typeArgumentInfo = ReadTypeArgumentAttributeInfo(parameter, isExcluded);
 
-			isTypeArgument = IsTypeArgument;
-			defaultValue = DefaultValue;
-			hasDefaultValue = HasDefaultValue;
-			sources.AddRange(Sources);
+			isTypeArgument = typeArgumentInfo.IsTypeArgument;
+			defaultValue = typeArgumentInfo.DefaultValue;
+			hasDefaultValue = typeArgumentInfo.HasDefaultValue;
+			sources.AddRange(typeArgumentInfo.Sources);
 		}
 
 		var hasExclusive = isExcluded || isNestedModel || isTypeArgument;

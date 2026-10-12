@@ -12,6 +12,11 @@ namespace Microsoft.CodeAnalysis;
 /// </summary>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2208:Instantiate argument exceptions correctly")]
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1708:Identifiers should differ by more than case")]
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+	"Design",
+	"CA1034:Nested types should not be visible",
+	Justification = "The extension(...) block is lowered to an unnamed nested type; the language requires it to be nested in a static class, and PSGFR34 mandates extension blocks over classic 'this'-parameter methods."
+)]
 [EditorBrowsable(EditorBrowsableState.Never)]
 public static partial class AttributeDataExtensions
 {
