@@ -218,6 +218,20 @@ these tests fail the build and catch the regression.
 Roslyn would see a fresh compilation on the second run and report stages `Modified`/`New` even though the
 sources are byte-identical — the "cached" assertion would fail.
 
+### Log entries per run
+
+`IncrementalCacheRun.LogEntries` carries the framework log entries that run wrote, in order. The sink is
+registered for the whole sequence and drained between runs, so entries never accumulate. A rerun whose
+output step is cached logs nothing, which makes it a second signal alongside the step reasons:
+
+```csharp
+await Assert.That(result.Runs[0].LogEntries).IsNotEmpty();
+await Assert.That(result.Runs[1].LogEntries).IsEmpty();
+```
+
+`DriverRunResult.LogEntries` (the `RunAsync` path) is likewise in write order. Both are empty when
+`EnableLogging` is disabled.
+
 ### The `StepReasons` helper
 
 `IncrementalCacheRun.Steps` is `ImmutableDictionary<string, ImmutableArray<IncrementalGeneratorRunStep>>`

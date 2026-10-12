@@ -142,6 +142,8 @@ Why the tests look the way they do:
 - `new IncrementalRunInput([Source], [("build_property.X", "value")])` toggles an MSBuild property for one
   run only, so a property-only change must mark `GetMSBuildPropertyValue_*`/`GetGenerationConfiguration`/
   `GetGenerationContext_*` `Modified` while `ForAttribute_*` stays `Cached`.
+- `result.Runs[n].LogEntries` carries the framework log entries *that run* wrote, in order, so a rerun whose
+  output step is cached can be asserted to have logged nothing. Empty when `EnableLogging` is disabled.
 - The `StepReasons(IncrementalCacheRun)` helper flattens each tracked step's `Outputs` into a
   `ImmutableDictionary<string, ImmutableArray<IncrementalStepRunReason>>` so assertions can address a stage
   by name (see `source-generator-testing` for the helper body).

@@ -43,6 +43,23 @@ exactly what the driver decided to recompute.
 
 `GenerateIncrementalAsync` on `TUnitSourceGeneratorTestBase` wraps the same runner for test-base users.
 
+## Log entries
+
+Each `IncrementalCacheRun` carries the framework log entries that **that run** wrote, in the order the
+generator wrote them, through `IncrementalCacheRun.LogEntries`. The sink is registered for the whole
+sequence (the driver is shared) and drained between runs, so entries never accumulate across runs:
+
+```csharp
+var result = await GenerateIncrementalAsync([Source], cancellationToken: cancellationToken);
+
+await Assert.That(result.Runs[0].LogEntries).IsNotEmpty();   // the first run executed the pipeline
+await Assert.That(result.Runs[1].LogEntries).IsEmpty();      // the rerun reused the cached output
+```
+
+That makes logging a second, independent signal alongside the step reasons: a stage reported as `Cached`
+should not have logged anything on that run. Entries are empty when
+`SourceGeneratorTestOptions.EnableLogging` is disabled.
+
 ## Step reasons
 
 Each pipeline stage (tracked by its tracking name) has outputs, each carrying an

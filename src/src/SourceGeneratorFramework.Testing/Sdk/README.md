@@ -274,6 +274,19 @@ await Assert.That(result.Runs[1]).StepIsModified("ForAttribute_MyAttribute");
 await Assert.That(result.Runs[1]).StepIsCached("GetGenerationConfiguration");
 ```
 
+Each run also carries the framework log entries *that run* wrote, in write order, through
+`IncrementalCacheRun.LogEntries` — the sink is registered for the whole sequence and drained between runs,
+so entries never accumulate. A rerun whose output step is cached logs nothing, giving a second signal
+alongside the step reasons:
+
+```csharp
+await Assert.That(result.Runs[0].LogEntries).IsNotEmpty();
+await Assert.That(result.Runs[1].LogEntries).IsEmpty();
+```
+
+`DriverRunResult.LogEntries` (the `RunAsync` path) is likewise in write order. Both are empty when
+`EnableLogging` is disabled.
+
 `RunIncrementalAsync(sources, options, ct)` runs the same source set twice (the common "unchanged rerun is
 cached" case). Per-run MSBuild-property changes use `new IncrementalRunInput(sources, [...])`. Reference
 cache tests live in the `Purview.SourceGeneratorFramework` source repository —

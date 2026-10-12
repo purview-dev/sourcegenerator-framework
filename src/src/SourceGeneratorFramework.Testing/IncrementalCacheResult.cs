@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
+using Purview.SourceGeneratorFramework.Testing.Models;
 
 namespace Purview.SourceGeneratorFramework.Testing;
 
@@ -29,7 +30,18 @@ public sealed record IncrementalRunInput(
 public sealed record IncrementalCacheRun(
 	GeneratorRunResult RunResult,
 	ImmutableDictionary<string, ImmutableArray<IncrementalGeneratorRunStep>> Steps
-);
+)
+{
+	/// <summary>
+	/// The framework log entries written by the generator during this run, in the order they were written.
+	/// Empty when <see cref="SourceGeneratorTestOptions.EnableLogging"/> is disabled.
+	/// </summary>
+	/// <remarks>
+	/// Scoped to the single run rather than the whole sequence, so a rerun whose stages all report
+	/// <see cref="IncrementalStepRunReason.Cached"/> can be asserted to have logged nothing.
+	/// </remarks>
+	public ImmutableArray<LogEntry> LogEntries { get; init; } = [];
+}
 
 /// <summary>
 /// The result of an incremental cache test run: one <see cref="IncrementalCacheRun"/> per input, produced by a
