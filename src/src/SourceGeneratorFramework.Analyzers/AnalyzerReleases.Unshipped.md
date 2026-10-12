@@ -17,6 +17,7 @@ PSGFR38 | Purview.SourceGeneratorFramework | Warning | Extension class is missin
 PSGFR39 | Purview.SourceGeneratorFramework | Error | Roslyn component must produce a self-contained analyzer
 PSGFR40 | Purview.SourceGeneratorFramework | Warning | SGF cref should be inline code
 PSGFR41 | Purview.SourceGeneratorFramework | Warning | Component public surface exposes framework types
+PSGFR42 | Purview.SourceGeneratorFramework | Info | Dispose test harness results with a using declaration
 TLB0014 | TypeLibrary | Warning | Type library partial extension is declared in a different namespace
 TLB0015 | TypeLibrary | Info | Type library partial extension must be declared 'public static partial'
 TLB0016 | TypeLibrary | Error | Enum value member type must be TypeIdentity or EnumValueDefinition

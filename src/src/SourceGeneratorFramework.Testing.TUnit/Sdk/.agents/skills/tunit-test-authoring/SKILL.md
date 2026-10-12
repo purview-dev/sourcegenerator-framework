@@ -57,6 +57,11 @@ Use the base hooks to customise per-run: `OnBeforeRun`/`OnBeforeRunAsync` (mutat
 `options.WithAdditionalSources(markerAttributeSource)`) and `OnAfterRun`/`OnAfterRunAsync`. Use
 `options.Compile()` to opt into `CompileToAssembly` while preserving the derived options type.
 
+Write `using var result = await GenerateAsync(...)`: `DriverRunResult` is `IDisposable`, and `PSGFR42`
+flags a result that is produced and never disposed (a `warning` once the run compiles to an assembly,
+`info` otherwise). It also catches the indirect case — a helper that creates a result, projects a value out
+of it and returns only the projection.
+
 For code fixes/refactorings, select a specific registered action via `CodeFixTestOptions.EquivalenceKey`
 or `CodeActionIndex`, and `RefactorTestOptions.Span`/`NodeSelector` (e.g.
 `NodeSelector = query => query.GetMethod("M")`).

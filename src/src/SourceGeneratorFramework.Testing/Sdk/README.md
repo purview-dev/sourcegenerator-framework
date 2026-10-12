@@ -147,6 +147,28 @@ assembly: inspect types, members and attributes without loading it into the runt
 They are created lazily on first access. Dispose the result (or its `DriverRunResult`) to unload the
 collectible context and release the metadata view.
 
+**`PSGFR42` enforces this.** The analyzer flags a `DriverRunResult` that is produced and then never
+disposed — no `using` declaration, not returned to a caller, not disposed explicitly. A helper that creates
+a result, projects a value out of it and returns the projection leaks just as badly, so the local inside the
+helper is flagged too. The rule is a `warning` when the run syntactically compiles to an assembly (a
+`Compile` options member, or `CompileToAssembly = true`), because that is when the leak actually holds an
+assembly and its load contexts, and `info` otherwise. `DisposeTestResultCodeFixProvider` turns the
+declaration into a `using` declaration, with project-wide "Fix all" support.
+
+### Reference sharing and parallelism
+
+The harness binds every trusted-platform assembly once per test process and hands the **same**
+`MetadataReference` instances to every test compilation, so Roslyn reuses one set of assembly symbols for
+the whole run. Creating references per run instead makes each compilation build its own symbol tables: in a
+100-compilation micro-benchmark that is the difference between a 156 MB and an 8,146 MB peak. Assemblies
+named by `AdditionalAssemblyTypes` that are already in the trusted set are a no-op and are not added again.
+
+Because the reference set is now shared, a harness-based test project's memory is largely flat in the degree
+of parallelism — but the test platform's auto-detected default still costs more memory, and more wall clock,
+than an explicit ceiling. Wall clock saturates at around four concurrent tests; `--maximum-parallel-tests 8`
+measured 347–365 MB / 7.7–8.7s against 528–881 MB / 12.0–13.8s for auto on a 22-core machine. Set an
+explicit ceiling when a project multi-targets and runs several TFM executables concurrently.
+
 Analyzer options are preserved under their supplied keys. Keys without the Roslyn
 `build_property.` prefix are additionally exposed as compiler-visible MSBuild properties, so either
 `MyGenerator_Disable` or `build_property.MyGenerator_Disable` can be used in tests.
