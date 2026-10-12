@@ -40,6 +40,8 @@ public class SourceGeneratorTestRunnerBenchmarks
 			ValidateCodeWriterScopes = false,
 		};
 
-		await _runner.RunAsync(_source, options);
+		// Disposed because a CompileToAssembly run creates a collectible AssemblyLoadContext: leaving it to
+		// the finalizer would accumulate one per iteration and measure the leak rather than the run.
+		using var result = await _runner.RunAsync(_source, options);
 	}
 }
