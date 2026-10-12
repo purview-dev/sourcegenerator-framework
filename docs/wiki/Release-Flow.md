@@ -34,8 +34,8 @@ packs, validates, publishes to NuGet, and creates the GitHub release.
 
 ## Local pipelines
 
-The `Justfile` wraps the shared `Purview.Build` pipeline (installed as a pinned dotnet tool to
-`.tools/purview-build/purview-build`):
+The `Justfile` wraps the shared `Purview.Build` pipeline (a pinned .NET local tool, restored from
+`.config/dotnet-tools.json` and run as `dotnet purview-build`):
 
 | Recipe | Pipeline mode | Purpose |
 | --- | --- | --- |
