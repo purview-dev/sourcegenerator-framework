@@ -53,9 +53,9 @@ public sealed partial class CodeQuery
 			throw new ArgumentException("The operator token cannot be null or whitespace.", nameof(operatorToken));
 
 		var expected = parameters ?? [];
-		foreach (var tree in Trees)
+		foreach (var root in Roots())
 		{
-			foreach (var candidate in RootOf(tree).DescendantNodes().OfType<OperatorDeclarationSyntax>())
+			foreach (var candidate in root.DescendantNodes().OfType<OperatorDeclarationSyntax>())
 			{
 				if (candidate.OperatorToken.ValueText != operatorToken)
 					continue;
@@ -115,9 +115,9 @@ public sealed partial class CodeQuery
 			throw new ArgumentException("The keyword must be 'implicit' or 'explicit'.", nameof(keyword));
 
 		var expected = parameters ?? [];
-		foreach (var tree in Trees)
+		foreach (var root in Roots())
 		{
-			foreach (var candidate in RootOf(tree).DescendantNodes().OfType<ConversionOperatorDeclarationSyntax>())
+			foreach (var candidate in root.DescendantNodes().OfType<ConversionOperatorDeclarationSyntax>())
 			{
 				if (candidate.ImplicitOrExplicitKeyword.ValueText != keyword)
 					continue;
@@ -159,9 +159,9 @@ public sealed partial class CodeQuery
 	public bool TryGetIndexer(out IndexerDeclarationSyntax? indexer, params TypeReference[] parameters)
 	{
 		var expected = parameters ?? [];
-		foreach (var tree in Trees)
+		foreach (var root in Roots())
 		{
-			foreach (var candidate in RootOf(tree).DescendantNodes().OfType<IndexerDeclarationSyntax>())
+			foreach (var candidate in root.DescendantNodes().OfType<IndexerDeclarationSyntax>())
 			{
 				if (expected.Length == 0 || MatchesParameters(candidate.ParameterList, expected))
 				{

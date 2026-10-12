@@ -91,9 +91,9 @@ public sealed partial class CodeQuery
 		if (string.IsNullOrWhiteSpace(methodName))
 			throw new ArgumentException("The method name cannot be null or whitespace.", nameof(methodName));
 
-		foreach (var tree in Trees)
+		foreach (var root in Roots())
 		{
-			foreach (var candidate in RootOf(tree).DescendantNodes().OfType<InvocationExpressionSyntax>())
+			foreach (var candidate in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
 			{
 				if (GetInvokedMethodName(candidate) == methodName)
 				{
@@ -115,9 +115,9 @@ public sealed partial class CodeQuery
 		if (type is null)
 			throw new ArgumentNullException(nameof(type));
 
-		foreach (var tree in Trees)
+		foreach (var root in Roots())
 		{
-			foreach (var candidate in RootOf(tree).DescendantNodes().OfType<ObjectCreationExpressionSyntax>())
+			foreach (var candidate in root.DescendantNodes().OfType<ObjectCreationExpressionSyntax>())
 			{
 				if (Matches(candidate.Type, type))
 					return true;
