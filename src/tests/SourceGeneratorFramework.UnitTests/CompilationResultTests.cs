@@ -31,7 +31,7 @@ public class CompilationResultTests
 		SourceGeneratorTestRunner<PassthroughGenerator> runner = new();
 		SourceGeneratorTestOptions options = new() { CompileToAssembly = true };
 
-		var result = await runner.RunAsync("public sealed class Input { }", options, cancellationToken);
+		using var result = await runner.RunAsync("public sealed class Input { }", options, cancellationToken);
 
 		await Assert.That(result.CompilationResult.Assembly).IsNotNull();
 
@@ -50,7 +50,7 @@ public class CompilationResultTests
 		SourceGeneratorTestRunner<PassthroughGenerator> runner = new();
 		SourceGeneratorTestOptions options = new() { CompileToAssembly = true };
 
-		var result = await runner.RunAsync("public sealed class Input { }", options, cancellationToken);
+		using var result = await runner.RunAsync("public sealed class Input { }", options, cancellationToken);
 
 		var context = AssemblyLoadContext.GetLoadContext(result.CompilationResult.Assembly!);
 
@@ -76,7 +76,7 @@ public class CompilationResultTests
 		SourceGeneratorTestRunner<PassthroughGenerator> runner = new();
 		SourceGeneratorTestOptions options = new() { CompileToAssembly = true };
 
-		var result = await runner.RunAsync("public sealed class Input { }", options, cancellationToken);
+		using var result = await runner.RunAsync("public sealed class Input { }", options, cancellationToken);
 
 		await Assert.That(result.CompilationResult.Metadata).IsNotNull();
 		await Assert.That(result.CompilationResult.MetadataAssembly).IsNotNull();

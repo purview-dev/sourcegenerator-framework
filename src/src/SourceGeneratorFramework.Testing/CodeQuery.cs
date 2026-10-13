@@ -67,7 +67,25 @@ public sealed partial class CodeQuery(
 		return new(Trees, Compilation, IsGenerated, root);
 	}
 
-	SyntaxNode RootOf(SyntaxTree tree) => Root ?? tree.GetRoot();
+	/// <summary>
+	/// Enumerates the roots a node search runs over: the single scoping node when this is a nested query,
+	/// otherwise the root of every tree.
+	/// </summary>
+	/// <remarks>
+	/// A scoped query has exactly one root no matter how many trees it carries. Enumerating per tree instead
+	/// would walk that one subtree once per tree, repeating every match.
+	/// </remarks>
+	internal IEnumerable<SyntaxNode> Roots()
+	{
+		if (Root is not null)
+		{
+			yield return Root;
+			yield break;
+		}
+
+		foreach (var tree in Trees)
+			yield return tree.GetRoot();
+	}
 
 	// ---------------------------------------------------------------------------------------------
 	// Syntax trees
@@ -137,9 +155,8 @@ public sealed partial class CodeQuery(
 		where T : SyntaxNode
 	{
 		var builder = ImmutableArray.CreateBuilder<CodeQueryResult<T>>();
-		foreach (var tree in Trees)
+		foreach (var root in Roots())
 		{
-			var root = RootOf(tree);
 			if (root is T rootNode && (predicate is null || predicate(rootNode)))
 				builder.Add(new(this, rootNode));
 
@@ -160,9 +177,8 @@ public sealed partial class CodeQuery(
 		where T : SyntaxNode
 	{
 		var count = 0;
-		foreach (var tree in Trees)
+		foreach (var root in Roots())
 		{
-			var root = RootOf(tree);
 			if (root is T rootNode && (predicate is null || predicate(rootNode)))
 				count++;
 
@@ -179,9 +195,8 @@ public sealed partial class CodeQuery(
 	public bool TryGet<T>(out T? node, Func<T, bool>? predicate = null)
 		where T : SyntaxNode
 	{
-		foreach (var tree in Trees)
+		foreach (var root in Roots())
 		{
-			var root = RootOf(tree);
 			if (root is T rootNode && (predicate is null || predicate(rootNode)))
 			{
 				node = rootNode;

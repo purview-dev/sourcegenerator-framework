@@ -69,6 +69,7 @@ Opt out with `PurviewSourceGeneratorFrameworkAnalyzerValidation=false` (`PRSGD00
 | `PSGFR39` | A non-packable Roslyn component that explicitly opts out of the default self-contained analyzer output (`PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles=false`) while embedding the framework, otherwise the package embeds the loose framework DLL under `analyzers/`. |
 | `PSGFR40` | In Roslyn components (`IsRoslynComponent=true`), reference SGF types as inline code (`<c>Type</c>`) instead of a `cref`: copied documentation must not depend on cref resolution. |
 | `PSGFR41` | In Roslyn components whose framework implementation is merged, a public member (or generic constraint) whose signature references an SGF type: the merge internalizes every SGF type, so the signature is left referring to an internal type. Make the member or its declaring type non-public. |
+| `PSGFR42` | A disposable Testing-harness result (`DriverRunResult`) is produced and never disposed, leaking the collectible `AssemblyLoadContext` and `MetadataLoadContext` of a compiled run. Reported as a `warning` when the run syntactically compiles to an assembly (a `Compile` options member or `CompileToAssembly = true`), otherwise as `info`. |
 
 ## Type-library and attribute-model diagnostics
 
@@ -101,6 +102,8 @@ analyzer rules above, including:
 - `PreferInlineCodeForFrameworkCrefCodeFixProvider` — rewrites SGF XML doc `cref` targets to inline code (`<c>Type</c>`) (`PSGFR40`).
 - `MakeComponentSurfaceNonPublicCodeFixProvider` — makes the exposing member, or its declaring type,
   non-public (`PSGFR41`).
+- `DisposeTestResultCodeFixProvider` — turns an undisposed test-harness result declaration into a
+  `using` declaration (`PSGFR42`).
 - `MakeTypeLibrarySpecNonPublicCodeFixProvider` — declares a type-library spec non-public in a merged
   component (`TLB0021`).
 - `AttributeDataModelSymbolPropertyCodeFixProvider` — fixes attribute-data-model symbol properties.

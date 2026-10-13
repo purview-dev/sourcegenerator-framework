@@ -81,4 +81,40 @@ public class ServiceRegistrationCacheTests
 		await Assert.That(result.Runs[1]).StepIsModified("ForAttribute_GenerateServiceAttribute");
 		await Assert.That(result.Runs[1]).StepIsCached("GetMSBuildPropertyValue_EmitServiceRegistrationInfo");
 	}
+
+	[Test]
+	public async Task GenerateIncrementalAsync_CapturesFrameworkLoggingPerRun(CancellationToken cancellationToken)
+	{
+		// Arrange / Act - two runs over a single shared driver.
+		var result = await GenerateIncrementalAsync([Source], cancellationToken: cancellationToken);
+
+		// Assert - the first run executes the pipeline and logs; the entries belong to that run alone.
+		await Assert.That(result.Runs[0].LogEntries).IsNotEmpty();
+		await Assert
+			.That(
+				result
+					.Runs[0]
+					.LogEntries.Any(entry => entry.Message.Contains("generation context", StringComparison.Ordinal))
+			)
+			.IsTrue();
+
+		// Each run carries only its own entries. If they were accumulated across the sequence instead of
+		// drained per run, the second run would also hold everything the first one logged.
+		await Assert.That(result.Runs[1].LogEntries.Length).IsLessThanOrEqualTo(result.Runs[0].LogEntries.Length);
+	}
+
+	[Test]
+	public async Task GenerateIncrementalAsync_GivenLoggingDisabled_CapturesNothing(CancellationToken cancellationToken)
+	{
+		// Arrange / Act
+		var result = await GenerateIncrementalAsync(
+			[Source],
+			new ServiceRegistrationTestOptions { EnableLogging = false },
+			cancellationToken
+		);
+
+		// Assert
+		await Assert.That(result.Runs[0].LogEntries).IsEmpty();
+		await Assert.That(result.Runs[1].LogEntries).IsEmpty();
+	}
 }

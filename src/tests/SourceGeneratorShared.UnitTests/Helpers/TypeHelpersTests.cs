@@ -91,14 +91,14 @@ public class TypeHelpersTests
 		// Arrange
 		const string source =
 			"namespace Testing { interface IResource { } class DefaultAspireResource : IResource { } class ResourceKitBase<T> where T : IResource { } class HostKit : ResourceKitBase<DefaultAspireResource> { } }";
-		var (Symbol, Syntax) = GetTypeDescriptor(source, "HostKit", cancellationToken);
+		var (symbol, syntax) = GetTypeDescriptor(source, "HostKit", cancellationToken);
 		var expectedBase = new TypeIdentity("ResourceKitBase", "Testing").MakeGeneric(
 			new TypeIdentity("IResource", "Testing")
 		);
 
 		// Act
-		var symbolResult = TypeHelpers.IsDerivedFromExpectedBase(Symbol, expectedBase);
-		var syntaxResult = TypeHelpers.IsDerivedFromExpectedBase(Syntax, expectedBase);
+		var symbolResult = TypeHelpers.IsDerivedFromExpectedBase(symbol, expectedBase);
+		var syntaxResult = TypeHelpers.IsDerivedFromExpectedBase(syntax, expectedBase);
 
 		// Assert
 		await Assert.That(symbolResult).IsTrue();
@@ -113,12 +113,12 @@ public class TypeHelpersTests
 		// Arrange
 		const string source =
 			"namespace Testing { interface IResource { } class DefaultAspireResource : IResource { } class ResourceKitBase<T> where T : IResource { } class HostKit : ResourceKitBase<DefaultAspireResource> { } }";
-		var (Symbol, Syntax) = GetTypeDescriptor(source, "HostKit", cancellationToken);
+		var (symbol, syntax) = GetTypeDescriptor(source, "HostKit", cancellationToken);
 		TypeIdentity expectedBase = new("ResourceKitBase", "Testing");
 
 		// Act
-		var symbolResult = TypeHelpers.IsDerivedFromExpectedBase(Symbol, expectedBase);
-		var syntaxResult = TypeHelpers.IsDerivedFromExpectedBase(Syntax, expectedBase);
+		var symbolResult = TypeHelpers.IsDerivedFromExpectedBase(symbol, expectedBase);
+		var syntaxResult = TypeHelpers.IsDerivedFromExpectedBase(syntax, expectedBase);
 
 		// Assert
 		await Assert.That(symbolResult).IsTrue();

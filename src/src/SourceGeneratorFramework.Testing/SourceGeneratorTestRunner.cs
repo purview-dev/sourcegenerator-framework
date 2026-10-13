@@ -42,7 +42,8 @@ public sealed class SourceGeneratorTestRunner<TGenerator>
 			);
 		}
 
-		ConcurrentBag<LogEntry> logEntries = [];
+		// A queue, not a bag: log entries are only meaningful in the order the generator wrote them.
+		ConcurrentQueue<LogEntry> logEntries = [];
 
 		if (!options.AdditionalSources.IsDefaultOrEmpty)
 			sources = sources.Concat(options.AdditionalSources);
@@ -153,6 +154,12 @@ public sealed class SourceGeneratorTestRunner<TGenerator>
 
 		TGenerator generator = new();
 		var loggingSessionId = options.EnableLogging ? Guid.NewGuid().ToString("N") : null;
+
+		// The sink has to be registered for the whole sequence: the driver is shared across the runs, and the
+		// session id baked into it by CreateDriver only resolves to a logger while a sink is registered for it.
+		ConcurrentQueue<LogEntry> logEntries = [];
+		using var loggingRegistration = ConfigureLogging(loggingSessionId, options, logEntries);
+
 		var driver = CreateDriver(generator, options, loggingSessionId);
 		var references = SourceGeneratorHelpers.ResolveReferences(options, typeof(TGenerator).Assembly);
 		var runs = ImmutableArray.CreateBuilder<IncrementalCacheRun>(materializedInputs.Count);
@@ -178,10 +185,25 @@ public sealed class SourceGeneratorTestRunner<TGenerator>
 			}
 
 			driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out _, cancellationToken);
-			runs.Add(CaptureRun(driver));
+
+			// Drained per run, so each run carries only what that run logged. A stage reported as Cached
+			// should log nothing, which is what makes this worth capturing separately.
+			runs.Add(CaptureRun(driver, DrainLogEntries(logEntries)));
 		}
 
 		return new(runs.ToImmutable());
+	}
+
+	static ImmutableArray<LogEntry> DrainLogEntries(ConcurrentQueue<LogEntry> logEntries)
+	{
+		if (logEntries.IsEmpty)
+			return [];
+
+		var builder = ImmutableArray.CreateBuilder<LogEntry>(logEntries.Count);
+		while (logEntries.TryDequeue(out var entry))
+			builder.Add(entry);
+
+		return builder.ToImmutable();
 	}
 
 	static CSharpCompilation BuildCompilation(
@@ -208,7 +230,7 @@ public sealed class SourceGeneratorTestRunner<TGenerator>
 		return SourceGeneratorHelpers.CreateCompilation(syntaxTrees, references, options);
 	}
 
-	static IncrementalCacheRun CaptureRun(GeneratorDriver driver)
+	static IncrementalCacheRun CaptureRun(GeneratorDriver driver, ImmutableArray<LogEntry> logEntries)
 	{
 		var driverRunResult = driver.GetRunResult();
 		var runResult = driverRunResult.Results.FirstOrDefault(run => run.Generator is not null);
@@ -221,7 +243,7 @@ public sealed class SourceGeneratorTestRunner<TGenerator>
 				steps[pair.Key] = pair.Value;
 		}
 
-		return new(runResult, steps.ToImmutable());
+		return new(runResult, steps.ToImmutable()) { LogEntries = logEntries };
 	}
 
 	static async Task<AnalyzerCompilationRunResult?> GetAnalyzerResultsAsync(
@@ -351,7 +373,7 @@ public sealed class SourceGeneratorTestRunner<TGenerator>
 	static LoggingRegistrations? ConfigureLogging(
 		string? loggingSessionId,
 		SourceGeneratorTestOptions options,
-		ConcurrentBag<LogEntry> logEntries
+		ConcurrentQueue<LogEntry> logEntries
 	)
 	{
 		if (loggingSessionId is null)
@@ -362,7 +384,7 @@ public sealed class SourceGeneratorTestRunner<TGenerator>
 			var type = (SourceGenLogLevel)level;
 			options.TestOutput.WriteLine($"[{type}] {message}");
 
-			logEntries.Add(new(type, message));
+			logEntries.Enqueue(new(type, message));
 		}
 
 		List<IDisposable> registrations = [SourceGenLogging.RegisterSinkCore(loggingSessionId, Sink)];

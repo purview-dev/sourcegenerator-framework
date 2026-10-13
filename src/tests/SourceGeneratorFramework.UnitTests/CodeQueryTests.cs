@@ -333,6 +333,41 @@ public class CodeQueryTests
 	}
 
 	[Test]
+	public async Task ScopedQuery_GivenMultipleTrees_DoesNotRepeatMatchesPerTree()
+	{
+		// Arrange - a scope is a single node, so the number of trees in the query must not affect the result.
+		const string first = """
+			namespace Test;
+
+			public sealed class Holder
+			{
+				public void One() { }
+				public void Two() { }
+			}
+			""";
+		const string second = """
+			namespace Test;
+
+			public sealed class Other
+			{
+				public void Three() { }
+			}
+			""";
+
+		var (tree, _) = TestCompilation.Parse(second);
+		var compilation = TestCompilation.Create(first).AddSyntaxTrees(tree);
+		CodeQuery query = new([.. compilation.SyntaxTrees], compilation);
+
+		// Act
+		var scoped = query.GetClass("Holder").Query;
+
+		// Assert
+		await Assert.That(query.Trees.Length).IsEqualTo(2);
+		await Assert.That(scoped.Count<MethodDeclarationSyntax>()).IsEqualTo(2);
+		await Assert.That(scoped.GetAll<MethodDeclarationSyntax>().Length).IsEqualTo(2);
+	}
+
+	[Test]
 	public async Task OperatorAndIndexerAndAttributeQueries_FindDeclarations()
 	{
 		// Arrange

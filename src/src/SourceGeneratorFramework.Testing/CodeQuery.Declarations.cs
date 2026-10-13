@@ -481,9 +481,9 @@ public sealed partial class CodeQuery
 		if (string.IsNullOrWhiteSpace(name))
 			throw new ArgumentException("The field name cannot be null or whitespace.", nameof(name));
 
-		foreach (var tree in Trees)
+		foreach (var root in Roots())
 		{
-			foreach (var declarator in RootOf(tree).DescendantNodes().OfType<VariableDeclaratorSyntax>())
+			foreach (var declarator in root.DescendantNodes().OfType<VariableDeclaratorSyntax>())
 			{
 				if (declarator.Identifier.ValueText != name)
 					continue;
@@ -617,9 +617,9 @@ public sealed partial class CodeQuery
 	bool TryFind<T>(string name, Func<T, string> getName, Func<T, bool>? additional, out T? node)
 		where T : SyntaxNode
 	{
-		foreach (var tree in Trees)
+		foreach (var root in Roots())
 		{
-			foreach (var candidate in RootOf(tree).DescendantNodes().OfType<T>())
+			foreach (var candidate in root.DescendantNodes().OfType<T>())
 			{
 				if (getName(candidate) != name)
 					continue;

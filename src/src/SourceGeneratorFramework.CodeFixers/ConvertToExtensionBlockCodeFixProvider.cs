@@ -96,7 +96,7 @@ public sealed class ConvertToExtensionBlockCodeFixProvider : CodeFixProvider
 					// The receiver is a method type parameter; move the type parameters and constraints to
 					// the extension declaration so the receiver resolves against it.
 					typeParameterList ??= method.TypeParameterList;
-					if (methodConstraintClauses(method) is { Count: > 0 } constraints)
+					if (MethodConstraintClauses(method) is { Count: > 0 } constraints)
 						constraintClauses = constraints;
 				}
 
@@ -196,6 +196,6 @@ public sealed class ConvertToExtensionBlockCodeFixProvider : CodeFixProvider
 		return updated.WithParameterList(newParameterList);
 	}
 
-	static SyntaxList<TypeParameterConstraintClauseSyntax> methodConstraintClauses(MethodDeclarationSyntax method) =>
+	static SyntaxList<TypeParameterConstraintClauseSyntax> MethodConstraintClauses(MethodDeclarationSyntax method) =>
 		method.ConstraintClauses;
 }

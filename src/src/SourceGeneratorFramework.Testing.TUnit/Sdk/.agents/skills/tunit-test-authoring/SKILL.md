@@ -57,6 +57,11 @@ Use the base hooks to customise per-run: `OnBeforeRun`/`OnBeforeRunAsync` (mutat
 `options.WithAdditionalSources(markerAttributeSource)`) and `OnAfterRun`/`OnAfterRunAsync`. Use
 `options.Compile()` to opt into `CompileToAssembly` while preserving the derived options type.
 
+Write `using var result = await GenerateAsync(...)`: `DriverRunResult` is `IDisposable`, and `PSGFR42`
+flags a result that is produced and never disposed (a `warning` once the run compiles to an assembly,
+`info` otherwise). It also catches the indirect case — a helper that creates a result, projects a value out
+of it and returns only the projection.
+
 For code fixes/refactorings, select a specific registered action via `CodeFixTestOptions.EquivalenceKey`
 or `CodeActionIndex`, and `RefactorTestOptions.Span`/`NodeSelector` (e.g.
 `NodeSelector = query => query.GetMethod("M")`).
@@ -137,6 +142,8 @@ Why the tests look the way they do:
 - `new IncrementalRunInput([Source], [("build_property.X", "value")])` toggles an MSBuild property for one
   run only, so a property-only change must mark `GetMSBuildPropertyValue_*`/`GetGenerationConfiguration`/
   `GetGenerationContext_*` `Modified` while `ForAttribute_*` stays `Cached`.
+- `result.Runs[n].LogEntries` carries the framework log entries *that run* wrote, in order, so a rerun whose
+  output step is cached can be asserted to have logged nothing. Empty when `EnableLogging` is disabled.
 - The `StepReasons(IncrementalCacheRun)` helper flattens each tracked step's `Outputs` into a
   `ImmutableDictionary<string, ImmutableArray<IncrementalStepRunReason>>` so assertions can address a stage
   by name (see `source-generator-testing` for the helper body).

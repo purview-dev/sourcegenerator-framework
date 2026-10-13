@@ -154,6 +154,26 @@ emitted assembly: inspect types, members and attributes without loading it into 
 executing any code. They are created lazily on first access. Dispose the result (or its
 `DriverRunResult`) to unload the collectible context and release the metadata view.
 
+[`PSGFR42`](Analyzers.md#rule-reference) enforces that: a `DriverRunResult` that is produced and never
+disposed — including the indirect case where a helper creates a result, projects a value out of it and
+returns only the projection — is flagged, as a `warning` when the run syntactically compiles to an assembly
+and as `info` otherwise. `DisposeTestResultCodeFixProvider` inserts the `using`.
+
+## Reference sharing and parallelism
+
+The harness binds every trusted-platform assembly once per test process and hands the **same**
+`MetadataReference` instances to every test compilation, so Roslyn reuses one set of assembly symbols
+across the run instead of rebuilding symbol tables per test. Over 100 compilations of the same source
+against the same assembly set, shared references peak at 156 MB where per-compilation references peak at
+8,146 MB. An assembly named by `AdditionalAssemblyTypes` that is already in the trusted-platform set is a
+no-op: the reference is not added a second time.
+
+Because of that sharing, memory is largely flat in the degree of parallelism — but the test platform's
+auto-detected default still costs more memory *and* more wall clock than an explicit ceiling. Wall clock
+saturates at around four concurrent tests. On a 22-core machine, `--maximum-parallel-tests 8` measured
+347–365 MB / 7.7–8.7s against 528–881 MB / 12.0–13.8s for the auto default. Set an explicit ceiling for a
+test project that multi-targets, where several TFM executables run concurrently under `dotnet test`.
+
 Analyzer options are preserved under their supplied keys. Keys without the Roslyn `build_property.`
 prefix are additionally exposed as compiler-visible MSBuild properties, so either `MyGenerator_Disable`
 or `build_property.MyGenerator_Disable` can be used in tests.

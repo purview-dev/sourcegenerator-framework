@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Text;
@@ -8,6 +9,15 @@ namespace Purview.SourceGeneratorFramework.Testing;
 
 static class SourceGeneratorHelpers
 {
+	// Process-wide, keyed by assembly path. A MetadataReference owns an AssemblyMetadata, and Roslyn keys
+	// its PEAssemblySymbol cache off that instance: handing every test compilation the *same* instance lets
+	// Roslyn reuse one set of symbol tables across the whole run instead of rebuilding them per test. Test
+	// processes are short lived and the referenced assemblies do not change underneath them, so the entries
+	// are never invalidated.
+	static readonly ConcurrentDictionary<string, MetadataReference> ReferenceCache = new(
+		StringComparer.OrdinalIgnoreCase
+	);
+
 	public static readonly string[] TrustedAssemblies = ResolveTrustedAssemblies();
 
 	public static ImmutableArray<MetadataReference> ResolveTrustedReferences { get; } =
@@ -18,6 +28,21 @@ static class SourceGeneratorHelpers
 		ResolveTrustedReferences,
 		GeneratorAssemblyPath
 	);
+
+	static readonly ImmutableHashSet<string> CachedFilteredReferencePaths = CollectDisplayPaths(
+		CachedFilteredReferences
+	);
+
+	/// <summary>
+	/// Gets the shared <see cref="MetadataReference"/> for an assembly path, creating it on first use.
+	/// </summary>
+	/// <remarks>
+	/// Always go through this instead of calling <see cref="MetadataReference.CreateFromFile(string, MetadataReferenceProperties, DocumentationProvider)"/>
+	/// directly: a fresh reference per test run gives Roslyn a fresh <c>AssemblyMetadata</c>, which defeats
+	/// symbol reuse and makes every test compilation build its own symbol tables.
+	/// </remarks>
+	public static MetadataReference GetOrCreateReference(string path) =>
+		ReferenceCache.GetOrAdd(path, static p => MetadataReference.CreateFromFile(p));
 
 	public static CSharpCompilation CreateCompilation(
 		IEnumerable<SyntaxTree> syntaxTrees,
@@ -52,15 +77,48 @@ static class SourceGeneratorHelpers
 
 		builder.AddRange(CachedFilteredReferences);
 
+		// References are shared instances now, so the same assembly named twice yields the same object.
+		// Compilation.Create tolerates that, but Solution.AddMetadataReferences (the analyzer, code-fix and
+		// refactoring path) rejects duplicate items, so the additions are deduplicated here.
+		HashSet<string> addedPaths = new(StringComparer.OrdinalIgnoreCase);
 		foreach (var type in options.AdditionalAssemblyTypes)
-			builder.Add(MetadataReference.CreateFromFile(type.Assembly.Location));
+		{
+			var location = type.Assembly.Location;
 
-		builder.AddRange(options.AdditionalReferences);
+			// Dynamic and single-file assemblies have no location to reference.
+			if (string.IsNullOrEmpty(location))
+				continue;
+
+			// Already in the trusted-platform set, so naming it again is a no-op.
+			if (CachedFilteredReferencePaths.Contains(location) || !addedPaths.Add(location))
+				continue;
+
+			builder.Add(GetOrCreateReference(location));
+		}
+
+		// Deduplicated by instance, not by path: a caller may deliberately supply the same assembly twice
+		// with different MetadataReferenceProperties (extern aliases), and those are distinct references.
+		HashSet<MetadataReference> addedReferences = [];
+		foreach (var reference in options.AdditionalReferences)
+		{
+			if (!addedReferences.Add(reference) || IsAlreadyTrusted(reference))
+				continue;
+
+			builder.Add(reference);
+		}
 
 		var references = builder.ToImmutable();
 		options.PreprocessReferences?.Invoke(references);
 		return references;
 	}
+
+	// Only skips a reference that is literally the object already in the trusted list: a caller-created
+	// reference over the same file is a distinct instance and stays, preserving the previous behaviour.
+	static bool IsAlreadyTrusted(MetadataReference reference) =>
+		reference.Display is { Length: > 0 } display
+		&& CachedFilteredReferencePaths.Contains(display)
+		&& ReferenceCache.TryGetValue(display, out var cached)
+		&& ReferenceEquals(cached, reference);
 
 	public static string PrepareSource(string source, SourceGeneratorTestOptions options)
 	{
@@ -85,7 +143,18 @@ static class SourceGeneratorHelpers
 	{
 		var trusted = (string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? string.Empty;
 		if (!string.IsNullOrWhiteSpace(trusted))
-			return trusted.Split([Path.PathSeparator], StringSplitOptions.RemoveEmptyEntries);
+		{
+			// The host lists a path once per deps.json library that resolves to it, so an assembly
+			// referenced twice by design — the generator double-reference pattern, once as an analyzer and
+			// once as a normal reference — appears twice. Referencing the same file twice is never correct,
+			// and Solution.AddMetadataReferences rejects it outright once the instances are shared.
+			return
+			[
+				.. trusted
+					.Split([Path.PathSeparator], StringSplitOptions.RemoveEmptyEntries)
+					.Distinct(StringComparer.OrdinalIgnoreCase),
+			];
+		}
 
 		// .NET Framework does not populate TRUSTED_PLATFORM_ASSEMBLIES; fall back to the loaded
 		// framework assemblies so test compilations still have their core references.
@@ -106,7 +175,19 @@ static class SourceGeneratorHelpers
 
 		var builder = ImmutableArray.CreateBuilder<MetadataReference>(paths.Length);
 		foreach (var path in paths)
-			builder.Add(MetadataReference.CreateFromFile(path));
+			builder.Add(GetOrCreateReference(path));
+
+		return builder.ToImmutable();
+	}
+
+	static ImmutableHashSet<string> CollectDisplayPaths(ImmutableArray<MetadataReference> references)
+	{
+		var builder = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
+		foreach (var reference in references)
+		{
+			if (reference.Display is { Length: > 0 } display)
+				builder.Add(display);
+		}
 
 		return builder.ToImmutable();
 	}
