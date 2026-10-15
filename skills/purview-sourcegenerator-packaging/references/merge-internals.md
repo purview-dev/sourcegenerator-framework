@@ -69,7 +69,7 @@ ILRepack finishes:
   instantiates public components (`PSGFR27`). This is what keeps the framework's own bundled
   analyzers working after the pass.
 - The pass reports the result. Leftover public framework types fail the merge with **exit code 5**
-  (`PSGFR42`). Public component members whose signature exposes a framework type are logged
+  (`PSGFR43`). Public component members whose signature exposes a framework type are logged
   (`PSGFR41`) so the author can make them, or their declaring type, non-public. Visibility is
   followed through the declaring chain here too: a public nested type inside an internal type — for
   example the compiler-synthesised `<G>$`/`<M>$` extension containers emitted for an extension class

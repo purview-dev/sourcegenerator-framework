@@ -15,7 +15,7 @@
 			artifact stays self-contained either way; a public signature over an internalized framework
 			type is simply unusable. 'message' (the default) keeps the historical plain-text log output,
 			'warning'/'error' emit MSBuild diagnostics (PSGFR41) attributed to the component, and 'none'
-			drops the findings. A *leaked* public framework type always fails the merge (PSGFR42), because
+			drops the findings. A *leaked* public framework type always fails the merge (PSGFR43), because
 			that artifact is not self-contained.
 		-->
 		<PurviewMergePublicSurfaceSeverity

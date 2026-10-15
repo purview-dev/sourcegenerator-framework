@@ -67,6 +67,9 @@ public sealed class UndisposedTestResultAnalyzer : DiagnosticAnalyzer
 			if (Unwrap(initializer) is not InvocationExpressionSyntax and not ObjectCreationExpressionSyntax)
 				continue;
 
+			if (!ProducesResult(initializer, context))
+				continue;
+
 			if (
 				context.SemanticModel.GetDeclaredSymbol(declarator, context.CancellationToken) is not ILocalSymbol local
 			)
@@ -112,6 +115,9 @@ public sealed class UndisposedTestResultAnalyzer : DiagnosticAnalyzer
 		if (produced is not InvocationExpressionSyntax and not ObjectCreationExpressionSyntax)
 			return;
 
+		if (!ProducesResult(expression, context))
+			return;
+
 		var type = context.SemanticModel.GetTypeInfo(expression, context.CancellationToken).Type;
 		if (!IsDisposableTestingResult(type))
 			return;
@@ -136,6 +142,50 @@ public sealed class UndisposedTestResultAnalyzer : DiagnosticAnalyzer
 			ParenthesizedExpressionSyntax parenthesized => Unwrap(parenthesized.Expression),
 			_ => expression,
 		};
+
+	/// <summary>
+	/// Determines whether the expression produces a result, rather than handing back one the caller
+	/// already owns.
+	/// </summary>
+	/// <remarks>
+	/// The testing package's assertions are terminal and return the subject that was asserted on when
+	/// awaited, so <c>await Assert.That(result).SomeAssertion()</c> hands the caller's own result back
+	/// instead of producing a new one. Only a task-like await — the shape every harness runner returns —
+	/// produces a result worth disposing.
+	/// </remarks>
+	static bool ProducesResult(ExpressionSyntax expression, SyntaxNodeAnalysisContext context)
+	{
+		var awaited = false;
+		var current = expression;
+
+		while (true)
+		{
+			if (current is ParenthesizedExpressionSyntax parenthesized)
+			{
+				current = parenthesized.Expression;
+				continue;
+			}
+
+			if (current is AwaitExpressionSyntax awaitExpression)
+			{
+				awaited = true;
+				current = awaitExpression.Expression;
+				continue;
+			}
+
+			break;
+		}
+
+		return !awaited || IsTaskLike(context.SemanticModel.GetTypeInfo(current, context.CancellationToken).Type);
+	}
+
+	static bool IsTaskLike(ITypeSymbol? type) =>
+		type is INamedTypeSymbol named
+		&& named.OriginalDefinition.ToDisplayString()
+			is "System.Threading.Tasks.Task"
+				or "System.Threading.Tasks.Task<TResult>"
+				or "System.Threading.Tasks.ValueTask"
+				or "System.Threading.Tasks.ValueTask<TResult>";
 
 	static bool IsDisposableTestingResult(ITypeSymbol? type)
 	{

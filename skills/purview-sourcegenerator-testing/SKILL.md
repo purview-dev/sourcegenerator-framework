@@ -162,7 +162,9 @@ declaration") flags a `DriverRunResult` that is produced and never disposed — 
 where a helper creates a result, projects a value out of it and returns only the projection. It is a
 `warning` when the run syntactically compiles to an assembly (`.Compile()`, a `Compile` options member, or
 `CompileToAssembly = true`) and `info` otherwise; the `DisposeTestResultCodeFixProvider` fix inserts the
-`using`. A result that is returned to the caller, or disposed explicitly, is not flagged.
+`using`. A result that is returned to the caller, or disposed explicitly, is not flagged. Neither is an
+awaited assertion: the assertion extensions return the subject that was asserted on, so
+`await Assert.That(result).SomeAssertion()` hands back your own result rather than producing one.
 
 ## Best practices
 

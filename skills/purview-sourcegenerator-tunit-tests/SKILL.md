@@ -67,7 +67,8 @@ Use the base hooks to customise per-run: `OnBeforeRun`/`OnBeforeRunAsync` (mutat
 Write `using var result = await GenerateAsync(...)`: `DriverRunResult` is `IDisposable`, and `PSGFR42`
 flags a result that is produced and never disposed (a `warning` once the run compiles to an assembly,
 `info` otherwise). It also catches the indirect case — a helper that creates a result, projects a value out
-of it and returns only the projection.
+of it and returns only the projection. Awaiting an assertion is not a production: `Assert.That(...)` returns
+the value when awaited, so `await Assert.That(result).SomeAssertion()` is not flagged.
 
 For code fixes/refactorings, select a specific registered action via `CodeFixTestOptions.EquivalenceKey`
 or `CodeActionIndex`, and `RefactorTestOptions.Span`/`NodeSelector` (e.g.
