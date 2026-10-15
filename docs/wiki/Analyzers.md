@@ -30,7 +30,11 @@ These are MSBuild diagnostics rather than compiler analyzers, so they are not tr
 | `PSGF0003` | `Purview.SourceGeneratorFramework` | A `PurviewGeneratorVisibleProperty` is not compiler-visible in the declaring project or its `Sdk/build`/`Sdk/buildTransitive` assets, so consumers cannot read `build_property.<Name>`. |
 | `PRSGD0005` | `Purview.BuildSdk` | A file in the returned analyzer closure references an assembly that is neither part of the closure nor a compiler-host assembly. |
 | `PSGFR41` | `Purview.SourceGeneratorFramework` merge tool | A component's public surface exposes framework types that the merge internalizes. Raised by the compiler analyzer of the same id at design time and by the merge pass as a `message` (default), `warning` or `error`. |
-| `PSGFR42` | `Purview.SourceGeneratorFramework` merge tool | The merged analyzer still exposes a public framework type, so it is not self-contained. Always an error; the merge fails with exit code 5. |
+| `PSGFR43` | `Purview.SourceGeneratorFramework` merge tool | The merged analyzer still exposes a public framework type, so it is not self-contained. Always an error; the merge fails with exit code 5. |
+
+`PSGFR41` is deliberately shared with the compiler analyzer of the same id: the merge reports the same
+finding. The merge's blocked code is `PSGFR43`, not `PSGFR42`, because `PSGFR42` belongs to the
+compiler-analyzer family (the undisposed test-harness result rule).
 
 Opt out with `PurviewSourceGeneratorFrameworkAnalyzerValidation=false` (`PRSGD0005`) or
 `PurviewSourceGeneratorFrameworkGeneratorPropertyValidation=false` (`PSGF0003`).
@@ -69,7 +73,7 @@ Opt out with `PurviewSourceGeneratorFrameworkAnalyzerValidation=false` (`PRSGD00
 | `PSGFR39` | A non-packable Roslyn component that explicitly opts out of the default self-contained analyzer output (`PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles=false`) while embedding the framework, otherwise the package embeds the loose framework DLL under `analyzers/`. |
 | `PSGFR40` | In Roslyn components (`IsRoslynComponent=true`), reference SGF types as inline code (`<c>Type</c>`) instead of a `cref`: copied documentation must not depend on cref resolution. |
 | `PSGFR41` | In Roslyn components whose framework implementation is merged, a public member (or generic constraint) whose signature references an SGF type: the merge internalizes every SGF type, so the signature is left referring to an internal type. Make the member or its declaring type non-public. |
-| `PSGFR42` | A disposable Testing-harness result (`DriverRunResult`) is produced and never disposed, leaking the collectible `AssemblyLoadContext` and `MetadataLoadContext` of a compiled run. Reported as a `warning` when the run syntactically compiles to an assembly (a `Compile` options member or `CompileToAssembly = true`), otherwise as `info`. |
+| `PSGFR42` | A disposable Testing-harness result (`DriverRunResult`) is produced and never disposed, leaking the collectible `AssemblyLoadContext` and `MetadataLoadContext` of a compiled run. Reported as a `warning` when the run syntactically compiles to an assembly (a `Compile` options member or `CompileToAssembly = true`), otherwise as `info`. Awaiting an assertion, or calling a helper that is handed the result — an extension on it, or a method taking it as a parameter — is not a production: both hand the same instance back, so only a task-like await (the shape the harness runners return) or a genuine producer is reported. |
 
 ## Type-library and attribute-model diagnostics
 

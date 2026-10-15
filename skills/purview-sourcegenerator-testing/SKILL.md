@@ -1,6 +1,13 @@
 ---
-name: source-generator-testing
-description: "Use when writing or fixing tests for source generators, diagnostic analyzers, code fixes, or refactorings in a Purview.SourceGeneratorFramework repository — picking the right runner/base, configuring options, querying produced code with CodeQuery, and asserting incremental caching."
+name: purview-sourcegenerator-testing
+description: >-
+  Use when writing or fixing tests for source generators, diagnostic analyzers, code fixes or
+  refactorings built on Purview.SourceGeneratorFramework - picking the right runner and base class,
+  configuring SourceGeneratorTestOptions, querying produced code with CodeQuery, and asserting
+  incremental pipeline caching stage by stage.
+metadata:
+  product: Purview.SourceGeneratorFramework
+  repository: purview-dev/sourcegenerator-framework
 ---
 
 # Testing source generators, analyzers, code fixes and refactorings
@@ -9,7 +16,10 @@ Use this skill whenever a task involves authoring, fixing, or modernising tests 
 (generators, diagnostic analyzers, code fix providers, refactoring providers) built with
 `Purview.SourceGeneratorFramework`. It covers the framework-agnostic test runner layer and the
 `CodeQuery` syntax-lookup API. For the TUnit base classes and assertion extensions, also load the
-`sdk` package's `tunit-test-authoring` skill.
+`purview-sourcegenerator-tunit-tests` skill.
+
+Modernising an existing suite onto `CodeQuery` and adding a stage-by-stage cache test? The playbook
+is in [references/test-modernisation.md](references/test-modernisation.md).
 
 ## Picking the right runner
 
@@ -21,7 +31,7 @@ Use this skill whenever a task involves authoring, fixing, or modernising tests 
 | — | `CodeFixTestRunner<TAnalyzer, TCodeFix>.RunFixAllAsync` (project-wide) |
 | `CodeRefactoringProvider` | `RefactoringTestRunner<TRefactoring>` |
 
-TUnit projects should prefer the matching base class instead (see `tunit-test-authoring`):
+TUnit projects should prefer the matching base class instead (see `purview-sourcegenerator-tunit-tests`):
 `TUnitSourceGeneratorTestBase`, `TUnitDiagnosticAnalyzerTestBase`, `TUnitCodeFixTestBase`,
 `TUnitRefactoringTestBase`.
 
@@ -152,7 +162,10 @@ declaration") flags a `DriverRunResult` that is produced and never disposed — 
 where a helper creates a result, projects a value out of it and returns only the projection. It is a
 `warning` when the run syntactically compiles to an assembly (`.Compile()`, a `Compile` options member, or
 `CompileToAssembly = true`) and `info` otherwise; the `DisposeTestResultCodeFixProvider` fix inserts the
-`using`. A result that is returned to the caller, or disposed explicitly, is not flagged.
+`using`. A result that is returned to the caller, or disposed explicitly, is not flagged. Neither is awaiting
+an assertion, nor calling a helper that is handed the result — an extension on it, or a method taking it as a
+parameter: both hand the same instance back, so `await Assert.That(result).SomeAssertion()` and
+`result.AssertNoGenerationExceptions()` are not flagged.
 
 ## Best practices
 

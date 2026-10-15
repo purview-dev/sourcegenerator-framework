@@ -24,7 +24,11 @@ static class MergeToolRunner
 	/// <summary>
 	/// Reported when the merged artifact still exposes framework types; the merge fails.
 	/// </summary>
-	const string PublicSurfaceBlockedCode = "PSGFR42";
+	/// <remarks>
+	/// <c>PSGFR43</c>, not <c>PSGFR42</c>: the compiler-analyzer family owns <c>PSGFR42</c> for the
+	/// undisposed test-harness result rule, so the merge's blocked code takes the next free number.
+	/// </remarks>
+	const string PublicSurfaceBlockedCode = "PSGFR43";
 
 	const string DefaultDiagnosticOrigin = "Purview.SourceGeneratorFramework";
 

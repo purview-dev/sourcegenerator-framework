@@ -1,11 +1,21 @@
 ---
-name: source-generator-codewriter-modernization
-description: "Use when implementing, reviewing, or refactoring C# source generators and analysers in Purview.SourceGeneratorFramework. Covers CodeWriter/XmlCommentWriter-style emission, incremental pipeline design, value equality, and Roslyn best practices."
+name: purview-sourcegenerator-codewriter
+description: >-
+  Use when implementing, reviewing or refactoring C# source generators and analysers built on
+  Purview.SourceGeneratorFramework. Covers CodeWriter and XmlCommentWriter emission, scope safety,
+  incremental pipeline design, value equality, deterministic output, and migrating a legacy
+  string/StringBuilder emitter to CodeWriter.
+metadata:
+  product: Purview.SourceGeneratorFramework
+  repository: purview-dev/sourcegenerator-framework
 ---
 
 # Source generator CodeWriter modernization
 
 Use this skill for any work involving C# source generators, analysers, or generated output in `Purview.SourceGeneratorFramework`. It combines CodeWriter/XmlCommentWriter emission guidance with the incremental-source-generator and analyser best practices that ship with the framework.
+
+Refactoring an existing emitter off `string`/`StringBuilder`? The step-by-step playbook is in
+[references/legacy-emitter-migration.md](references/legacy-emitter-migration.md).
 
 ## Required implementation pattern
 

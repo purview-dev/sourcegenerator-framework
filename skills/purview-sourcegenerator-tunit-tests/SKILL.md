@@ -1,6 +1,13 @@
 ---
-name: tunit-test-authoring
-description: "Use when writing TUnit tests for source generators, diagnostic analyzers, code fixes, or refactorings in a Purview.SourceGeneratorFramework repository — choosing the correct base class and method, customising options, using the assertion extensions, and modernising existing tests."
+name: purview-sourcegenerator-tunit-tests
+description: >-
+  Use when writing TUnit tests for source generators, diagnostic analyzers, code fixes or
+  refactorings built on Purview.SourceGeneratorFramework - choosing the correct TUnit base class and
+  method, customising SourceGeneratorTestOptions, using the TUnit assertion extensions, and
+  modernising existing tests.
+metadata:
+  product: Purview.SourceGeneratorFramework.Testing.TUnit
+  repository: purview-dev/sourcegenerator-framework
 ---
 
 # TUnit test authoring for Roslyn components
@@ -9,7 +16,7 @@ Use this skill whenever a task involves authoring, fixing, or modernising **TUni
 components built with `Purview.SourceGeneratorFramework`. It tells you which base class to derive from,
 which method to call, how to customise options with an easy starting point, and how to use the TUnit
 assertion extensions. For the framework-agnostic runner layer and the `CodeQuery` API, also load the
-`sdk` package's `source-generator-testing` skill.
+`purview-sourcegenerator-testing` skill.
 
 ## Base class → method matrix
 
@@ -60,7 +67,9 @@ Use the base hooks to customise per-run: `OnBeforeRun`/`OnBeforeRunAsync` (mutat
 Write `using var result = await GenerateAsync(...)`: `DriverRunResult` is `IDisposable`, and `PSGFR42`
 flags a result that is produced and never disposed (a `warning` once the run compiles to an assembly,
 `info` otherwise). It also catches the indirect case — a helper that creates a result, projects a value out
-of it and returns only the projection.
+of it and returns only the projection. Awaiting an assertion, or calling a helper that is handed the result —
+an extension on it, or a method taking it as a parameter — is not a production: both hand the same instance
+back, so neither is flagged.
 
 For code fixes/refactorings, select a specific registered action via `CodeFixTestOptions.EquivalenceKey`
 or `CodeActionIndex`, and `RefactorTestOptions.Span`/`NodeSelector` (e.g.
@@ -121,7 +130,7 @@ when awaited.
   (whitespace-flattened string comparison).
 
 For structural assertions (members, signatures, namespaces) prefer `result.Generated()` +
-`Get/Has/TryGet` from `CodeQuery` (see `source-generator-testing`).
+`Get/Has/TryGet` from `CodeQuery` (see `purview-sourcegenerator-testing`).
 
 ## Incremental cache tests (`GenerateIncrementalAsync`)
 
@@ -129,7 +138,7 @@ For structural assertions (members, signatures, namespaces) prefer `result.Gener
 also wires the base class hooks (`OnBeforeRun`/`OnBeforeRunAsync`) and your derived options record. Use it to
 prove the pipeline caches stage-by-stage. The reference is `ServiceRegistrationCacheTests` in
 `SourceGeneratorFramework.ExampleGenerator.UnitTests`; the framework-agnostic twin with a full walkthrough is
-in the `source-generator-testing` skill.
+in the `purview-sourcegenerator-testing` skill.
 
 Why the tests look the way they do:
 
@@ -146,7 +155,7 @@ Why the tests look the way they do:
   output step is cached can be asserted to have logged nothing. Empty when `EnableLogging` is disabled.
 - The `StepReasons(IncrementalCacheRun)` helper flattens each tracked step's `Outputs` into a
   `ImmutableDictionary<string, ImmutableArray<IncrementalStepRunReason>>` so assertions can address a stage
-  by name (see `source-generator-testing` for the helper body).
+  by name (see `purview-sourcegenerator-testing` for the helper body).
 - If the generator's pipeline depends on its own post-initialization output (a self-referencing generated
   attribute), Roslyn's internal `ForAttributeWithMetadataName` `Compilation` step is legitimately `Modified`
   on rerun; assert on the framework-named stages (e.g. `ForAttribute_GenerateServiceAttribute`,
@@ -213,7 +222,7 @@ When converting legacy tests that do `result.GetGeneratedTree(...)` + `string.Co
    per test.
 5. Add a stage-by-stage cache test if the component has an incremental pipeline — first run `New`,
    identical rerun `Cached`/`Unchanged`, and targeted changes mark only the affected stage `Modified`.
-   Use the inlined examples in this skill and in `source-generator-testing`'s "Incremental cache testing"
+   Use the inlined examples in this skill and in `purview-sourcegenerator-testing`'s "Incremental cache testing"
    section, swapping in your own generator and stage names.
 
 ## License

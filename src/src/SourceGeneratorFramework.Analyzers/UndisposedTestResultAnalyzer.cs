@@ -67,6 +67,9 @@ public sealed class UndisposedTestResultAnalyzer : DiagnosticAnalyzer
 			if (Unwrap(initializer) is not InvocationExpressionSyntax and not ObjectCreationExpressionSyntax)
 				continue;
 
+			if (!ProducesResult(initializer, context))
+				continue;
+
 			if (
 				context.SemanticModel.GetDeclaredSymbol(declarator, context.CancellationToken) is not ILocalSymbol local
 			)
@@ -112,6 +115,9 @@ public sealed class UndisposedTestResultAnalyzer : DiagnosticAnalyzer
 		if (produced is not InvocationExpressionSyntax and not ObjectCreationExpressionSyntax)
 			return;
 
+		if (!ProducesResult(expression, context))
+			return;
+
 		var type = context.SemanticModel.GetTypeInfo(expression, context.CancellationToken).Type;
 		if (!IsDisposableTestingResult(type))
 			return;
@@ -137,6 +143,84 @@ public sealed class UndisposedTestResultAnalyzer : DiagnosticAnalyzer
 			_ => expression,
 		};
 
+	/// <summary>
+	/// Determines whether the expression produces a result, rather than consuming one the caller already
+	/// owns or handing one back.
+	/// </summary>
+	/// <remarks>
+	/// Two shapes consume rather than produce. An assertion that is awaited hands the subject that was
+	/// asserted on back to the caller (<c>await Assert.That(result).SomeAssertion()</c>), so only a
+	/// task-like await — the shape every harness runner returns — produces. A helper that is handed the
+	/// result — an extension on it (<c>result.AssertNoGenerationExceptions()</c>), or a method taking it as
+	/// a parameter — returns that same instance, so it produces nothing either.
+	/// </remarks>
+	static bool ProducesResult(ExpressionSyntax expression, SyntaxNodeAnalysisContext context)
+	{
+		var awaited = false;
+		var current = expression;
+
+		while (true)
+		{
+			if (current is ParenthesizedExpressionSyntax parenthesized)
+			{
+				current = parenthesized.Expression;
+				continue;
+			}
+
+			if (current is AwaitExpressionSyntax awaitExpression)
+			{
+				awaited = true;
+				current = awaitExpression.Expression;
+				continue;
+			}
+
+			break;
+		}
+
+		if (awaited && !IsTaskLike(context.SemanticModel.GetTypeInfo(current, context.CancellationToken).Type))
+			return false;
+
+		return current is not InvocationExpressionSyntax invocation || !ConsumesResult(invocation, context);
+	}
+
+	/// <summary>
+	/// Determines whether the invocation is handed an existing harness result — as an extension receiver or
+	/// as an argument — and therefore consumes one instead of producing one.
+	/// </summary>
+	/// <remarks>
+	/// A helper that is given a result hands that same instance back when it returns a result at all, so it
+	/// never creates something new to dispose. Only a call that produces a result itself is reported.
+	/// </remarks>
+	static bool ConsumesResult(InvocationExpressionSyntax invocation, SyntaxNodeAnalysisContext context)
+	{
+		if (
+			context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken).Symbol
+			is not IMethodSymbol method
+		)
+			return false;
+
+		// An extension method called with instance syntax binds to a reduced symbol whose parameter list
+		// omits the receiver, so the receiver and the unreduced definition are both inspected.
+		if (IsDisposableTestingResult(method.ReceiverType))
+			return true;
+
+		foreach (var parameter in (method.ReducedFrom ?? method).Parameters)
+		{
+			if (IsDisposableTestingResult(parameter.Type))
+				return true;
+		}
+
+		return false;
+	}
+
+	static bool IsTaskLike(ITypeSymbol? type) =>
+		type is INamedTypeSymbol named
+		&& named.OriginalDefinition.ToDisplayString()
+			is "System.Threading.Tasks.Task"
+				or "System.Threading.Tasks.Task<TResult>"
+				or "System.Threading.Tasks.ValueTask"
+				or "System.Threading.Tasks.ValueTask<TResult>";
+
 	static bool IsDisposableTestingResult(ITypeSymbol? type)
 	{
 		if (type is not INamedTypeSymbol named)
@@ -152,6 +236,7 @@ public sealed class UndisposedTestResultAnalyzer : DiagnosticAnalyzer
 		)
 			return false;
 
+		// The result type is disposable if it implements either IDisposable or IAsyncDisposable, which is the case for all of the test harness result types.
 		return named.AllInterfaces.Any(static i =>
 			i.ToDisplayString() is "System.IDisposable" or "System.IAsyncDisposable"
 		);
