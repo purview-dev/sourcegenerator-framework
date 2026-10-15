@@ -152,6 +152,7 @@ public sealed class UndisposedTestResultAnalyzer : DiagnosticAnalyzer
 		)
 			return false;
 
+		// The result type is disposable if it implements either IDisposable or IAsyncDisposable, which is the case for all of the test harness result types.
 		return named.AllInterfaces.Any(static i =>
 			i.ToDisplayString() is "System.IDisposable" or "System.IAsyncDisposable"
 		);

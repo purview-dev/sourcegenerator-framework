@@ -10,7 +10,7 @@
 	<ItemGroup>
 		<PackageVersion Include="Bogus" Version="[35.6.5,)" />
 		<PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="[8.0.0,)" />
-		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="[10.0.401,)" />
+		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="[10.0.402,)" />
 		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="$(RoslynCompilerVersion)" />
 		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="$(RoslynCompilerVersion)" />
 		<PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="$(RoslynAnalyzersVersion)" />
