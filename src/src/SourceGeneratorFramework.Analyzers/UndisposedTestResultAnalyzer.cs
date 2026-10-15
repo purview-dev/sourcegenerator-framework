@@ -144,14 +144,15 @@ public sealed class UndisposedTestResultAnalyzer : DiagnosticAnalyzer
 		};
 
 	/// <summary>
-	/// Determines whether the expression produces a result, rather than handing back one the caller
-	/// already owns.
+	/// Determines whether the expression produces a result, rather than consuming one the caller already
+	/// owns or handing one back.
 	/// </summary>
 	/// <remarks>
-	/// The testing package's assertions are terminal and return the subject that was asserted on when
-	/// awaited, so <c>await Assert.That(result).SomeAssertion()</c> hands the caller's own result back
-	/// instead of producing a new one. Only a task-like await — the shape every harness runner returns —
-	/// produces a result worth disposing.
+	/// Two shapes consume rather than produce. An assertion that is awaited hands the subject that was
+	/// asserted on back to the caller (<c>await Assert.That(result).SomeAssertion()</c>), so only a
+	/// task-like await — the shape every harness runner returns — produces. A helper that is handed the
+	/// result — an extension on it (<c>result.AssertNoGenerationExceptions()</c>), or a method taking it as
+	/// a parameter — returns that same instance, so it produces nothing either.
 	/// </remarks>
 	static bool ProducesResult(ExpressionSyntax expression, SyntaxNodeAnalysisContext context)
 	{
@@ -176,7 +177,40 @@ public sealed class UndisposedTestResultAnalyzer : DiagnosticAnalyzer
 			break;
 		}
 
-		return !awaited || IsTaskLike(context.SemanticModel.GetTypeInfo(current, context.CancellationToken).Type);
+		if (awaited && !IsTaskLike(context.SemanticModel.GetTypeInfo(current, context.CancellationToken).Type))
+			return false;
+
+		return current is not InvocationExpressionSyntax invocation || !ConsumesResult(invocation, context);
+	}
+
+	/// <summary>
+	/// Determines whether the invocation is handed an existing harness result — as an extension receiver or
+	/// as an argument — and therefore consumes one instead of producing one.
+	/// </summary>
+	/// <remarks>
+	/// A helper that is given a result hands that same instance back when it returns a result at all, so it
+	/// never creates something new to dispose. Only a call that produces a result itself is reported.
+	/// </remarks>
+	static bool ConsumesResult(InvocationExpressionSyntax invocation, SyntaxNodeAnalysisContext context)
+	{
+		if (
+			context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken).Symbol
+			is not IMethodSymbol method
+		)
+			return false;
+
+		// An extension method called with instance syntax binds to a reduced symbol whose parameter list
+		// omits the receiver, so the receiver and the unreduced definition are both inspected.
+		if (IsDisposableTestingResult(method.ReceiverType))
+			return true;
+
+		foreach (var parameter in (method.ReducedFrom ?? method).Parameters)
+		{
+			if (IsDisposableTestingResult(parameter.Type))
+				return true;
+		}
+
+		return false;
 	}
 
 	static bool IsTaskLike(ITypeSymbol? type) =>

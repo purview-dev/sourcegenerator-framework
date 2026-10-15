@@ -58,6 +58,21 @@ public sealed class UndisposedTestResultAnalyzerTests : TUnitDiagnosticAnalyzerT
 			IncludeDefaultNamespaces = false,
 		};
 
+	/// <summary>
+	/// Asserts that the analysed source compiled, guarding the tests that expect no diagnostic: a source that
+	/// did not compile would leave the analyzer looking at error types and reporting nothing, so the test
+	/// would pass vacuously.
+	/// </summary>
+	static async Task AssertSourceCompilesAsync(AnalyzerTestResult result)
+	{
+		var errors = result
+			.Compilation.GetDiagnostics()
+			.Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+			.ToArray();
+
+		await Assert.That(errors).IsEmpty();
+	}
+
 	[Test]
 	public async Task UsingDeclaration_DoesNotReportDiagnostic(CancellationToken cancellationToken)
 	{
@@ -338,6 +353,7 @@ public sealed class UndisposedTestResultAnalyzerTests : TUnitDiagnosticAnalyzerT
 		var result = await AnalyzeAsync(source, Options, cancellationToken);
 
 		// Assert
+		await AssertSourceCompilesAsync(result);
 		await Assert.That(result).HasNoDiagnostics();
 	}
 
@@ -364,6 +380,145 @@ public sealed class UndisposedTestResultAnalyzerTests : TUnitDiagnosticAnalyzerT
 		var result = await AnalyzeAsync(source, Options, cancellationToken);
 
 		// Assert
+		await AssertSourceCompilesAsync(result);
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task SynchronousAssertionHelper_DoesNotReportDiagnostic(CancellationToken cancellationToken)
+	{
+		// Arrange - the helper asserts on the result and returns it for chaining, so it produces nothing.
+		const string source =
+			Harness
+			+ """
+
+				class Tests
+				{
+					public void Run(DriverRunResult result)
+					{
+						result.AssertNoGenerationExceptions();
+					}
+				}
+				""";
+
+		// Act
+		var result = await AnalyzeAsync(source, Options, cancellationToken);
+
+		// Assert
+		await AssertSourceCompilesAsync(result);
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task SynchronousAssertionChain_DoesNotReportDiagnostic(CancellationToken cancellationToken)
+	{
+		// Arrange - every link in the chain hands the same result on.
+		const string source =
+			Harness
+			+ """
+
+				class Tests
+				{
+					public void Run(DriverRunResult result)
+					{
+						result.AssertNoGenerationExceptions().AssertNoLogErrors();
+					}
+				}
+				""";
+
+		// Act
+		var result = await AnalyzeAsync(source, Options, cancellationToken);
+
+		// Assert
+		await AssertSourceCompilesAsync(result);
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task SynchronousAssertionHelperAssignedToLocal_DoesNotReportDiagnostic(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange - the local aliases the caller's own result.
+		const string source =
+			Harness
+			+ """
+
+				class Tests
+				{
+					public void Run(DriverRunResult result)
+					{
+						var checkedResult = result.AssertNoGenerationExceptions();
+						System.Console.WriteLine(checkedResult.GetSource());
+					}
+				}
+				""";
+
+		// Act
+		var result = await AnalyzeAsync(source, Options, cancellationToken);
+
+		// Assert
+		await AssertSourceCompilesAsync(result);
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task HelperTakingTheResultAsAParameter_DoesNotReportDiagnostic(CancellationToken cancellationToken)
+	{
+		// Arrange - a helper handed the result returns that same instance, so it produces nothing.
+		const string source =
+			Harness
+			+ """
+
+				static class Helpers
+				{
+					public static DriverRunResult Check(DriverRunResult result) => result;
+				}
+
+				class Tests
+				{
+					public void Run(DriverRunResult result)
+					{
+						Helpers.Check(result);
+					}
+				}
+				""";
+
+		// Act
+		var result = await AnalyzeAsync(source, Options, cancellationToken);
+
+		// Assert
+		await AssertSourceCompilesAsync(result);
+		await Assert.That(result).HasNoDiagnostics();
+	}
+
+	[Test]
+	public async Task GenericHelperOnTheResult_DoesNotReportDiagnostic(CancellationToken cancellationToken)
+	{
+		// Arrange - the receiver is the result even though the parameter is the type parameter.
+		const string source =
+			Harness
+			+ """
+
+				static class Helpers
+				{
+					public static T Tap<T>(this T value) => value;
+				}
+
+				class Tests
+				{
+					public void Run(DriverRunResult result)
+					{
+						result.Tap();
+					}
+				}
+				""";
+
+		// Act
+		var result = await AnalyzeAsync(source, Options, cancellationToken);
+
+		// Assert
+		await AssertSourceCompilesAsync(result);
 		await Assert.That(result).HasNoDiagnostics();
 	}
 }

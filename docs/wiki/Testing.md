@@ -157,9 +157,10 @@ executing any code. They are created lazily on first access. Dispose the result 
 [`PSGFR42`](Analyzers.md#rule-reference) enforces that: a `DriverRunResult` that is produced and never
 disposed — including the indirect case where a helper creates a result, projects a value out of it and
 returns only the projection — is flagged, as a `warning` when the run syntactically compiles to an assembly
-and as `info` otherwise. `DisposeTestResultCodeFixProvider` inserts the `using`. Awaiting an assertion is
-not a production: the testing package's assertion extensions return the subject that was asserted on, so
-`await Assert.That(result).SomeAssertion()` hands back your own result and is not flagged.
+and as `info` otherwise. `DisposeTestResultCodeFixProvider` inserts the `using`. Awaiting an assertion, or
+calling a helper that is handed the result — an extension on it, or a method taking it as a parameter — is
+not a production: both hand the same instance back, so neither `await Assert.That(result).SomeAssertion()`
+nor `result.AssertNoGenerationExceptions()` is flagged.
 
 ## Reference sharing and parallelism
 

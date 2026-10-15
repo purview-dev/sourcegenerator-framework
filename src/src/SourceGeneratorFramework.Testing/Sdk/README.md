@@ -153,9 +153,10 @@ a result, projects a value out of it and returns the projection leaks just as ba
 helper is flagged too. The rule is a `warning` when the run syntactically compiles to an assembly (a
 `Compile` options member, or `CompileToAssembly = true`), because that is when the leak actually holds an
 assembly and its load contexts, and `info` otherwise. `DisposeTestResultCodeFixProvider` turns the
-declaration into a `using` declaration, with project-wide "Fix all" support. Awaiting an assertion is not a
-production — the testing package's assertion extensions return the subject that was asserted on, so
-`await Assert.That(result).SomeAssertion()` hands back your own result — and is not flagged.
+declaration into a `using` declaration, with project-wide "Fix all" support. Awaiting an assertion, or calling
+a helper that is handed the result — an extension on it, or a method taking it as a parameter — is not a
+production: both hand the same instance back, so neither `await Assert.That(result).SomeAssertion()` nor
+`result.AssertNoGenerationExceptions()` is flagged.
 
 ### Reference sharing and parallelism
 
