@@ -14,7 +14,6 @@
 		"RequireSymbolFiles": true,
 		"RequiredContent": {
 			"purview.sourcegeneratorframework": [
-				".agents/**/*",
 				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.Analyzers.dll",
 				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.CodeFixers.dll",
 				"analyzers/dotnet/cs/Purview.SourceGeneratorFramework.Generators.dll",
@@ -38,7 +37,6 @@
 				"tools/*/System.IO.Hashing.dll"
 			],
 			"purview.sourcegeneratorframework.testing": [
-				".agents/**/*",
 				"build/Purview.SourceGeneratorFramework.Testing.props",
 				"lib/*/Purview.SourceGeneratorFramework.Testing.dll",
 				"lib/*/Purview.SourceGeneratorFramework.Testing.xml",
@@ -46,7 +44,6 @@
 				"README.md"
 			],
 			"purview.sourcegeneratorframework.testing.tunit": [
-				".agents/**/*",
 				"build/Purview.SourceGeneratorFramework.Testing.TUnit.props",
 				"lib/*/Purview.SourceGeneratorFramework.Testing.TUnit.dll",
 				"lib/*/Purview.SourceGeneratorFramework.Testing.TUnit.xml",
