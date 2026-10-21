@@ -19,7 +19,7 @@ public sealed record ComponentFailureOptions
 {
 	/// <summary>
 	/// Gets the diagnostic id. Defaults to a prefix derived from the component's own namespace, plus
-	/// <c>0001</c> — see <see cref="ComponentFailure.DeriveIdPrefix(System.Type)"/>.
+	/// <c>0001</c> — see <see cref="ComponentFailure.DeriveIdPrefix(Type)"/>.
 	/// </summary>
 	public string? Id { get; init; }
 

@@ -22,11 +22,11 @@ namespace Purview.SourceGeneratorFramework;
 /// <list type="bullet">
 /// <item>
 /// <see cref="Run(SourceProductionContext, Type, Action, ComponentFailureOptions?)"/> and
-/// <see cref="Run(Action{Diagnostic}, Type, Action, ComponentFailureOptions?)"/> report the failure, for
+/// <see cref="Run(Action{Diagnostic}, Type, Action, ComponentFailureOptions?,CancellationToken)"/> report the failure, for
 /// generators and analyzers.
 /// </item>
 /// <item>
-/// <see cref="TryRun(Type, Action, out Diagnostic?, ComponentFailureOptions?)"/> returns whether the body
+/// <see cref="TryRun(Type, Action, out Diagnostic?, ComponentFailureOptions?, CancellationToken)"/> returns whether the body
 /// succeeded, for suppressors, code fixes and refactorings — none of which have a channel to report on. The
 /// correct behaviour there is to do nothing: suppress nothing, offer no fix.
 /// </item>
@@ -110,6 +110,7 @@ public static class ComponentGuard
 	/// caller can log it if it has a logger, but the behaviour that matters is simply to stop: a suppressor
 	/// suppresses nothing, a fix is not offered.
 	/// </remarks>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1021:Avoid out parameters")]
 	public static bool TryRun<TComponent>(
 		Action body,
 		out Diagnostic? failure,
@@ -118,6 +119,7 @@ public static class ComponentGuard
 	) => TryRun(typeof(TComponent), body, out failure, options, cancellationToken);
 
 	/// <inheritdoc cref="TryRun{TComponent}(Action, out Diagnostic?, ComponentFailureOptions?, CancellationToken)" />
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1021:Avoid out parameters")]
 	public static bool TryRun(
 		Type componentType,
 		Action body,

@@ -180,6 +180,7 @@ public sealed class UndisposedTestResultAnalyzer : DiagnosticAnalyzer
 		if (awaited && !IsTaskLike(context.SemanticModel.GetTypeInfo(current, context.CancellationToken).Type))
 			return false;
 
+		// The expression produces a result if it is not an invocation, or if it is an invocation that does not consume a result.
 		return current is not InvocationExpressionSyntax invocation || !ConsumesResult(invocation, context);
 	}
 

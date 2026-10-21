@@ -46,15 +46,19 @@ public static class ComponentFailure
 		if (componentType is null)
 			throw new ArgumentNullException(nameof(componentType));
 
+		// The descriptor is cached by component type and options, so the same instance is returned for the same
+		// component and options. This is important for analyzers, which must declare the same
+		// DiagnosticDescriptor instance in SupportedDiagnostics that they report at runtime.
 		return Descriptors.GetOrAdd((componentType, options), static key => Create(key.Component, key.Options));
 	}
 
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1308:Normalize strings to uppercase")]
 	static DiagnosticDescriptor Create(Type componentType, ComponentFailureOptions? options)
 	{
 		var kind = DescribeKind(componentType);
 
 		return new DiagnosticDescriptor(
-			options?.Id ?? DeriveIdPrefix(componentType) + "0001",
+			options?.Id ?? (DeriveIdPrefix(componentType) + "0001"),
 			options?.Title ?? $"{kind} failed",
 			options?.MessageFormat
 				?? $"{kind} '{{0}}' failed with '{{1}}': {{2}}. This is a defect in the {kind.ToLowerInvariant()}, not in the code being compiled.",
@@ -134,7 +138,7 @@ public static class ComponentFailure
 		if (string.IsNullOrWhiteSpace(@namespace))
 			return FallbackIdPrefix;
 
-		var segments = @namespace!.Split(['.'], StringSplitOptions.RemoveEmptyEntries);
+		var segments = @namespace.Split(['.'], StringSplitOptions.RemoveEmptyEntries);
 		if (segments.Length == 0)
 			return FallbackIdPrefix;
 
@@ -171,7 +175,7 @@ public static class ComponentFailure
 		if (string.IsNullOrWhiteSpace(@namespace))
 			return FallbackCategory;
 
-		var separator = @namespace!.IndexOf('.');
+		var separator = @namespace.IndexOf('.');
 
 		return separator > 0 ? @namespace.Substring(0, separator) : @namespace;
 	}

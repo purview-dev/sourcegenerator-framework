@@ -3,9 +3,7 @@
 		<CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
 		<RoslynCompilerVersion Condition="'$(RoslynCompilerVersion)' == ''">[5.9.0,)</RoslynCompilerVersion>
 		<RoslynAnalyzersVersion Condition="'$(RoslynAnalyzersVersion)' == ''">[5.9.0,)</RoslynAnalyzersVersion>
-		<!-- Floor raised to 1.75.0 because Purview.Skills.Testing 1.0.6 depends on TUnit.Assertions/TUnit.Core
-		     1.75.0, and central transitive pinning would otherwise pin them back down. -->
-		<TUnitVersion>[1.75.0,)</TUnitVersion>
+		<TUnitVersion>[1.76.0,)</TUnitVersion>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageVersion Include="Bogus" Version="[35.6.5,)" />
@@ -25,7 +23,6 @@
 		<PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
 		<PackageVersion Include="ILRepack.Lib" Version="2.0.48" />
 		<PackageVersion Include="Mono.Cecil" Version="0.11.6" />
-		<!-- The Agent Skills conformance rule set, shipped alongside Purview.BuildSdk. -->
-		<PackageVersion Include="Purview.Skills.Testing" Version="1.0.6" />
+		<PackageVersion Include="Purview.Skills.Testing" Version="1.1.0" />
 	</ItemGroup>
 </Project>

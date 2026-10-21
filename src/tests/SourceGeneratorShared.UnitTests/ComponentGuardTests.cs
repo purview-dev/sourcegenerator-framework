@@ -258,13 +258,29 @@ public class ComponentGuardTests
 		public void Initialize(IncrementalGeneratorInitializationContext context) { }
 	}
 
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"MicrosoftCodeAnalysisCorrectness",
+		"RS1001:Missing diagnostic analyzer attribute"
+	)]
 	sealed class SampleAnalyzer : DiagnosticAnalyzer
 	{
 		public override System.Collections.Immutable.ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [];
 
+		[System.Diagnostics.CodeAnalysis.SuppressMessage(
+			"MicrosoftCodeAnalysisCorrectness",
+			"RS1025:Configure generated code analysis"
+		)]
+		[System.Diagnostics.CodeAnalysis.SuppressMessage(
+			"MicrosoftCodeAnalysisCorrectness",
+			"RS1026:Enable concurrent execution"
+		)]
 		public override void Initialize(AnalysisContext context) { }
 	}
 
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"MicrosoftCodeAnalysisCorrectness",
+		"RS1001:Missing diagnostic analyzer attribute"
+	)]
 	sealed class SampleSuppressor : DiagnosticSuppressor
 	{
 		public override System.Collections.Immutable.ImmutableArray<SuppressionDescriptor> SupportedSuppressions => [];
@@ -291,6 +307,6 @@ public class ComponentGuardTests
 
 		public override string? Namespace => _namespace;
 
-		public static Type InNamespace(string? @namespace) => new FakeType(@namespace);
+		public static FakeType InNamespace(string? @namespace) => new(@namespace);
 	}
 }

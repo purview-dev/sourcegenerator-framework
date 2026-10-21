@@ -242,6 +242,7 @@ public sealed class DoNotThrowFromGeneratorAnalyzer : DiagnosticAnalyzer
 		if (thrown is null)
 			return "the caught exception";
 
+		// The type of the expression is what was thrown, which is what the consumer sees in the stack trace.
 		return context.SemanticModel.GetTypeInfo(thrown, context.CancellationToken).Type is { } type
 			? $"'{type.Name}'"
 			: "an exception";
