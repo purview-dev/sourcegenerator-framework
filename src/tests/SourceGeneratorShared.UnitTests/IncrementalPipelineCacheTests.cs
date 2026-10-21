@@ -46,7 +46,11 @@ public class IncrementalPipelineCacheTests
 
 		var result = await runner.RunIncrementalAsync([AttributedSource], CreateOptions(), cancellationToken);
 
-		await Assert.That(result.Runs[1]).AllStepsCachedOrUnchanged();
+		// Each run builds a fresh Compilation, as an IDE does on every keystroke, so Roslyn's own
+		// compilation and syntax-tree steps necessarily report Modified. Assert the generator's own
+		// tracked stages instead: those are the ones value equality is supposed to keep cached.
+		await Assert.That(result.Runs[1]).StepIsCached("ForAttribute_TestAttribute");
+		await Assert.That(result.Runs[1]).StepIsCached("GetMSBuildPropertyValue_DisableTestGenerator");
 		await Assert.That(result.Runs[0]).HasStepReason("ForAttribute_TestAttribute", StepReason.New);
 	}
 

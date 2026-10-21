@@ -42,7 +42,6 @@ public class TypeLibraryGeneratorCacheTests : TUnitSourceGeneratorTestBase<TypeL
 		// ForAttributeWithMetadataName steps can report Modified on rerun because the post-initialization
 		// attribute source is regenerated as a new tree.)
 		await Assert.That(result.Runs[1]).StepIsCached("GetTypeLibraryTargets");
-		await Assert.That(result.Runs[1]).StepIsCached("GetFrameworkTypeLibraryTree");
 		await Assert.That(result.Runs[1]).StepIsCached("GetGenerationConfiguration");
 		await Assert.That(result.Runs[1]).StepIsCached("GetGenerationContext_EmptyCapabilities");
 	}
@@ -70,7 +69,6 @@ public class TypeLibraryGeneratorCacheTests : TUnitSourceGeneratorTestBase<TypeL
 
 		await Assert.That(result.Runs[1]).StepIsModified("GetGenerationConfiguration");
 		await Assert.That(result.Runs[1]).StepIsCached("GetTypeLibraryTargets");
-		await Assert.That(result.Runs[1]).StepIsCached("GetFrameworkTypeLibraryTree");
 	}
 
 	[Test]

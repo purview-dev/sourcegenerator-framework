@@ -10,7 +10,7 @@ static class GeneratorTypeLibrary
 
 	public static readonly TypeIdentity EnumValueDefinition = TypeIdentity.Create<EnumValueDefinition>();
 
-	public static class Attirbutes
+	public static class Attributes
 	{
 		public static readonly TypeIdentity GenerateAttribute = new(nameof(GenerateAttribute), GeneratorsNamespace);
 

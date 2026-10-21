@@ -74,6 +74,12 @@ public static class IncrementalGeneratorInitializationContextExtensions
 		/// successful results. This keeps generator <see cref="IIncrementalGenerator.Initialize"/> methods thin
 		/// and enforces the rule that diagnostics are reported in the source output stage.
 		/// </summary>
+		/// <remarks>
+		/// The callback is run through <see cref="ComponentGuard"/>, so an unhandled exception becomes a
+		/// diagnostic on the consumer's build rather than a <c>CS8785</c> that discards every file this
+		/// generator produces. Set <see cref="GenerationSettings.FailureOptions"/> to override that
+		/// diagnostic's id, severity or help link.
+		/// </remarks>
 		public IncrementalGeneratorInitializationContext RegisterSourceOutput<TOutput, TCapabilities>(
 			IncrementalValuesProvider<GeneratorResult<TOutput>> outputs,
 			IncrementalValueProvider<GenerationContext<TCapabilities>> contextProvider,
@@ -100,7 +106,16 @@ public static class IncrementalGeneratorInitializationContextExtensions
 					if (!item.Output.ShouldProcess)
 						return;
 
-					generate(spc, item.Output.Value, item.Context);
+					// Guarded rather than called directly: an exception escaping here is a CS8785 that
+					// discards every file this generator produced for the compilation, so the consumer sees
+					// a wall of "type or namespace not found" on top of a stack trace through code they do
+					// not own. Reported as a diagnostic instead, the rest of the output still arrives.
+					ComponentGuard.Run(
+						spc,
+						ComponentGuard.ResolveComponentType(generate, typeof(TOutput)),
+						() => generate(spc, item.Output.Value, item.Context),
+						item.Context.Settings?.FailureOptions
+					);
 				}
 			);
 

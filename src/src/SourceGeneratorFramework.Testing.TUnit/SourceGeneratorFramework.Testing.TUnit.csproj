@@ -3,6 +3,10 @@
 		<TargetFrameworks>netstandard2.0;$(TestingTargetFrameworks)</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<AssemblyName>$(RootNamespace)</AssemblyName>
+		<!-- A consuming test project compiles against this assembly, so a removed or changed public member
+		     breaks it. Compared against the last published version on every pack. -->
+		<EnablePackageValidation>true</EnablePackageValidation>
+		<PackageValidationBaselineVersion>1.1.1</PackageValidationBaselineVersion>
 	</PropertyGroup>
 
 	<ItemGroup>

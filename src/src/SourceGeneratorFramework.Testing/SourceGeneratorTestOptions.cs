@@ -156,6 +156,25 @@ public record SourceGeneratorTestOptions
 	public bool ThrowOnLogError { get; init; } = true;
 
 	/// <summary>
+	/// Gets a value indicating whether an incremental run reuses the same <see cref="Compilation"/> instance
+	/// across runs whose source sets are identical.
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// The default is <see langword="false"/>, which rebuilds the compilation for every run. That is what an
+	/// IDE does: every keystroke produces a new <see cref="Compilation"/>, and a pipeline stage only reports
+	/// <c>Cached</c> across those runs if its node value genuinely has value equality.
+	/// </para>
+	/// <para>
+	/// Setting this to <see langword="true"/> reuses one instance for identical sources, which lets any stage
+	/// that holds an <see cref="ISymbol"/> or a <see cref="Compilation"/> report <c>Cached</c> on reference
+	/// equality alone. That hides exactly the defect these tests exist to catch, so turn it on only when the
+	/// scenario is specifically about compilation-instance reuse, and say why at the call site.
+	/// </para>
+	/// </remarks>
+	public bool ReuseCompilationForIdenticalSources { get; init; }
+
+	/// <summary>
 	/// Gets the analyzer-config property name used to disable the source generator.
 	/// </summary>
 	public string? DisableSourceGeneratorPropertyName { get; init; }

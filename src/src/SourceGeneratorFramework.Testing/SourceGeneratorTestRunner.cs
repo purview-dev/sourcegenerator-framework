@@ -163,17 +163,29 @@ public sealed class SourceGeneratorTestRunner<TGenerator>
 		var driver = CreateDriver(generator, options, loggingSessionId);
 		var references = SourceGeneratorHelpers.ResolveReferences(options, typeof(TGenerator).Assembly);
 		var runs = ImmutableArray.CreateBuilder<IncrementalCacheRun>(materializedInputs.Count);
-		Dictionary<string, Compilation> compilationCache = new(StringComparer.Ordinal);
+		var compilationCache = options.ReuseCompilationForIdenticalSources
+			? new Dictionary<string, Compilation>(StringComparer.Ordinal)
+			: null;
 
 		foreach (var input in materializedInputs)
 		{
-			// Reuse the compilation for identical source sets so Roslyn can report the unchanged pipeline
-			// stages as cached rather than modified on the second run.
-			var key = string.Join("\u0001", input.Sources.Select(source => PrepareSource(source, options)));
-			if (!compilationCache.TryGetValue(key, out var compilation))
-			{
+			// A fresh compilation per run is the default because that is what an IDE produces on every
+			// keystroke. Reusing one instance for identical sources lets a stage holding a symbol or a
+			// Compilation report Cached on reference equality alone, which would mask the very regression
+			// these runs exist to detect. Opt in only where the scenario is about instance reuse itself.
+			Compilation compilation;
+			if (compilationCache is null)
 				compilation = BuildCompilation(input.Sources, options, references, cancellationToken);
-				compilationCache[key] = compilation;
+			else
+			{
+				var key = string.Join("\u0001", input.Sources.Select(source => PrepareSource(source, options)));
+				if (!compilationCache.TryGetValue(key, out var cached))
+				{
+					cached = BuildCompilation(input.Sources, options, references, cancellationToken);
+					compilationCache[key] = cached;
+				}
+
+				compilation = cached;
 			}
 
 			if (input.AnalyzerConfig is not null)

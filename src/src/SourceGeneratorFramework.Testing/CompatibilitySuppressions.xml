@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<!--
+    NotNullWhenAttribute is a netstandard2.0 polyfill that was declared public. That exported it from
+    lib/netstandard2.0 but not from lib/net8.0 (where the BCL supplies it), so the package's own
+    frameworks disagreed on their public surface. It is internal now, which is what a polyfill should
+    be: the C# compiler recognises the nullability attributes by name regardless of accessibility.
+
+    Removing a public type is a breaking change in the literal sense, hence this suppression. Nothing
+    can have depended on it: the type is [EditorBrowsable(Never)], any consumer on net8.0 or later was
+    already binding the BCL type of the same name, and a netstandard2.0 consumer referencing it would
+    have had its own copy or the BCL's. Delete this entry once the baseline moves past the release that
+    carries the fix.
+  -->
+	<Suppression>
+		<DiagnosticId>CP0001</DiagnosticId>
+		<Target>T:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute</Target>
+		<Left>lib/netstandard2.0/Purview.SourceGeneratorFramework.Testing.dll</Left>
+		<Right>lib/netstandard2.0/Purview.SourceGeneratorFramework.Testing.dll</Right>
+		<IsBaselineSuppression>true</IsBaselineSuppression>
+	</Suppression>
+</Suppressions>

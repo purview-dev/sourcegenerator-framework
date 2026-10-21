@@ -74,6 +74,19 @@ public sealed record GenerationSettings
 	public bool IsLoggingEnabled { get; init; }
 
 	/// <summary>
+	/// Gets the overrides for the diagnostic reported when a source-output callback throws, or
+	/// <see langword="null"/> to take the defaults derived from the generator itself.
+	/// </summary>
+	/// <remarks>
+	/// The framework's <c>RegisterSourceOutput</c> runs the callback through <see cref="ComponentGuard"/>,
+	/// so an unhandled exception is reported as a diagnostic rather than escaping as <c>CS8785</c> and
+	/// discarding every file the generator produced. These settings are where a generator names its own id,
+	/// severity or help link for that diagnostic — declared once, alongside everything else the generator
+	/// declares about itself.
+	/// </remarks>
+	public ComponentFailureOptions? FailureOptions { get; init; }
+
+	/// <summary>
 	/// Gets how generated code is indented. The default is <see cref="IndentationStyle.Tabs"/>.
 	/// </summary>
 	public IndentationStyle IndentationStyle { get; init; } = IndentationStyle.Tabs;
