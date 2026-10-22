@@ -64,10 +64,9 @@ public class CompilationResultTests
 		SourceGeneratorTestRunner<PassthroughGenerator> runner = new();
 		SourceGeneratorTestOptions options = new() { CompileToAssembly = true };
 
-		using (var result = await runner.RunAsync("public sealed class Input { }", options, cancellationToken))
-		{
-			await Assert.That(result.CompilationResult.Assembly).IsNotNull();
-		}
+		using var result = await runner.RunAsync("public sealed class Input { }", options, cancellationToken);
+
+		await Assert.That(result.CompilationResult.Assembly).IsNotNull();
 	}
 
 	[Test]

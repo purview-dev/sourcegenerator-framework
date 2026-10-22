@@ -164,7 +164,13 @@ public sealed class AnalyzerClosureTests
 		);
 
 		var start = output.IndexOf('{', StringComparison.Ordinal);
-		var end = output.LastIndexOf('}');
+		var end =
+#if NET11_0_OR_GREATER
+		output.LastIndexOf('}', StringComparison.Ordinal);
+#else
+		output.LastIndexOf('}');
+#endif
+
 		if (start < 0 || end <= start)
 		{
 			throw new InvalidOperationException(
@@ -244,7 +250,12 @@ public sealed class AnalyzerClosureTests
 		);
 
 		var start = output.IndexOf('{', StringComparison.Ordinal);
-		var end = output.LastIndexOf('}');
+		var end =
+#if NET11_0_OR_GREATER
+		output.LastIndexOf('}', StringComparison.Ordinal);
+#else
+		output.LastIndexOf('}');
+#endif
 		if (start < 0 || end <= start)
 		{
 			throw new InvalidOperationException(

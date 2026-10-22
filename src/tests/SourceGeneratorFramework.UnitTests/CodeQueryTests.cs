@@ -323,13 +323,17 @@ public class CodeQueryTests
 
 		await Assert.That(query.Count<PropertyDeclarationSyntax>()).IsEqualTo(2);
 		await Assert.That(query.GetAll<MethodDeclarationSyntax>().Length).IsEqualTo(3);
-		await Assert
-			.That(
-				query
-					.GetAll<MethodDeclarationSyntax>(static method => method.Identifier.ValueText.StartsWith('C'))
-					.Length
-			)
-			.IsEqualTo(1);
+		await Assert.That(query.GetAll(ValueStartsWith()).Length).IsEqualTo(1);
+
+		static Func<MethodDeclarationSyntax, bool> ValueStartsWith()
+		{
+			return static method => method.Identifier.ValueText
+#if NET11_0_OR_GREATER
+				.StartsWith('C', StringComparison.Ordinal);
+#else
+				.StartsWith('C');
+#endif
+		}
 	}
 
 	[Test]

@@ -1,7 +1,7 @@
 {
-	"sdk": {
-		"allowPrerelease": false
-	},
+  "sdk": {	
+	"allowPrerelease": true
+  },
 	"msbuild-sdks": {
 		"Purview.BuildSdk": "1.1.0"
 	},
