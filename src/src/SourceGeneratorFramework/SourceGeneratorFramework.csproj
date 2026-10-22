@@ -15,6 +15,12 @@
 		<!-- The repo's pack validation requires PDBs to be delivered only through the .snupkg, so the
 		     analyzer PDB must not ship inside the .nupkg under analyzers/dotnet/cs. -->
 		<PurviewPackAnalyzerPdb>false</PurviewPackAnalyzerPdb>
+		<!-- Consumers compile generators against the shipped lib/ assembly, so a removed or changed public
+		     member breaks them at build time. Package validation compares every pack against the last
+		     published version and fails on a breaking change, rather than leaving it to be discovered
+		     downstream. -->
+		<EnablePackageValidation>true</EnablePackageValidation>
+		<PackageValidationBaselineVersion>1.1.1</PackageValidationBaselineVersion>
 		<PurviewEmbedSourceGeneratorFramework>false</PurviewEmbedSourceGeneratorFramework>
 		<TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);BuildAndPackBundledAnalyzerAssemblies</TargetsForTfmSpecificContentInPackage>
 	</PropertyGroup>

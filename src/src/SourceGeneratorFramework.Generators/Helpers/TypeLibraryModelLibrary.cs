@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -8,27 +9,48 @@ namespace Purview.SourceGeneratorFramework.Generators.Helpers;
 
 static class TypeLibraryModelLibrary
 {
+	/// <summary>
+	/// The framework model, memoised per <see cref="Compilation"/>.
+	/// </summary>
+	/// <remarks>
+	/// The shape is fixed for a given compilation, so it is walked once rather than for every
+	/// <c>[GenerateTypeLibrary]</c> spec. A <see cref="ConditionalWeakTable{TKey, TValue}"/> keeps that
+	/// property without a pipeline node holding the compilation: the entry dies with the compilation it
+	/// is keyed on, so nothing is rooted between runs.
+	/// </remarks>
+	static readonly ConditionalWeakTable<Compilation, FrameworkTypeLibraryModel> FrameworkModels = new();
+
 	public static IncrementalValuesProvider<GeneratorResult<TypeLibraryModel>> GetTypeLibraryTargetPipeline(
 		IncrementalGeneratorInitializationContext context
-	)
-	{
-		// The framework PurviewTypeLibrary shape is fixed for a given compilation, so it is walked once per
-		// compilation and cached as a value-equatable model instead of being re-walked for every
-		// [GenerateTypeLibrary] spec in the compilation. The framework's public type names travel with it
-		// because copied documentation renders framework-type cref references as inline code.
-		var frameworkTree = context
-			.CompilationProvider.Select(static (compilation, _) => BuildFrameworkModel(compilation))
-			.WithTrackingName("GetFrameworkTypeLibraryTree");
-
-		return IncrementalPipeline
+	) =>
+		// The whole target is built inside the transform so the node value is the value-equatable
+		// GeneratorResult and never an ISymbol. A symbol in a node value is retained by the driver
+		// between runs, which roots the previous compilation and forces reference-equality comparison —
+		// the two things PSGFR33 exists to prevent. The transform already re-runs for every compilation,
+		// so doing the work here costs nothing extra; it only stops the symbol from being kept.
+		IncrementalPipeline
 			.ForAttributeWithMetadataName(
 				context,
-				GeneratorTypeLibrary.Attirbutes.GenerateTypeLibraryAttribute,
-				static (ctx, _) => (INamedTypeSymbol)ctx.TargetSymbol,
+				GeneratorTypeLibrary.Attributes.GenerateTypeLibraryAttribute,
+				static (ctx, ct) =>
+					BuildTarget(
+						(INamedTypeSymbol)ctx.TargetSymbol,
+						GetFrameworkModel(ctx.SemanticModel.Compilation),
+						ct
+					),
 				predicate: static (ctx, _) => ctx is ClassDeclarationSyntax
 			)
-			.CombineWith(frameworkTree, static (specSymbol, framework, ct) => BuildTarget(specSymbol, framework, ct))
 			.WithTrackingName("GetTypeLibraryTargets");
+
+	static FrameworkTypeLibraryModel GetFrameworkModel(Compilation compilation)
+	{
+		if (FrameworkModels.TryGetValue(compilation, out var model))
+			return model;
+
+		model = BuildFrameworkModel(compilation);
+		FrameworkModels.Add(compilation, model);
+
+		return model;
 	}
 
 	/// <summary>
@@ -49,7 +71,7 @@ static class TypeLibraryModelLibrary
 		// Validation diagnostics are reported by TypeLibraryValidationAnalyzer; the generator carries them
 		// on the result so it can gate generation on ShouldProcess without emitting the diagnostics itself.
 		List<ReportableDiagnostic> diagnostics = [];
-		var generateAttribute = GetAttribute(specSymbol, GeneratorTypeLibrary.Attirbutes.GenerateTypeLibraryAttribute);
+		var generateAttribute = GetAttribute(specSymbol, GeneratorTypeLibrary.Attributes.GenerateTypeLibraryAttribute);
 		if (generateAttribute is null)
 			return GeneratorResult<TypeLibraryModel>.Empty;
 
@@ -62,7 +84,7 @@ static class TypeLibraryModelLibrary
 
 		// The generated type library inherits the full framework PurviewTypeLibrary shape, so every
 		// framework member is present before the user's [TypeRef] members are merged in. The shape was
-		// already walked (once per compilation) by the GetFrameworkTypeLibraryTree stage.
+		// already walked (once per compilation) and memoised by GetFrameworkModel.
 		AddFrameworkTree(framework.Tree, root, nodeLookup);
 
 		foreach (var field in specSymbol.GetMembers().OfType<IFieldSymbol>())
@@ -124,7 +146,7 @@ static class TypeLibraryModelLibrary
 		CancellationToken cancellationToken
 	)
 	{
-		var typeRef = GetAttribute(field, GeneratorTypeLibrary.Attirbutes.TypeRefAttribute);
+		var typeRef = GetAttribute(field, GeneratorTypeLibrary.Attributes.TypeRefAttribute);
 		if (typeRef is null)
 			return;
 
@@ -403,8 +425,8 @@ static class TypeLibraryModelLibrary
 
 	/// <summary>
 	/// Walks the framework <c>PurviewTypeLibrary</c> nested namespace classes and their members once,
-	/// producing a value-equatable model that is cached by the <c>GetFrameworkTypeLibraryTree</c> pipeline
-	/// stage. Each member is emitted as an alias reference to the framework value so arity and generic
+	/// producing a value-equatable model that is memoised per compilation by <see cref="GetFrameworkModel"/>.
+	/// Each member is emitted as an alias reference to the framework value so arity and generic
 	/// construction are preserved exactly.
 	/// </summary>
 	static EquatableArray<TypeLibraryNamespaceNode> BuildFrameworkTree(Compilation compilation)
@@ -520,7 +542,7 @@ static class TypeLibraryModelLibrary
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
-			var enumValues = GetAttributes(field, GeneratorTypeLibrary.Attirbutes.EnumValueAttribute);
+			var enumValues = GetAttributes(field, GeneratorTypeLibrary.Attributes.EnumValueAttribute);
 			if (enumValues.Count == 0)
 				continue;
 
@@ -582,7 +604,7 @@ static class TypeLibraryModelLibrary
 
 		// When the field also declares a [TypeRef], the attribute's first argument is the enum member
 		// name and the enum type is inferred from the sibling [TypeRef] on the same field.
-		var typeRef = GetAttribute(field, GeneratorTypeLibrary.Attirbutes.TypeRefAttribute);
+		var typeRef = GetAttribute(field, GeneratorTypeLibrary.Attributes.TypeRefAttribute);
 
 		var (declaredName, declaredNamespace, value, underlyingType, aliases) = ReadEnumValue(enumValue);
 		if (declaredName is null)
@@ -721,7 +743,7 @@ static class TypeLibraryModelLibrary
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
-			var enumValues = GetAttribute(field, GeneratorTypeLibrary.Attirbutes.EnumValuesAttribute);
+			var enumValues = GetAttribute(field, GeneratorTypeLibrary.Attributes.EnumValuesAttribute);
 			if (enumValues is null)
 				continue;
 

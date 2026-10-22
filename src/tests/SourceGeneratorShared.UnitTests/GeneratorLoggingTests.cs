@@ -59,8 +59,14 @@ public class GeneratorLoggingTests
 		// registered for the whole sequence and drained between runs.
 		SourceGeneratorTestRunner<OrderedLoggingTestGenerator> runner = new();
 
-		// Act
-		var result = await runner.RunIncrementalAsync([Source], cancellationToken: cancellationToken);
+		// Act - this test is about draining, not about incrementality, and it needs a fully cached second
+		// run to have anything to prove. Reusing the compilation for the identical rerun is what makes the
+		// output step cacheable here; the default of a fresh compilation per run would re-execute it.
+		var result = await runner.RunIncrementalAsync(
+			[Source],
+			new SourceGeneratorTestOptions { ReuseCompilationForIdenticalSources = true },
+			cancellationToken
+		);
 
 		// Assert - the first run executes the output step and writes its entries in order.
 		await AssertWrittenInOrderAsync(result.Runs[0].LogEntries);

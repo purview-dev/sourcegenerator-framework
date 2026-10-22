@@ -1,6 +1,6 @@
 <Project>
 	<PropertyGroup>
-		<TestingTargetFrameworks>net8.0;net9.0;net10.0;</TestingTargetFrameworks>
+		<TestingTargetFrameworks>net8.0;net9.0;net10.0;net11.0;</TestingTargetFrameworks>
 		<TargetFrameworks>netstandard2.1;$(TestingTargetFrameworks)</TargetFrameworks>
 		<MergeToolTFM>net10.0</MergeToolTFM>
 		<NamespacePrefix>Purview.SourceGeneratorFramework</NamespacePrefix>

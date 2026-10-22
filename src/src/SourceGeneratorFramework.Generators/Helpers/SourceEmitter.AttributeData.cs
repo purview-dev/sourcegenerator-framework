@@ -7,19 +7,19 @@ partial class SourceEmitter
 {
 	static SourceText GenerateAttribute()
 	{
-		var writer = CreateWriter(GeneratorTypeLibrary.Attirbutes.GenerateAttribute);
+		var writer = CreateWriter(GeneratorTypeLibrary.Attributes.GenerateAttribute);
 
 		return writer
 			.XmlSummary("Generates parsing members for an attribute-data model.")
 			.AttributeClass(
-				new(GeneratorTypeLibrary.Attirbutes.GenerateAttribute),
+				new(GeneratorTypeLibrary.Attributes.GenerateAttribute),
 				AttributeTargets.Struct,
 				bodyWriter =>
 				{
 					bodyWriter
 						.XmlSummary("Initializes the attribute for the target attribute type.")
 						.Constructor(
-							new(GeneratorTypeLibrary.Attirbutes.GenerateAttribute, TypeDeclarationAccessibility.Public)
+							new(GeneratorTypeLibrary.Attributes.GenerateAttribute, TypeDeclarationAccessibility.Public)
 							{
 								Parameters = [new("targetAttribute", PurviewTypeLibrary.System.Type)],
 							},
@@ -32,7 +32,7 @@ partial class SourceEmitter
 					bodyWriter
 						.XmlSummary("Initializes the attribute for the target attribute name.")
 						.Constructor(
-							new(GeneratorTypeLibrary.Attirbutes.GenerateAttribute, TypeDeclarationAccessibility.Public)
+							new(GeneratorTypeLibrary.Attributes.GenerateAttribute, TypeDeclarationAccessibility.Public)
 							{
 								Parameters = [new("targetAttributeName", PurviewTypeLibrary.System.String)],
 							},
@@ -89,21 +89,21 @@ partial class SourceEmitter
 
 	static SourceText PropertyAttribute()
 	{
-		var writer = CreateWriter(GeneratorTypeLibrary.Attirbutes.PropertyAttribute);
+		var writer = CreateWriter(GeneratorTypeLibrary.Attributes.PropertyAttribute);
 
 		return writer
 			.XmlSummary("Marks a record parameter as a named attribute argument.")
 			.AttributeClass(
-				new(GeneratorTypeLibrary.Attirbutes.PropertyAttribute),
+				new(GeneratorTypeLibrary.Attributes.PropertyAttribute),
 				AttributeTargets.Parameter,
 				bodyWriter =>
 				{
 					bodyWriter
 						.XmlSummary(
-							$"Initializes a new instance of the <see cref=\"{GeneratorTypeLibrary.Attirbutes.PropertyAttribute}\"/> class."
+							$"Initializes a new instance of the <see cref=\"{GeneratorTypeLibrary.Attributes.PropertyAttribute}\"/> class."
 						)
 						.Constructor(
-							new(GeneratorTypeLibrary.Attirbutes.PropertyAttribute, TypeDeclarationAccessibility.Public)
+							new(GeneratorTypeLibrary.Attributes.PropertyAttribute, TypeDeclarationAccessibility.Public)
 							{
 								Parameters =
 								[
@@ -161,18 +161,18 @@ partial class SourceEmitter
 
 	static SourceText ArgumentAttribute()
 	{
-		var writer = CreateWriter(GeneratorTypeLibrary.Attirbutes.ArgumentAttribute);
+		var writer = CreateWriter(GeneratorTypeLibrary.Attributes.ArgumentAttribute);
 
 		return writer
 			.XmlSummary("Marks a record parameter as a constructor argument.")
 			.AttributeClass(
-				new(GeneratorTypeLibrary.Attirbutes.ArgumentAttribute),
+				new(GeneratorTypeLibrary.Attributes.ArgumentAttribute),
 				AttributeTargets.Parameter,
 				bodyWriter =>
 				{
 					bodyWriter
 						.XmlSummary(
-							$"Initializes a new instance of the <see cref=\"{GeneratorTypeLibrary.Attirbutes.ArgumentAttribute}\"/> class."
+							$"Initializes a new instance of the <see cref=\"{GeneratorTypeLibrary.Attributes.ArgumentAttribute}\"/> class."
 						)
 						.XmlParam(
 							"name",
@@ -180,7 +180,7 @@ partial class SourceEmitter
 						)
 						.XmlParam("defaultValue", "The default value of the constructor parameter.")
 						.Constructor(
-							new(GeneratorTypeLibrary.Attirbutes.ArgumentAttribute, TypeDeclarationAccessibility.Public)
+							new(GeneratorTypeLibrary.Attributes.ArgumentAttribute, TypeDeclarationAccessibility.Public)
 							{
 								Parameters =
 								[
@@ -200,12 +200,12 @@ partial class SourceEmitter
 
 					bodyWriter
 						.XmlSummary(
-							$"Initializes a new instance of the <see cref=\"{GeneratorTypeLibrary.Attirbutes.ArgumentAttribute}\"/> class."
+							$"Initializes a new instance of the <see cref=\"{GeneratorTypeLibrary.Attributes.ArgumentAttribute}\"/> class."
 						)
 						.XmlParam("index", "The index of the constructor parameter.")
 						.XmlParam("defaultValue", "The default value of the constructor parameter.")
 						.Constructor(
-							new(GeneratorTypeLibrary.Attirbutes.ArgumentAttribute, TypeDeclarationAccessibility.Public)
+							new(GeneratorTypeLibrary.Attributes.ArgumentAttribute, TypeDeclarationAccessibility.Public)
 							{
 								Parameters =
 								[
@@ -279,11 +279,11 @@ partial class SourceEmitter
 
 	static SourceText NestedModelAttribute()
 	{
-		var writer = CreateWriter(GeneratorTypeLibrary.Attirbutes.NestedModelAttribute);
+		var writer = CreateWriter(GeneratorTypeLibrary.Attributes.NestedModelAttribute);
 		return writer
 			.XmlSummary("Marks a record parameter as a nested generated attribute-data model.")
 			.AttributeClass(
-				new(GeneratorTypeLibrary.Attirbutes.NestedModelAttribute),
+				new(GeneratorTypeLibrary.Attributes.NestedModelAttribute),
 				AttributeTargets.Parameter,
 				bodyWriter => bodyWriter.Comment("Empty")
 			);
@@ -291,11 +291,11 @@ partial class SourceEmitter
 
 	static SourceText ExcludeAttribute()
 	{
-		var writer = CreateWriter(GeneratorTypeLibrary.Attirbutes.ExcludeAttribute);
+		var writer = CreateWriter(GeneratorTypeLibrary.Attributes.ExcludeAttribute);
 		return writer
 			.XmlSummary("Excludes a record parameter from the generated attribute-data model.")
 			.AttributeClass(
-				new(GeneratorTypeLibrary.Attirbutes.ExcludeAttribute),
+				new(GeneratorTypeLibrary.Attributes.ExcludeAttribute),
 				AttributeTargets.Parameter,
 				bodyWriter => bodyWriter.Comment("Empty")
 			);
@@ -303,12 +303,12 @@ partial class SourceEmitter
 
 	static SourceText GenericTypeArgumentAttribute()
 	{
-		var writer = CreateWriter(GeneratorTypeLibrary.Attirbutes.GenericTypeArgumentAttribute);
+		var writer = CreateWriter(GeneratorTypeLibrary.Attributes.GenericTypeArgumentAttribute);
 
 		return writer
 			.XmlSummary("Marks a record parameter as a generic type argument of the attribute class.")
 			.AttributeClass(
-				new(GeneratorTypeLibrary.Attirbutes.GenericTypeArgumentAttribute),
+				new(GeneratorTypeLibrary.Attributes.GenericTypeArgumentAttribute),
 				AttributeTargets.Parameter,
 				bodyWriter =>
 				{
@@ -316,7 +316,7 @@ partial class SourceEmitter
 						.XmlSummary("Initializes a new instance marking the first type argument.")
 						.Constructor(
 							new(
-								GeneratorTypeLibrary.Attirbutes.GenericTypeArgumentAttribute,
+								GeneratorTypeLibrary.Attributes.GenericTypeArgumentAttribute,
 								TypeDeclarationAccessibility.Public
 							),
 							constructorWriter => constructorWriter.Comment("Empty")
@@ -326,7 +326,7 @@ partial class SourceEmitter
 						.XmlSummary("Initializes a new instance marking the type argument at the specified index.")
 						.Constructor(
 							new(
-								GeneratorTypeLibrary.Attirbutes.GenericTypeArgumentAttribute,
+								GeneratorTypeLibrary.Attributes.GenericTypeArgumentAttribute,
 								TypeDeclarationAccessibility.Public
 							)
 							{
@@ -341,7 +341,7 @@ partial class SourceEmitter
 						)
 						.Constructor(
 							new(
-								GeneratorTypeLibrary.Attirbutes.GenericTypeArgumentAttribute,
+								GeneratorTypeLibrary.Attributes.GenericTypeArgumentAttribute,
 								TypeDeclarationAccessibility.Public
 							)
 							{

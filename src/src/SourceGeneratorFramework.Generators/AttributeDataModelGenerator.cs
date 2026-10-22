@@ -731,7 +731,12 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 				$"attributeData.GetEnumConstructorArgument({source.ConstructorIndex}, {defaultValueExpression})",
 			AttributePropertySource.ConstructorName =>
 				$"attributeData.GetEnumConstructorArgument(\"{source.MappedName}\", {defaultValueExpression})",
-			_ => throw new InvalidOperationException($"Unsupported enum property source: {source.Source}"),
+			// The only remaining source is TypeArgument, which cannot reach an enum property: ADM0008 is an
+			// error when a type-argument property is anything other than TypeIdentity, so the model never
+			// gets here. Falling back to the default expression keeps that unreachable case as valid,
+			// type-correct generated code - a throw would escape as CS8785 and cost the consumer every file
+			// this generator produces (PSGFR44).
+			_ => defaultValueExpression,
 		};
 	}
 
@@ -800,9 +805,11 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 				$"var {variableName} = attributeData.GetConstructorArgument<{typeName}>(\"{source.MappedName}\", {defaultValueExpression});",
 			AttributePropertySource.TypeArgument when source.MappedName is not null =>
 				$"var {variableName} = attributeData.GetGenericTypeArgument<{typeName}>(\"{source.MappedName}\", {defaultValueExpression});",
-			AttributePropertySource.TypeArgument =>
+			// TypeArgument by index is the last defined source, so it doubles as the default arm the
+			// compiler requires. A throw here would escape as CS8785 and cost the consumer every file this
+			// generator produces (PSGFR44); every defined source is already handled above.
+			_ =>
 				$"var {variableName} = attributeData.GetGenericTypeArgument<{typeName}>({source.ConstructorIndex}, {defaultValueExpression});",
-			_ => throw new InvalidOperationException($"Unsupported property source: {source.Source}"),
 		};
 	}
 
@@ -820,9 +827,10 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 				$"attributeData.TryGetConstructorArgument<{typeName}>(\"{source.MappedName}\", {outVariable})",
 			AttributePropertySource.TypeArgument when source.MappedName is not null =>
 				$"attributeData.TryGetGenericTypeArgument<{typeName}>(\"{source.MappedName}\", {outVariable})",
-			AttributePropertySource.TypeArgument =>
-				$"attributeData.TryGetGenericTypeArgument<{typeName}>({source.ConstructorIndex}, {outVariable})",
-			_ => throw new InvalidOperationException($"Unsupported property source: {source.Source}"),
+			// TypeArgument by index is the last defined source, so it doubles as the default arm the
+			// compiler requires. A throw here would escape as CS8785 and cost the consumer every file this
+			// generator produces (PSGFR44); every defined source is already handled above.
+			_ => $"attributeData.TryGetGenericTypeArgument<{typeName}>({source.ConstructorIndex}, {outVariable})",
 		};
 	}
 

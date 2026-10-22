@@ -182,7 +182,9 @@ static class SourceGeneratorHelpers
 
 	static ImmutableHashSet<string> CollectDisplayPaths(ImmutableArray<MetadataReference> references)
 	{
+#pragma warning disable IDE0001 // Simplify Names
 		var builder = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
+#pragma warning restore IDE0001 // Simplify Names
 		foreach (var reference in references)
 		{
 			if (reference.Display is { Length: > 0 } display)

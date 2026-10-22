@@ -85,8 +85,28 @@ The framework's pipeline helpers assign a tracking name to every stage. Cache te
 | `RegisterSourceOutput` extension                  | `RegisterSourceOutput_{OutputType}`      |
 
 Bundled generators add their own names, for example `GetAttributeDataTargets`,
-`GetTypeLibrarySpecClassNames`, `GetTypeLibraryTargets`, and `GetFrameworkTypeLibraryTree` (the cached
-framework `PurviewTypeLibrary` shape). `WithTrackingName` can rename any stage.
+`GetTypeLibrarySpecClassNames` and `GetTypeLibraryTargets`. `WithTrackingName` can rename any stage.
+
+## A fresh compilation per run
+
+`RunIncremental` builds a **new `Compilation` for every run**, because that is what an IDE does on every
+keystroke. A stage only reports `Cached`/`Unchanged` across those runs if its node value genuinely has
+value equality — which is the whole property these tests exist to prove.
+
+Two consequences worth knowing:
+
+- Roslyn's own compilation and syntax-tree steps necessarily report `Modified`. Assert the generator's
+  own tracked stages with `StepIsCached` rather than reaching for `AllStepsCachedOrUnchanged`, which
+  covers Roslyn internals too.
+- A stage whose node value holds an `ISymbol` or a `Compilation` cannot be cached, because those compare
+  by reference. That is a defect, not a test problem — see `PSGFR33`.
+
+`SourceGeneratorTestOptions.ReuseCompilationForIdenticalSources` reuses one `Compilation` instance for
+runs with identical sources. It defaults to `false`. Turning it on lets a symbol-holding stage report
+`Cached` on reference equality alone, hiding exactly the regression above, so enable it only when the
+scenario is specifically about compilation-instance reuse — and say why at the call site.
+`GeneratorLoggingTests.RunIncrementalAsync_ScopesEntriesToTheRunThatWroteThem` is the one such case in
+this repository: it is about per-run log draining and needs a fully cached rerun to have anything to prove.
 
 ## Assertion API
 

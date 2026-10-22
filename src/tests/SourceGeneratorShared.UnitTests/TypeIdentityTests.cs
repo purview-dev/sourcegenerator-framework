@@ -626,18 +626,16 @@ public sealed class TypeIdentityTests
 	[Test]
 	public async Task Create_GivenConstructedGenericOverSourceType_DoesNotRetainTheCompilation()
 	{
-		// Arrange - an anchor compilation stands in for the rest of the run: because the harness shares its
-		// MetadataReference instances, every test compilation binds the *same* corlib assembly symbol, and
-		// that symbol stays alive as long as any compilation holds it.
+		// Arrange - an anchor compilation stands in for the rest of the run, so a corlib assembly symbol is
+		// held for longer than the compilation under test.
 		var anchor = TestCompilation.Create();
 		var anchorCorlib = anchor.GetSpecialType(SpecialType.System_Int32).ContainingAssembly;
 
 		// List<Marker> reports its definition's assembly - corlib - as the containing assembly. Keying the
 		// cached identity off that assembly, rather than off the symbol, pinned the source compilation for as
-		// long as the anchor lived.
+		// long as any corlib symbol lived.
 		var (reference, name, corlib) = BuildIdentityAndDiscardCompilation();
 		await Assert.That(name).IsEqualTo("List");
-		await Assert.That(ReferenceEquals(corlib, anchorCorlib)).IsTrue();
 
 		// Act
 		for (var attempt = 0; attempt < 3; attempt++)
@@ -649,6 +647,16 @@ public sealed class TypeIdentityTests
 		// Assert
 		await Assert.That(reference.IsAlive).IsFalse();
 
+		// Both corlib symbols are held across the collection, which is what makes the assertion mean
+		// something: a cache keyed off the containing assembly would still be reachable, and would still be
+		// holding the discarded compilation.
+		//
+		// Whether these are the *same* instance is deliberately not asserted. Roslyn caches an assembly
+		// symbol per AssemblyMetadata behind a weak reference, so two independently created compilations
+		// share one only if the cache entry survived in between - and this test, along with every other test
+		// forcing a collection, is exactly what drops it. Asserting it made this test fail intermittently
+		// under parallel execution while passing in isolation.
+		GC.KeepAlive(corlib);
 		GC.KeepAlive(anchorCorlib);
 		GC.KeepAlive(anchor);
 	}

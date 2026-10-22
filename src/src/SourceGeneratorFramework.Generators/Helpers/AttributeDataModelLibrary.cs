@@ -21,21 +21,35 @@ static class AttributeDataModelLibrary
 		// expression (see BuildTarget).
 		var typeLibrarySpecData = context
 			.SyntaxProvider.ForAttributeWithMetadataName(
-				GeneratorTypeLibrary.Attirbutes.GenerateTypeLibraryAttribute.MetadataFullName,
-				transform: static (ctx, _) => (INamedTypeSymbol)ctx.TargetSymbol,
+				GeneratorTypeLibrary.Attributes.GenerateTypeLibraryAttribute.MetadataFullName,
+				// Read the spec inside the transform so the node value is the value-equatable
+				// TypeLibrarySpecData rather than an INamedTypeSymbol. A symbol held in a node value is
+				// retained by the driver between runs, rooting the previous compilation.
+				transform: static (ctx, _) => ReadTypeLibrarySpecData((INamedTypeSymbol)ctx.TargetSymbol),
 				predicate: static (ctx, _) => ctx is ClassDeclarationSyntax
 			)
-			.Select(static (specSymbol, _) => ReadTypeLibrarySpecData(specSymbol))
 			.Collect()
 			.Select(static (specs, _) => new EquatableArray<TypeLibrarySpecData>(specs))
 			.WithTrackingName("GetTypeLibrarySpecClassNames");
 
+		// KNOWN PSGFR33 VIOLATION, not yet fixed. This node value is an INamedTypeSymbol, which compares by
+		// reference, so the stage reports Modified on every new compilation and BuildTarget re-runs on every
+		// keystroke for every [Generate] target.
+		//
+		// The measured cost is that re-execution and nothing more. It does not leak: because the values
+		// compare unequal, each run's value replaces the previous one rather than pinning it, which
+		// GeneratorCompilationRetentionTests pins. Generated output stays correct because GeneratorResult<T>
+		// is value-equatable and stops the change propagating past this stage.
+		//
+		// It is not fixable the way TypeLibraryModelLibrary was — by doing the whole build inside the
+		// transform — because BuildTarget also needs typeLibrarySpecData, which is Collect()ed across the
+		// whole compilation and so is not reachable from a single target's transform. Removing it means
+		// giving the transform an equatable intermediate that captures every fact BuildTarget reads from the
+		// symbol, and deferring only the spec-dependent target resolution (which needs the compilation to
+		// resolve a name derived from the specs) to the combined stage.
 		var attributeCandidates = IncrementalPipeline.ForAttributeWithMetadataName(
 			context,
-			GeneratorTypeLibrary.Attirbutes.GenerateAttribute,
-			// ForAttributeWithMetadataName already resolves TargetSymbol; calling
-			// SemanticModel.GetDeclaredSymbol again would re-run the same symbol resolution on every
-			// pipeline rerun, so the pre-resolved symbol is carried through as the intermediate value.
+			GeneratorTypeLibrary.Attributes.GenerateAttribute,
 			static (ctx, _) => (INamedTypeSymbol)ctx.TargetSymbol,
 			predicate: static (ctx, _) => ctx is StructDeclarationSyntax or RecordDeclarationSyntax
 		);
@@ -63,7 +77,7 @@ static class AttributeDataModelLibrary
 		// AttributeDataModelSymbolPropertyAnalyzer; the generator carries them on the result so it can gate
 		// generation on ShouldProcess without emitting the diagnostics itself.
 		List<ReportableDiagnostic> diagnostics = [];
-		var generateAttribute = GetAttribute(structSymbol, GeneratorTypeLibrary.Attirbutes.GenerateAttribute);
+		var generateAttribute = GetAttribute(structSymbol, GeneratorTypeLibrary.Attributes.GenerateAttribute);
 		if (generateAttribute is null)
 			return GeneratorResult<AttributeDataModelTarget>.Empty;
 
@@ -394,7 +408,7 @@ static class AttributeDataModelLibrary
 		object? defaultValue;
 		bool hasDefaultValue;
 
-		var excludeAttribute = GetAttribute(parameter, GeneratorTypeLibrary.Attirbutes.ExcludeAttribute);
+		var excludeAttribute = GetAttribute(parameter, GeneratorTypeLibrary.Attributes.ExcludeAttribute);
 		if (excludeAttribute is not null)
 			isExcluded = true;
 
@@ -418,7 +432,7 @@ static class AttributeDataModelLibrary
 
 		var hasExclusive = isExcluded || isNestedModel || isTypeArgument;
 
-		var ctorAttribute = GetAttribute(parameter, GeneratorTypeLibrary.Attirbutes.ArgumentAttribute);
+		var ctorAttribute = GetAttribute(parameter, GeneratorTypeLibrary.Attributes.ArgumentAttribute);
 		var isEnum = false;
 
 		// Constructor sources are added from this index so the named-argument source below can be placed
@@ -450,7 +464,7 @@ static class AttributeDataModelLibrary
 			}
 		}
 
-		var namedAttribute = GetAttribute(parameter, GeneratorTypeLibrary.Attirbutes.PropertyAttribute);
+		var namedAttribute = GetAttribute(parameter, GeneratorTypeLibrary.Attributes.PropertyAttribute);
 		if (namedAttribute is not null && !hasExclusive)
 		{
 			var namedName = GetNamedArgument(namedAttribute, "Name", (string?)null);
@@ -523,7 +537,7 @@ static class AttributeDataModelLibrary
 		bool HasDefaultValue
 	) ReadNestedModelAttributeInfo(IParameterSymbol parameter, bool isExcluded)
 	{
-		var nestedModelAttribute = GetAttribute(parameter, GeneratorTypeLibrary.Attirbutes.NestedModelAttribute);
+		var nestedModelAttribute = GetAttribute(parameter, GeneratorTypeLibrary.Attributes.NestedModelAttribute);
 		if (nestedModelAttribute is null)
 			return (false, [], null, false);
 
@@ -546,7 +560,7 @@ static class AttributeDataModelLibrary
 	{
 		var typeArgumentAttribute = GetAttribute(
 			parameter,
-			GeneratorTypeLibrary.Attirbutes.GenericTypeArgumentAttribute
+			GeneratorTypeLibrary.Attributes.GenericTypeArgumentAttribute
 		);
 		if (typeArgumentAttribute is null)
 			return (false, [], null, false);
@@ -976,7 +990,7 @@ static class AttributeDataModelLibrary
 	static bool IsGeneratedAttributeModel(ITypeSymbol typeSymbol) =>
 		typeSymbol is not INamedTypeSymbol namedType || namedType.TypeKind != TypeKind.Struct
 			? false
-			: GetAttribute(namedType, GeneratorTypeLibrary.Attirbutes.GenerateAttribute) is not null;
+			: GetAttribute(namedType, GeneratorTypeLibrary.Attributes.GenerateAttribute) is not null;
 
 	static AttributeData? GetAttribute(ISymbol symbol, TypeIdentity attributeType)
 	{
@@ -1008,7 +1022,7 @@ static class AttributeDataModelLibrary
 	/// </summary>
 	static TypeLibrarySpecData ReadTypeLibrarySpecData(INamedTypeSymbol specSymbol)
 	{
-		var generateAttribute = GetAttribute(specSymbol, GeneratorTypeLibrary.Attirbutes.GenerateTypeLibraryAttribute);
+		var generateAttribute = GetAttribute(specSymbol, GeneratorTypeLibrary.Attributes.GenerateTypeLibraryAttribute);
 		var className = generateAttribute is null
 			? "TypeLibrary"
 			: GetNamedArgument(generateAttribute, "ClassName", (string?)null) ?? "TypeLibrary";
@@ -1016,7 +1030,7 @@ static class AttributeDataModelLibrary
 		var members = ImmutableArray.CreateBuilder<TypeLibraryMemberRef>();
 		foreach (var field in specSymbol.GetMembers().OfType<IFieldSymbol>())
 		{
-			var typeRef = GetAttribute(field, GeneratorTypeLibrary.Attirbutes.TypeRefAttribute);
+			var typeRef = GetAttribute(field, GeneratorTypeLibrary.Attributes.TypeRefAttribute);
 			if (typeRef is null)
 				continue;
 

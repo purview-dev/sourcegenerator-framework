@@ -7,12 +7,12 @@ partial class SourceEmitter
 {
 	static SourceText GenerateTypeLibraryAttribute()
 	{
-		var writer = CreateTypeLibraryWriter(GeneratorTypeLibrary.Attirbutes.GenerateTypeLibraryAttribute);
+		var writer = CreateTypeLibraryWriter(GeneratorTypeLibrary.Attributes.GenerateTypeLibraryAttribute);
 
 		return writer
 			.XmlSummary("Generates a type-library class from the annotated static partial class.")
 			.AttributeClass(
-				new(GeneratorTypeLibrary.Attirbutes.GenerateTypeLibraryAttribute),
+				new(GeneratorTypeLibrary.Attributes.GenerateTypeLibraryAttribute),
 				AttributeTargets.Class,
 				bodyWriter =>
 				{
@@ -47,12 +47,12 @@ partial class SourceEmitter
 
 	static SourceText TypeRefAttribute()
 	{
-		var writer = CreateTypeLibraryWriter(GeneratorTypeLibrary.Attirbutes.TypeRefAttribute);
+		var writer = CreateTypeLibraryWriter(GeneratorTypeLibrary.Attributes.TypeRefAttribute);
 
 		return writer
 			.XmlSummary("Declares a type identity member for a generated type library.")
 			.AttributeClass(
-				new(GeneratorTypeLibrary.Attirbutes.TypeRefAttribute),
+				new(GeneratorTypeLibrary.Attributes.TypeRefAttribute),
 				AttributeTargets.Field,
 				bodyWriter =>
 				{
@@ -69,7 +69,7 @@ partial class SourceEmitter
 							"Whether the member generates a full name constant; useful for compile-time usage, such as in Attribute Data Model generation."
 						)
 						.Constructor(
-							new(GeneratorTypeLibrary.Attirbutes.TypeRefAttribute, TypeDeclarationAccessibility.Public)
+							new(GeneratorTypeLibrary.Attributes.TypeRefAttribute, TypeDeclarationAccessibility.Public)
 							{
 								Parameters =
 								[
@@ -110,7 +110,7 @@ partial class SourceEmitter
 							"Whether the member generates a full name constant; useful for compile-time usage, such as in Attribute Data Model generation."
 						)
 						.Constructor(
-							new(GeneratorTypeLibrary.Attirbutes.TypeRefAttribute, TypeDeclarationAccessibility.Public)
+							new(GeneratorTypeLibrary.Attributes.TypeRefAttribute, TypeDeclarationAccessibility.Public)
 							{
 								Parameters =
 								[
@@ -207,14 +207,14 @@ partial class SourceEmitter
 
 	static SourceText EnumValueAttribute()
 	{
-		var writer = CreateTypeLibraryWriter(GeneratorTypeLibrary.Attirbutes.EnumValueAttribute);
+		var writer = CreateTypeLibraryWriter(GeneratorTypeLibrary.Attributes.EnumValueAttribute);
 
 		return writer
 			.XmlSummary(
 				"Declares an enum value member for a generated type library. May be declared multiple times on a single field."
 			)
 			.AttributeClass(
-				new(GeneratorTypeLibrary.Attirbutes.EnumValueAttribute),
+				new(GeneratorTypeLibrary.Attributes.EnumValueAttribute),
 				AttributeTargets.Field,
 				bodyWriter =>
 				{
@@ -234,7 +234,7 @@ partial class SourceEmitter
 							"Optional alternate names used when matching, such as for registry-style enums."
 						)
 						.Constructor(
-							new(GeneratorTypeLibrary.Attirbutes.EnumValueAttribute, TypeDeclarationAccessibility.Public)
+							new(GeneratorTypeLibrary.Attributes.EnumValueAttribute, TypeDeclarationAccessibility.Public)
 							{
 								Parameters =
 								[
@@ -269,7 +269,7 @@ partial class SourceEmitter
 							"Optional alternate names used when matching, such as for registry-style enums."
 						)
 						.Constructor(
-							new(GeneratorTypeLibrary.Attirbutes.EnumValueAttribute, TypeDeclarationAccessibility.Public)
+							new(GeneratorTypeLibrary.Attributes.EnumValueAttribute, TypeDeclarationAccessibility.Public)
 							{
 								Parameters =
 								[
@@ -329,12 +329,12 @@ partial class SourceEmitter
 
 	static SourceText EnumValuesAttribute()
 	{
-		var writer = CreateTypeLibraryWriter(GeneratorTypeLibrary.Attirbutes.EnumValuesAttribute);
+		var writer = CreateTypeLibraryWriter(GeneratorTypeLibrary.Attributes.EnumValuesAttribute);
 
 		return writer
 			.XmlSummary("Declares all enum values of a compile-time-available enum type for a generated type library.")
 			.AttributeClass(
-				new(GeneratorTypeLibrary.Attirbutes.EnumValuesAttribute),
+				new(GeneratorTypeLibrary.Attributes.EnumValuesAttribute),
 				AttributeTargets.Field,
 				bodyWriter =>
 				{
@@ -348,7 +348,7 @@ partial class SourceEmitter
 						)
 						.Constructor(
 							new(
-								GeneratorTypeLibrary.Attirbutes.EnumValuesAttribute,
+								GeneratorTypeLibrary.Attributes.EnumValuesAttribute,
 								TypeDeclarationAccessibility.Public
 							)
 							{

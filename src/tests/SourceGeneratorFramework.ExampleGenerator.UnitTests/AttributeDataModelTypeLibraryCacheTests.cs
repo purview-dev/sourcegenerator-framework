@@ -116,7 +116,6 @@ public class AttributeDataModelTypeLibraryCacheTests
 			"GetAttributeDataTargets",
 			"GetTypeLibrarySpecClassNames",
 			"GetTypeLibraryTargets",
-			"GetFrameworkTypeLibraryTree",
 			"GetGenerationConfiguration",
 			"GetGenerationContext_EmptyCapabilities",
 		];
