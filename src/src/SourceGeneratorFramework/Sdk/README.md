@@ -33,9 +33,13 @@ Only the generator references the framework, so:
 
 - the generator merges to a **merged, self-contained analyzer artifact** while its **bin output stays
   unmerged**;
-- the framework assembly is copied beside the generator's bin output and flows transitively through
-  `ProjectReference`, so the dependent component's bin folder is self-sufficient — the IDE can load
-  the code-fix provider without a `FileNotFoundException` for the framework assembly; and
+- the framework assembly is copied beside the generator's bin output, and assembly-reference
+  resolution copies it beside the dependent component's bin output, so that folder is
+  self-sufficient — the IDE can load the code-fix provider without a `FileNotFoundException` for the
+  framework assembly;
+- a project that references a component only as an analyzer (`ReferenceOutputAssembly="false"`), and
+  any application downstream of it, never receives the framework assembly in its build or publish
+  output; and
 - the dependent component's analyzer closure includes the referenced component's merged artifact (it
   is never IL-merged a second time, which would duplicate its types).
 

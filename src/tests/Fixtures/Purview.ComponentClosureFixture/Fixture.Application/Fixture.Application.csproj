@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<!--
+		Regression fixture: an application that references a library (Fixture.Consumer) which in turn
+		references the components through analyzer ProjectReferences (OutputItemType="Analyzer",
+		ReferenceOutputAssembly="false"). This is the shape of every app that references a generator
+		package's library by project. The framework assembly is a compiler-host dependency of the
+		component's unmerged bin copy only, so it must never reach this app's build output, deps.json
+		or publish output.
+
+		Targets the SDK's bundled runtime so the fixture never needs a separately installed targeting
+		pack.
+	-->
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFrameworks></TargetFrameworks>
+		<TargetFramework>net$(BundledNETCoreAppTargetFrameworkVersion)</TargetFramework>
+		<AssemblyName>Fixture.Application</AssemblyName>
+		<RootNamespace>Fixture.Application</RootNamespace>
+		<IsPackable>false</IsPackable>
+		<!-- The repository's SDK defaults projects to non-publishable; this one is published. -->
+		<IsPublishable>true</IsPublishable>
+		<!-- The app does not reference the framework, so the SDK's NamespacePrefix global using does
+		     not resolve here. -->
+		<AutoIncludeUsings>false</AutoIncludeUsings>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Fixture.Consumer\Fixture.Consumer.csproj" />
+	</ItemGroup>
+</Project>

@@ -75,31 +75,56 @@
 		lib assets). A dependent component that references this component normally resolves the
 		unmerged bin copy at runtime, so the framework assembly must sit beside it.
 
-		Declare the resolved framework assembly as copy-to-output content. Content with
-		CopyToOutputDirectory flows transitively through ProjectReference, so a dependent component's
-		bin folder becomes self-sufficient without any consumer-side configuration, while the merged
-		analyzer artifact stays the only thing returned to Roslyn.
+		The framework assembly is copied into this component's own output directory by a plain Copy
+		task. It is deliberately NOT declared as copy-to-output content (None/Content with
+		CopyToOutputDirectory), which is what earlier versions did. Copy-to-output content flows
+		transitively through *every* ProjectReference - GetCopyToOutputDirectoryItems ignores
+		ReferenceOutputAssembly="false" and OutputItemType="Analyzer" - so a library that referenced a
+		component as an analyzer, and every application that referenced that library, received the
+		compiler-host framework DLL in its build output, deps.json, publish output, single-file
+		bundle and Blazor WebAssembly _framework folder. That broke Native AOT, trimming and the
+		WebAssembly AOT compiler ("Could not load Microsoft.CodeAnalysis"). CopyToPublishDirectory="Never"
+		would only keep it out of publish - it would still land in every downstream build output -
+		and the receiving projects never import these targets, so the flow cannot be filtered there.
+
+		A dependent project still finds the framework beside it through ordinary assembly
+		reference resolution instead: the unmerged component assembly references
+		Purview.SourceGeneratorFramework, and ResolveAssemblyReferences resolves (and copies local) a
+		primary reference's dependencies from the primary reference's own directory. So:
+
+		  * a dependent Roslyn component, or an in-repo test project, that references this component
+		    as an assembly (a normal ProjectReference) gets the DLL copied beside its own output; and
+		  * a project that references this component only as an analyzer
+		    (ReferenceOutputAssembly="false") never resolves the component's assembly, so it - and
+		    everything downstream of it - never receives the framework DLL at all.
+
+		The copy runs after CopyFilesToOutputDirectory, so it is in place before any referencing
+		project runs ResolveAssemblyReferences, and it is recorded in FileWrites so IncrementalClean
+		keeps it and Clean removes it.
 
 		This is deliberately *not* a SourceGeneratorRuntimeDependency: that item feeds the analyzer
 		closure and the package, where the loose framework DLL must never appear.
 	-->
 	<Target
 		Name="DeclarePurviewFrameworkOutputCopy"
-		BeforeTargets="AssignTargetPaths;GetCopyToOutputDirectoryItems"
+		AfterTargets="CopyFilesToOutputDirectory"
 		DependsOnTargets="_PurviewResolveFrameworkAssemblyForOutputCopy"
 		Condition="'$(PurviewEmbedSourceGeneratorFramework)' == 'true' AND '$(PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles)' == 'true'"
 		Label="Copies the framework assembly beside the component's bin output."
 	>
-		<ItemGroup Condition="'$(_PurviewFrameworkOutputCopyAssembly)' != '' AND Exists('$(_PurviewFrameworkOutputCopyAssembly)')">
-			<None
-				Include="$(_PurviewFrameworkOutputCopyAssembly)"
-				Link="Purview.SourceGeneratorFramework.dll"
-				TargetPath="Purview.SourceGeneratorFramework.dll"
-				CopyToOutputDirectory="PreserveNewest"
-				Pack="false"
-				Visible="false"
-			/>
-		</ItemGroup>
+		<PropertyGroup>
+			<_PurviewFrameworkOutputCopyDestination>$([System.IO.Path]::GetFullPath('$(OutDir)Purview.SourceGeneratorFramework.dll'))</_PurviewFrameworkOutputCopyDestination>
+		</PropertyGroup>
+		<Copy
+			Condition="'$(_PurviewFrameworkOutputCopyAssembly)' != '' AND Exists('$(_PurviewFrameworkOutputCopyAssembly)') AND '$(_PurviewFrameworkOutputCopyAssembly)' != '$(_PurviewFrameworkOutputCopyDestination)'"
+			SourceFiles="$(_PurviewFrameworkOutputCopyAssembly)"
+			DestinationFiles="$(_PurviewFrameworkOutputCopyDestination)"
+			SkipUnchangedFiles="true"
+			Retries="$(CopyRetryCount)"
+			RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)"
+		>
+			<Output TaskParameter="DestinationFiles" ItemName="FileWrites" />
+		</Copy>
 	</Target>
 
 	<!--
