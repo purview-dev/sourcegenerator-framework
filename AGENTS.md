@@ -21,6 +21,9 @@ has them without running anything.
 | Skill | Source | Load before |
 | --- | --- | --- |
 | `purview-buildsdk-*` (8 skills) | `purview-dev/build-sdk` | build/SDK configuration, project layout and detection, testing, skill installation and skill tests |
+| `purview-architecture`, `purview-architecture-testing`, `purview-engineering-principles`, `purview-persistence`, `purview-telemetry`, `purview-testing-conventions` | `purview-dev/engineering-playbook` | solution shape, architecture tests, engineering conventions, persistence, telemetry and testing conventions |
+
+This repository's own skills in `skills/` are authored for **consumers** of its packages, not for use while working on this repository. They are never installed into this repository's `.agents/skills/`, which holds only skills installed from other repositories; `InstalledSkillTests` enforces this.
 
 Skills are installed into the universal `.agents/skills/` location **only**. Never install copies
 into `.claude/` or any other per-agent folder, and never commit a `CLAUDE.md`: this repository is not
@@ -30,6 +33,7 @@ reason. Pass `-a universal`, which writes `.agents/skills/` and nothing else:
 ```bash
 # add or update every skill from a source
 npx -y skills@1 add purview-dev/build-sdk -s '*' -a universal -y
+npx -y skills@1 add purview-dev/engineering-playbook -s '*' -a universal -y
 
 # restore the committed set from skills-lock.json
 npx -y skills@1 experimental_install
