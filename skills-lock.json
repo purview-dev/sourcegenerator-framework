@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "skills": {
+    "purview-buildsdk-adoption": {
+      "source": "purview-dev/build-sdk",
+      "sourceType": "github",
+      "skillPath": "skills/purview-buildsdk-adoption/SKILL.md",
+      "computedHash": "ca2e13fc8074281f8ca2b510b742ae99db28f97d78f5fb36a6f27936a91941fc"
+    },
+    "purview-buildsdk-configuration": {
+      "source": "purview-dev/build-sdk",
+      "sourceType": "github",
+      "skillPath": "skills/purview-buildsdk-configuration/SKILL.md",
+      "computedHash": "88b4a655efdc058b9a10adb1b5cbcd44e89bff6ed8c858e066092e5be0ca3e0b"
+    },
+    "purview-buildsdk-project-detection": {
+      "source": "purview-dev/build-sdk",
+      "sourceType": "github",
+      "skillPath": "skills/purview-buildsdk-project-detection/SKILL.md",
+      "computedHash": "7c30062fe592105b7a2539384843759521c5a3f90ace8f7c60f0e6ae2405b0b1"
+    },
+    "purview-buildsdk-project-layout": {
+      "source": "purview-dev/build-sdk",
+      "sourceType": "github",
+      "skillPath": "skills/purview-buildsdk-project-layout/SKILL.md",
+      "computedHash": "101f09c92cf97e93387b926c48adab9598a0cf0a64a4932d41085ab0a0078cfa"
+    },
+    "purview-buildsdk-repository-review": {
+      "source": "purview-dev/build-sdk",
+      "sourceType": "github",
+      "skillPath": "skills/purview-buildsdk-repository-review/SKILL.md",
+      "computedHash": "d366821995ff410caa436ccb996eaa6429f1ba51ba985b210d74ec3963f6c06f"
+    },
+    "purview-buildsdk-skill-installation": {
+      "source": "purview-dev/build-sdk",
+      "sourceType": "github",
+      "skillPath": "skills/purview-buildsdk-skill-installation/SKILL.md",
+      "computedHash": "b61cce9f0f213469c3acab4dd5ebaec450ee2be730680b166c9718c901aedffe"
+    },
+    "purview-buildsdk-skill-tests": {
+      "source": "purview-dev/build-sdk",
+      "sourceType": "github",
+      "skillPath": "skills/purview-buildsdk-skill-tests/SKILL.md",
+      "computedHash": "807b64466de0a871e5f8e678e7686c48a06d8bb9d42a03448f604a35d40d3935"
+    },
+    "purview-buildsdk-testing": {
+      "source": "purview-dev/build-sdk",
+      "sourceType": "github",
+      "skillPath": "skills/purview-buildsdk-testing/SKILL.md",
+      "computedHash": "d6a2ac1167faf68e8c27493de81c2e5b0d8183e523de4411aca5f5b9249c8a9c"
+    }
+  }
+}
