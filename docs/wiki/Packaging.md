@@ -115,10 +115,16 @@ framework.
   self-contained assembly from `obj/.../purview-merged/<contentTag>/`; its **bin output** stays unmerged and
   references `Purview.SourceGeneratorFramework`.
 - Because a package consumer's framework `lib/` asset is not copied to output, the framework
-  assembly is declared as copy-to-output content beside the generator's bin output. Content with
-  `CopyToOutputDirectory` flows transitively through `ProjectReference`, so the dependent code-fix
-  component's bin folder is self-sufficient too — that is what lets Visual Studio load the code-fix
+  assembly is copied beside the generator's bin output by a plain copy step. The dependent code-fix
+  component references the generator's assembly, so assembly-reference resolution copies the
+  framework assembly beside its bin output too — that is what lets Visual Studio load the code-fix
   provider from its own bin without a `FileNotFoundException` for the framework assembly.
+- The copy is deliberately **not** copy-to-output content. Content with `CopyToOutputDirectory`
+  flows transitively through every `ProjectReference`, including `OutputItemType="Analyzer"` /
+  `ReferenceOutputAssembly="false"` ones, so before 1.2.2 every application that referenced a
+  generator's library by project received `Purview.SourceGeneratorFramework.dll` in its build output,
+  `deps.json` and publish output, breaking Native AOT and Blazor WebAssembly AOT publishes. A project
+  that references a component only as an analyzer now never receives it.
 - The dependent component's **analyzer closure** (what `GetSourceGeneratorAnalyzerFiles` returns)
   includes the referenced component's analyzer artifact. The referenced component is returned as its
   own merged assembly and is **never** IL-merged into the dependent component, which would duplicate

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Text.Json;
@@ -14,6 +15,10 @@ namespace Purview.SourceGeneratorFramework;
 /// <item>the analyzer closure returned by <c>GetSourceGeneratorAnalyzerFiles</c> has no unresolvable
 /// assembly reference.</item>
 /// </list>
+/// It also asserts that the framework assembly, which exists beside a component's bin output only
+/// for a dependent component or test project to load, never reaches a project that references a
+/// component as an analyzer, nor any application downstream of one (build output, deps.json or
+/// publish output), and that the packed analyzer stays the self-contained merged artifact.
 /// </summary>
 [NotInParallel(nameof(AnalyzerClosureTests))]
 public sealed class AnalyzerClosureTests
@@ -95,6 +100,187 @@ public sealed class AnalyzerClosureTests
 		}
 
 		await Assert.That(string.Join(Environment.NewLine, problems)).IsEmpty();
+	}
+
+	[Test]
+	public async Task AnalyzerReferenceConsumers_BuildOutput_ExcludesFrameworkAssembly(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		var appProject = ProjectPath("Fixture.Application");
+
+		// Act
+		await BuildAsync(appProject, cancellationToken);
+
+		// Assert
+		List<string> problems = [];
+		AddFrameworkLeakProblems(problems, "Fixture.Consumer (analyzer reference)", BinDirectory("Fixture.Consumer"));
+		AddFrameworkLeakProblems(problems, "Fixture.Application (references Fixture.Consumer)", AppBinDirectory());
+
+		await Assert.That(string.Join(Environment.NewLine, problems)).IsEmpty();
+	}
+
+	[Test]
+	public async Task Application_PublishOutput_ExcludesFrameworkAssembly(CancellationToken cancellationToken)
+	{
+		// Arrange
+		var appProject = ProjectPath("Fixture.Application");
+		var publishDirectory = CreateScratchDirectory("publish");
+
+		try
+		{
+			// Act
+			await RunAsync(
+				"dotnet",
+				["publish", appProject, "-c", Configuration, "-v:minimal", "-o", publishDirectory],
+				Path.GetDirectoryName(appProject)!,
+				cancellationToken
+			);
+			var resolvedFilesToPublish = await GetItemIdentitiesAsync(
+				appProject,
+				"ComputeResolvedFilesToPublishList",
+				"ResolvedFileToPublish",
+				cancellationToken
+			);
+
+			// Assert
+			List<string> problems = [];
+			if (!File.Exists(Path.Combine(publishDirectory, "Fixture.Application.dll")))
+				problems.Add($"The publish directory '{publishDirectory}' does not contain the application.");
+
+			AddFrameworkLeakProblems(problems, "Fixture.Application publish output", publishDirectory);
+
+			var leakedPublishItems = resolvedFilesToPublish.Where(static path => IsFrameworkAssembly(path)).ToArray();
+			if (leakedPublishItems.Length > 0)
+			{
+				// ResolvedFileToPublish is also the input to single-file bundling and to the Blazor
+				// WebAssembly _framework layout, so this covers both.
+				problems.Add(
+					$"ResolvedFileToPublish contains '{FrameworkAssemblyFileName}': "
+						+ string.Join(", ", leakedPublishItems)
+				);
+			}
+
+			await Assert.That(string.Join(Environment.NewLine, problems)).IsEmpty();
+		}
+		finally
+		{
+			TryDeleteDirectory(publishDirectory);
+		}
+	}
+
+	[Test]
+	public async Task ComponentPackage_AnalyzerAsset_IsTheSelfContainedMergedArtifact(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		var generatorProject = ProjectPath("Fixture.Generator");
+		var packDirectory = CreateScratchDirectory("pack");
+
+		try
+		{
+			// Act
+			await RunAsync(
+				"dotnet",
+				[
+					"pack",
+					generatorProject,
+					"-c",
+					Configuration,
+					"-v:minimal",
+					"-p:IsPackable=true",
+					"-o",
+					packDirectory,
+				],
+				Path.GetDirectoryName(generatorProject)!,
+				cancellationToken
+			);
+			// Resolved with the same global properties as the pack, so both see the same build.
+			var mergedClosure = await ResolveAnalyzerClosureAsync(
+				generatorProject,
+				cancellationToken,
+				"-p:IsPackable=true"
+			);
+
+			// Assert
+			List<string> problems = [];
+			var package = Directory.GetFiles(packDirectory, "*.nupkg").SingleOrDefault();
+			if (package is null)
+			{
+				problems.Add($"'dotnet pack' did not produce a package in '{packDirectory}'.");
+			}
+			else
+			{
+				await using var packageStream = File.OpenRead(package);
+				using ZipArchive archive = new(packageStream, ZipArchiveMode.Read);
+				var entries = archive.Entries.Select(static entry => entry.FullName).ToArray();
+
+				var looseFramework = entries.Where(static entry => IsFrameworkAssembly(entry)).ToArray();
+				if (looseFramework.Length > 0)
+					problems.Add(
+						$"The package contains the loose framework assembly: {string.Join(", ", looseFramework)}"
+					);
+
+				var analyzerEntry = archive.GetEntry("analyzers/dotnet/cs/Fixture.Generator.dll");
+				if (analyzerEntry is null)
+				{
+					problems.Add(
+						"The package does not contain analyzers/dotnet/cs/Fixture.Generator.dll. Entries: "
+							+ string.Join(", ", entries)
+					);
+				}
+				else
+				{
+					var packedAnalyzer = Path.Combine(packDirectory, "packed-Fixture.Generator.dll");
+					await using (var entryStream =
+#if NET10_0_OR_GREATER
+						await analyzerEntry.OpenAsync(cancellationToken)
+#else
+						analyzerEntry.Open()
+#endif
+					)
+					await using (var fileStream = File.Create(packedAnalyzer))
+						await entryStream.CopyToAsync(fileStream, cancellationToken);
+
+					var references = ReadAssemblyReferenceNames(packedAnalyzer);
+					if (references.Contains(Path.GetFileNameWithoutExtension(FrameworkAssemblyFileName)))
+					{
+						problems.Add(
+							"The packed analyzer references Purview.SourceGeneratorFramework, so it is not the "
+								+ "self-contained merged artifact."
+						);
+					}
+
+					var merged = mergedClosure.SingleOrDefault(static path =>
+						path.EndsWith("Fixture.Generator.dll", StringComparison.OrdinalIgnoreCase)
+					);
+					if (merged is null)
+					{
+						problems.Add("The analyzer closure did not return the merged Fixture.Generator.dll.");
+					}
+					else if (
+						!AreSameBytes(
+							await File.ReadAllBytesAsync(packedAnalyzer, cancellationToken),
+							await File.ReadAllBytesAsync(merged, cancellationToken)
+						)
+					)
+					{
+						problems.Add(
+							$"The packed analyzer differs from the merged artifact '{merged}' that the analyzer "
+								+ "closure returns."
+						);
+					}
+				}
+			}
+
+			await Assert.That(string.Join(Environment.NewLine, problems)).IsEmpty();
+		}
+		finally
+		{
+			TryDeleteDirectory(packDirectory);
+		}
 	}
 
 	[Test]
@@ -210,6 +396,99 @@ public sealed class AnalyzerClosureTests
 		await Assert.That(string.Join(Environment.NewLine, problems)).IsEmpty();
 	}
 
+	static bool AreSameBytes(byte[] left, byte[] right) => left.AsSpan().SequenceEqual(right);
+
+	static bool IsFrameworkAssembly(string path) =>
+		Path.GetFileName(path).Equals(FrameworkAssemblyFileName, StringComparison.OrdinalIgnoreCase);
+
+	static void AddFrameworkLeakProblems(List<string> problems, string description, string directory)
+	{
+		if (!Directory.Exists(directory))
+		{
+			problems.Add($"{description}: the output directory '{directory}' does not exist.");
+			return;
+		}
+
+		foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+		{
+			if (IsFrameworkAssembly(file))
+			{
+				problems.Add(
+					$"{description}: '{file}' is the compiler-host framework assembly, which must never "
+						+ "reach a project that only references a component as an analyzer."
+				);
+			}
+			else if (
+				file.EndsWith(".deps.json", StringComparison.OrdinalIgnoreCase)
+				&& File.ReadAllText(file).Contains(FrameworkAssemblyFileName, StringComparison.OrdinalIgnoreCase)
+			)
+			{
+				problems.Add($"{description}: '{file}' lists '{FrameworkAssemblyFileName}'.");
+			}
+		}
+	}
+
+	static async Task<List<string>> GetItemIdentitiesAsync(
+		string projectPath,
+		string target,
+		string itemType,
+		CancellationToken cancellationToken
+	)
+	{
+		var output = await RunAsync(
+			"dotnet",
+			[
+				"msbuild",
+				projectPath,
+				$"-t:{target}",
+				$"-getItem:{itemType}",
+				$"-p:Configuration={Configuration}",
+				"-nologo",
+			],
+			Path.GetDirectoryName(projectPath)!,
+			cancellationToken
+		);
+
+		var start = output.IndexOf('{', StringComparison.Ordinal);
+		if (start < 0)
+		{
+			throw new InvalidOperationException(
+				$"Unable to locate the item JSON in the msbuild output:{Environment.NewLine}{output}"
+			);
+		}
+
+		using var document = JsonDocument.Parse(output[start..]);
+		List<string> identities = [];
+		foreach (var item in document.RootElement.GetProperty("Items").GetProperty(itemType).EnumerateArray())
+			identities.Add(item.GetProperty("Identity").GetString()!);
+
+		return identities;
+	}
+
+	static string AppBinDirectory()
+	{
+		var bin = Path.Combine(FixtureRoot, "Fixture.Application", "bin", Configuration);
+		return Directory.GetDirectories(bin, "net*").Single();
+	}
+
+	static string CreateScratchDirectory(string purpose)
+	{
+		var directory = Path.Combine(Path.GetTempPath(), $"purview-closure-{purpose}-{Guid.NewGuid():N}");
+		Directory.CreateDirectory(directory);
+		return directory;
+	}
+
+	static void TryDeleteDirectory(string directory)
+	{
+		try
+		{
+			if (Directory.Exists(directory))
+				Directory.Delete(directory, recursive: true);
+		}
+		catch (IOException) { }
+		catch (UnauthorizedAccessException) { }
+	}
+
 	static bool IsPermittedReference(string name) =>
 		name.StartsWith("Microsoft.CodeAnalysis", StringComparison.Ordinal)
 		|| name.StartsWith("System.Composition", StringComparison.Ordinal)
@@ -233,7 +512,11 @@ public sealed class AnalyzerClosureTests
 		return names;
 	}
 
-	static async Task<List<string>> ResolveAnalyzerClosureAsync(string projectPath, CancellationToken cancellationToken)
+	static async Task<List<string>> ResolveAnalyzerClosureAsync(
+		string projectPath,
+		CancellationToken cancellationToken,
+		params string[] extraArguments
+	)
 	{
 		var output = await RunAsync(
 			"dotnet",
@@ -244,6 +527,7 @@ public sealed class AnalyzerClosureTests
 				"-getTargetResult:GetSourceGeneratorAnalyzerFiles",
 				$"-p:Configuration={Configuration}",
 				"-nologo",
+				.. extraArguments,
 			],
 			Path.GetDirectoryName(projectPath)!,
 			cancellationToken
