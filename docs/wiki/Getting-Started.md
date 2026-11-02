@@ -52,8 +52,9 @@ unmerged assembly + loose framework DLL shape is required (see [Packaging.md](Pa
 A code-fix component can reference the generator component normally (`ProjectReference`,
 `ReferenceOutputAssembly` not `false`) when it needs the generator's internal diagnostic identity.
 The generator's **analyzer artifact** is the merged, self-contained assembly, while its **bin output**
-stays unmerged; the framework assembly is copied beside that bin output and flows transitively
-through `ProjectReference`, so the dependent component's bin folder is self-sufficient. The dependent
+stays unmerged; the framework assembly is copied beside that bin output, and assembly-reference
+resolution copies it beside the dependent component's bin output, so that folder is self-sufficient.
+A project that references a component only as an analyzer never receives it. The dependent
 component's analyzer closure includes the referenced component's merged artifact — it is never
 IL-merged a second time, which would duplicate its types. See
 [Packaging.md](Packaging.md#a-component-that-references-another-component).

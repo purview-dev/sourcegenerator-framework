@@ -9,6 +9,24 @@ that version to nuget.org.
 This file was reconstructed from the conventional-commit history at 1.1.1, so entries before that
 release summarise what the commits recorded rather than what was written at the time.
 
+## [1.2.2] - 2026-10-27
+
+### Fixed
+
+- `Purview.SourceGeneratorFramework.dll` leaked into application output. The build targets declared
+  the framework assembly as copy-to-output content so a dependent component's bin folder could load
+  the unmerged generator, but copy-to-output content flows transitively through every
+  `ProjectReference` — including `OutputItemType="Analyzer"` / `ReferenceOutputAssembly="false"`
+  ones. A library that referenced a generator project as an analyzer, and every application that
+  referenced that library by project, received the compiler-host DLL in its build output,
+  `deps.json`, publish output, single-file bundle and Blazor WebAssembly `_framework` folder. Native
+  AOT and trimmed publishes shipped it, and the WebAssembly AOT compiler failed with "Could not load
+  Microsoft.CodeAnalysis". `DeclarePurviewFrameworkOutputCopy` now copies the assembly into the
+  component's own output with a plain `Copy` (recorded in `FileWrites`); a dependent component or
+  test project that references the component as an assembly still receives it beside its own output
+  through assembly-reference resolution, and an analyzer-only reference never does. Package consumers
+  were not affected: the package ships only the merged analyzer, which is unchanged.
+
 ## [1.2.0] - 2026-10-21
 
 ### Fixed

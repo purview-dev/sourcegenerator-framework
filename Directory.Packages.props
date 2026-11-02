@@ -23,6 +23,6 @@
 		<PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
 		<PackageVersion Include="ILRepack.Lib" Version="2.0.48" />
 		<PackageVersion Include="Mono.Cecil" Version="0.11.6" />
-		<PackageVersion Include="Purview.Skills.Testing" Version="1.1.0" />
+		<PackageVersion Include="Purview.Skills.Testing" Version="1.2.0" />
 	</ItemGroup>
 </Project>

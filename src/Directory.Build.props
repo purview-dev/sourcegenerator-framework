@@ -6,6 +6,11 @@
 		<NamespacePrefix>Purview.SourceGeneratorFramework</NamespacePrefix>
 		<ExcludePurviewTelemetry>true</ExcludePurviewTelemetry>
 		<RepositoryUrl>https://github.com/purview-dev/sourcegenerator-framework</RepositoryUrl>
+		<!--
+			Installed skills live in the universal .agents/skills/ folder only, and are committed. The
+			SDK's default (*) would make InstallPurviewSkills write a copy into every agent's folder.
+		-->
+		<PurviewSkillsAgents>universal</PurviewSkillsAgents>
 	</PropertyGroup>
 
 	<PropertyGroup>
