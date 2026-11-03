@@ -73,6 +73,7 @@ npx skills add purview-dev/sourcegenerator-framework
 | `skills/purview-sourcegenerator-testing/` | the runner layer, `CodeQuery`, options, stage-by-stage cache tests |
 | `skills/purview-sourcegenerator-tunit-tests/` | which TUnit base class and method, and the assertion extensions |
 | `skills/purview-sourcegenerator-packaging/` | the self-contained merged analyzer, embedding a generator in another package, Roslyn compatibility |
+| `skills/purview-sourcegenerator-attribute-data-models/` | declaring `[Generate]` attribute-data models: argument mapping, defaults, `[NestedModel]`, the `ADM` rules, testing a model with `AttributeDataFactory` |
 | `skills/purview-sourcegenerator-diagnostics/` | what a `PSGFR`/`PSGF`/`PRSGD` diagnostic means, and why a component is silently not running |
 
 Every skill carries the `purview-sourcegenerator` prefix. Skills install into one flat directory per

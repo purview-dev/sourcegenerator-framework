@@ -70,7 +70,7 @@ public class AttributeDataModelGeneratorTests
 		await Assert
 			.That(generated)
 			.Contains(
-				"var validationAttribute = global::Test.ValidationAttributeData.FromAttributeData(attributeData)"
+				"var validationAttribute = global::Test.ValidationAttributeData.FromAttributeDataUnchecked(attributeData)"
 			);
 		await Assert
 			.That(generated)
@@ -1106,6 +1106,121 @@ public readonly partial record struct RequiredAttributeData;
 			.That(generated)
 			.Contains("attributeData.GetNamedArgument<global::Test.LogLevel>(\"Level\", (global::Test.LogLevel)2);");
 		await Assert.That(generated).DoesNotContain("global::global::");
+	}
+
+	[Test]
+	public async Task Generate_PropertyNamesThatAreKeywordsOrShadowParameter_Compile(
+		CancellationToken cancellationToken
+	)
+	{
+		// Each property is read into a camel-cased local: event, class and var are keywords, and attributeData
+		// is the parse method's own parameter.
+		var source = """
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test
+			{
+				[System.AttributeUsage(System.AttributeTargets.Class)]
+				public sealed class KeywordAttribute(Severity @default = Severity.Low) : System.Attribute
+				{
+					public string? Event { get; set; }
+					public string? Class { get; set; }
+					public string? Var { get; set; }
+					public string? AttributeData { get; set; }
+					public Severity Default { get; set; } = @default;
+				}
+
+				public enum Severity { Low, High }
+
+				[Generate(typeof(KeywordAttribute))]
+				public readonly partial record struct KeywordAttributeData(
+					[Property] string? Event,
+					[Property] string? Class,
+					[Property] string? Var,
+					[Property] string? AttributeData,
+					[Argument("default", IsEnum = true)] [Property(IsEnum = true)] string? Default
+				);
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		result.AssertNoGenerationExceptions().AssertNoCompilationErrors();
+
+		var generated = await GetGeneratedStringAsync(
+			result,
+			"KeywordAttributeData.AttributeDataModel.g.cs",
+			cancellationToken
+		);
+
+		await Assert.That(generated).Contains("out var @event)");
+		await Assert.That(generated).Contains("out var @class)");
+		await Assert.That(generated).Contains("out var @var)");
+		await Assert.That(generated).Contains("out var __attributeData)");
+		await Assert.That(generated).Contains("global::Microsoft.CodeAnalysis.TypedConstant __defaultTc = default;");
+		await Assert.That(generated).Contains("var @default = __defaultTc.ToEnumString()");
+		await Assert.That(generated).Contains("return new(true, @event, @class, @var, __attributeData, @default);");
+	}
+
+	[Test]
+	public async Task Generate_BareArgument_ReadsCamelCasedConstructorParameter(CancellationToken cancellationToken)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test
+			{
+				[System.AttributeUsage(System.AttributeTargets.Class)]
+				public sealed class TemplateAttribute(string messageTemplate) : System.Attribute
+				{
+					public string MessageTemplate { get; } = messageTemplate;
+				}
+
+				[Generate(typeof(TemplateAttribute))]
+				public readonly partial record struct TemplateAttributeData([Argument] string? MessageTemplate);
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		result.AssertNoGenerationExceptions().AssertNoCompilationErrors();
+
+		var generated = await GetGeneratedStringAsync(
+			result,
+			"TemplateAttributeData.AttributeDataModel.g.cs",
+			cancellationToken
+		);
+
+		await Assert
+			.That(generated)
+			.Contains("attributeData.TryGetConstructorArgument<string>(\"messageTemplate\", out var messageTemplate)");
+		await Assert.That(generated).DoesNotContain("TryGetNamedArgument");
+	}
+
+	[Test]
+	public async Task Generate_PropertyNamedLikeGeneratedMember_SkipsGeneration(CancellationToken cancellationToken)
+	{
+		var source = """
+			using Purview.SourceGeneratorFramework.Generators;
+
+			namespace Test
+			{
+				[System.AttributeUsage(System.AttributeTargets.Class)]
+				public sealed class FlagAttribute : System.Attribute
+				{
+					public bool Exists { get; set; }
+				}
+
+				[Generate(typeof(FlagAttribute))]
+				public readonly partial record struct FlagAttributeData([Property] bool Exists);
+			}
+			""";
+
+		var result = await GenerateAsync(source, cancellationToken: cancellationToken);
+
+		result.AssertNoGenerationExceptions();
+
+		await Assert.That(result.GetGeneratedTree("FlagAttributeData.AttributeDataModel.g.cs")).IsNull();
 	}
 
 	static async Task<string?> GetGeneratedStringAsync(

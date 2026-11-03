@@ -41,7 +41,7 @@ Reference implementation of an incremental C# source generator built with `Purvi
 ```csharp
 [Generate(typeof(LogAttribute), MatchByInheritance = true)]
 public readonly partial record struct LogAttributeData(
-    [Property] string? Message,
+    [Argument("message")] string? Message,
     [Property] int EventId,
     [Property] string? CategoryName,
     [Property(DefaultValue = LogLevel.Information)] LogLevel Level
@@ -54,11 +54,35 @@ public readonly partial record struct DebugAttributeData(
 );
 ```
 
+- `LogAttribute.Message` has a private setter, so it can only arrive through the `message` constructor parameter. Mapping it with `[Property]` would never read it; the naming analyzer reports that as `ADM0012`.
 - `MatchByInheritance = true` makes `LogAttributeData` accept `[Debug]` applications too.
 - `[NestedModel]` reuses the parent's full mapping without duplicating the property list.
 - `[Property(DefaultValue = ...)]` supplies the fallback. Roslyn's `AttributeData` does not surface values assigned inside the attribute constructor body, so the "Debug through inheritance" default is declared on the model rather than relied on from `DebugAttribute`'s constructor.
 
 Tests are in [`LogAttributeDataTests`](../../tests/SourceGeneratorFramework.ExampleGenerator.UnitTests).
+
+## Level-shortcut attribute mapping (LogEvent → InfoEvent)
+
+`InfoEventAttribute` is a level shortcut for `LogEventAttribute` that does **not** derive from it. It declares the same `messageTemplate`/`eventId` constructor parameters and `MessageTemplate`/`EventId`/`Name` properties, but no `level`:
+
+```csharp
+[Generate(typeof(LogEventAttribute))]
+public readonly partial record struct LogEventAttributeData(
+    [Argument("level")] [Property(DefaultValue = LogLevel.Information)] LogLevel Level,
+    [Argument("messageTemplate")] [Property] string? MessageTemplate,
+    [Argument("eventId")] [Property(DefaultValue = -1)] int EventId,
+    [Property] string? Name
+);
+
+[Generate(typeof(InfoEventAttribute))]
+public readonly partial record struct InfoEventAttributeData([NestedModel] LogEventAttributeData Log);
+```
+
+- `[NestedModel]` reads `[InfoEvent(...)]`'s arguments into `LogEventAttributeData`'s shape through `LogEventAttributeData.FromAttributeDataUnchecked`, which skips the `LogEventAttribute` target check.
+- `level` is not declared on `InfoEventAttribute`, so `Log.Level` takes the mapped default, `LogLevel.Information`. An omitted `eventId` takes `-1`.
+- `LogEventAttributeData.FromAttributeData` still returns `Empty` for an `[InfoEvent]` application.
+
+Tests are in [`LogEventAttributeDataTests`](../../tests/SourceGeneratorFramework.ExampleGenerator.UnitTests). They show the recommended way to test a model: `AttributeDataFactory.FromSource` compiles the applications into real `AttributeData`, the attribute-argument assertions (`HasConstructorArgument`, `HasNamedArgument`, …) pin what each application supplies, and the generated models are then checked against it.
 
 ## Refactoring sample (Logging)
 

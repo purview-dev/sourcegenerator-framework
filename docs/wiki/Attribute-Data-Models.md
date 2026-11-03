@@ -20,11 +20,11 @@ The generator emits marker attributes into your compilation:
 | `[Property]` | A record parameter is populated from a named attribute property (the property name is inferred from the parameter name unless overridden). When combined with `[Argument]` on the same parameter, the named argument is read first. |
 | `[Property(string name)]` | Explicit named property source. |
 | `[Property(..., DefaultValue = ...)]` | Fallback value when the named property is not present. |
-| `[Argument]` | Populated from a constructor argument by parameter name. |
+| `[Argument]` | Populated from the constructor parameter named after the record parameter, camel-cased (`MessageTemplate` → `messageTemplate`). |
 | `[Argument(int index)]` | Constructor argument by parameter index. |
 | `[Argument(string name)]` | Constructor argument by parameter name. |
 | `[Argument(..., DefaultValue = ...)]` | Fallback when the constructor argument is not present. |
-| `[NestedModel]` | Populated by recursively calling `FromAttributeData` on a nested generated model. |
+| `[NestedModel]` | Populated from the same attribute by calling the nested generated model's `FromAttributeDataUnchecked`, which skips its target-attribute check. |
 | `[Exclude]` | Skips auto-discovery for this parameter. |
 | `[GenericTypeArgument]` | Populated from a generic type argument of the attribute class. |
 | `[GenericTypeArgument(int index)]` | Generic type argument by position. |
@@ -62,11 +62,20 @@ readonly record struct RequiredAttributeData(bool Exists, bool AllowEmptyStrings
         if (!TargetAttribute.Equals(attributeData.AttributeClass))
             return Empty;
 
+        return FromAttributeDataUnchecked(attributeData);
+    }
+
+    public static RequiredAttributeData FromAttributeDataUnchecked(AttributeData attributeData)
+    {
         attributeData.TryGetNamedArgument<bool>("AllowEmptyStrings", out var allowEmptyStrings);
         return new(true, allowEmptyStrings);
     }
 }
 ```
+
+`FromAttributeData` and `TryFromAttributeData` check the attribute's type against `TargetAttribute`.
+`FromAttributeDataUnchecked` holds the argument reading without that check; it exists for
+[nested models](#nested-models), and is rarely called directly.
 
 ## String target names
 
@@ -153,8 +162,97 @@ public readonly partial record struct RequiredAttributeData(
 );
 ```
 
-Because `ValidationAttributeData` uses `MatchByInheritance = true`, it matches any attribute that
-derives from `ValidationAttribute`, including `RequiredAttribute`.
+The nested model is read from the **outer** attribute's constructor and named arguments, using its own
+`[Argument]`/`[Property]` mappings, through its `FromAttributeDataUnchecked` method. Its own
+`TargetAttribute` is not checked, because the outer model has already matched its attribute. So the
+outer attribute does not have to derive from the nested model's target: it only needs to declare the
+same constructor parameter and property names. `ValidationAttributeData` also uses
+`MatchByInheritance = true`, so it can be used on its own against any attribute deriving from
+`ValidationAttribute`.
+
+A nested model populated this way always has `Exists` set to `true`. A mapped argument or property that
+the outer attribute does not declare takes the nested model's `DefaultValue`, or `default(T)` when it
+has none:
+
+```csharp
+[Generate(typeof(LogEventAttribute))]
+public readonly partial record struct LogEventAttributeData(
+    [Argument("level")] [Property(DefaultValue = LogLevel.Information)] LogLevel Level,
+    [Argument("messageTemplate")] [Property] string? MessageTemplate,
+    [Argument("eventId")] [Property(DefaultValue = -1)] int EventId,
+    [Property] string? Name
+);
+
+// InfoEventAttribute does not derive from LogEventAttribute, and has no `level`.
+[Generate(typeof(InfoEventAttribute))]
+public readonly partial record struct InfoEventAttributeData([NestedModel] LogEventAttributeData Log);
+```
+
+`[InfoEvent("Cycle done: {Count}")]` gives `Log.MessageTemplate == "Cycle done: {Count}"`,
+`Log.EventId == -1` and `Log.Level == LogLevel.Information`.
+
+> [!IMPORTANT]
+> Up to 1.2.2, the nested model was read through its guarded `FromAttributeData`. Unless the outer
+> attribute matched the nested model's `TargetAttribute`, directly or through `MatchByInheritance`, the
+> nested model was always `Empty`: every value was `default(T)` and no `DefaultValue` was applied.
+
+## Naming rules
+
+The generated code looks every name up **case-sensitively at run time**, and a name it cannot find yields
+the property's `DefaultValue` (or `default(T)`). A mapping mistake therefore compiles cleanly and produces
+default values. Follow these rules, and let the naming analyzer check them:
+
+- A constructor source must name a parameter exactly: `[Argument("messageTemplate")]`, not
+  `[Argument("MessageTemplate")]`. A bare `[Argument]` uses the record parameter's name, camel-cased.
+- A named source (`[Property]`, or a parameter with no mapping attribute) must name a **public settable**
+  property or field of the attribute. A property with a private or `internal` setter can only be read
+  through the constructor parameter that sets it.
+- Prefer constructor sources by name over `[Argument(index)]`: an index silently moves to another parameter
+  when overloads change, and means a different parameter on each attribute a nested model is read from.
+- A property must not be named `Exists`, `Empty`, `TargetAttribute`, `AllAttributeData`, `FromAttributeData`,
+  `TryFromAttributeData` or `FromAttributeDataUnchecked`; those are generated. Keyword names such as `Event`
+  or `Class` are supported.
+
+### Naming analyzer
+
+`AttributeDataModelNamingAnalyzer` mirrors the generator's source resolution and reports at the mapping:
+
+| Rule | Severity | Reported when |
+| --- | --- | --- |
+| `ADM0011` | Warning | A mapped constructor parameter or named argument matches an attribute member only when case is ignored. |
+| `ADM0012` | Warning | A named source is not a public settable member of the attribute, or a bare `[Argument]` implies a constructor parameter the attribute lacks. |
+| `ADM0013` | Info | A `[NestedModel]` property reads only names the outer attribute lacks, so it always takes its default. |
+| `ADM0014` | Error | A property has the name of a generated member. Generation is skipped for the model. |
+| `ADM0015` | Warning | A `[NestedModel]` property reads a constructor index that names a different parameter on the outer attribute. |
+
+An explicit `[Argument("name")]` or `[Argument(index)]` that matches nothing at all remains `ADM0003`.
+`ADM0013` is informational because a nested model may read a value the outer attribute deliberately does
+not have (the `level` of a `[Log]` model nested in an `[Info]` model); check each one.
+
+## Testing a model
+
+Test a model against the `AttributeData` Roslyn really produces. `AttributeDataFactory`
+(`Purview.SourceGeneratorFramework.Testing`) compiles an application without running a generator, and the
+TUnit `AttributeDataAssertions` pin each argument by ordinal, parameter name or named argument, including
+whether it was written positionally, by parameter name, as a named argument, or defaulted:
+
+```csharp
+var options = new MyTestOptions { AdditionalNamespaces = ["My.Attributes"] };
+var attribute = AttributeDataFactory.FromUsage("[InfoEvent(\"custom {Value}\")]", options);
+
+await Assert.That(attribute).HasConstructorArgument("messageTemplate", "custom {Value}");
+await Assert.That(attribute).DoesNotHaveNamedArgument("Name");
+
+var model = InfoEventAttributeData.FromAttributeData(attribute);
+await Assert.That(model.Log.MessageTemplate).IsEqualTo("custom {Value}");
+await Assert.That(model.Log.EventId).IsEqualTo(-1);              // DefaultValue, not default(int)
+await Assert.That(model.Log.Level).IsEqualTo(LogLevel.Information);
+```
+
+For each model, cover positional, by-name and named-argument applications, an application that omits every
+optional argument, and — for a nested model — an outer attribute missing a mapped member. See
+[Testing.md](Testing.md#testing-attribute-applications) for the factory and
+[Testing-TUnit.md](Testing-TUnit.md#assertion-extensions) for the assertions.
 
 ## Generic type arguments
 

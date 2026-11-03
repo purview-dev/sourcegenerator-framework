@@ -17,15 +17,17 @@ The generator emits marker attributes into your compilation:
 - `[Property]` — a record parameter is populated from a named attribute property (the property name is inferred from the parameter name unless overridden).
 - `[Property(string name)]` — explicit named property source.
 - `[Property(..., DefaultValue = ...)]` — provides a fallback value when the named property is not present.
-- `[Argument]` — a record parameter is populated from a constructor argument by parameter name.
+- `[Argument]` — a record parameter is populated from the constructor parameter named after it, camel-cased (`MessageTemplate` → `messageTemplate`).
 - `[Argument(int index)]` — constructor argument by parameter index.
 - `[Argument(string name)]` — constructor argument by parameter name.
 - `[Argument(..., DefaultValue = ...)]` — provides a fallback value when the constructor argument is not present.
-- `[NestedModel]` — a record parameter is populated by recursively calling `FromAttributeData` on a nested generated model.
+- `[NestedModel]` — a record parameter is populated from the same attribute by calling the nested generated model's `FromAttributeDataUnchecked`, which skips its target-attribute check.
 - `[Exclude]` — skips auto-discovery for this parameter.
 - `[GenericTypeArgument]` — a record parameter is populated from a generic type argument of the attribute class.
 - `[GenericTypeArgument(int index)]` — generic type argument by position.
 - `[GenericTypeArgument(string name)]` — generic type argument by type parameter name.
+
+Names are looked up case-sensitively at run time, and a name that is not found yields the default value, so a mapping mistake compiles cleanly. `AttributeDataModelNamingAnalyzer` (`ADM0011`–`ADM0015`) reports case-only mismatches, named sources that are not public settable members, generated-member name clashes, and `[NestedModel]` mappings the outer attribute does not line up with. See the [naming rules](../../../docs/wiki/Attribute-Data-Models.md#naming-rules).
 
 ### Default values
 
@@ -65,11 +67,18 @@ readonly record struct RequiredAttributeData(bool Exists, bool AllowEmptyStrings
         if (!TargetAttribute.Equals(attributeData.AttributeClass))
             return Empty;
 
+        return FromAttributeDataUnchecked(attributeData);
+    }
+
+    public static RequiredAttributeData FromAttributeDataUnchecked(AttributeData attributeData)
+    {
         attributeData.TryGetNamedArgument<bool>("AllowEmptyStrings", out var allowEmptyStrings);
         return new(true, allowEmptyStrings);
     }
 }
 ```
+
+`FromAttributeDataUnchecked` holds the argument reading without the `TargetAttribute` check; it exists for nested models.
 
 ### String target names
 
@@ -123,7 +132,7 @@ public readonly partial record struct RequiredAttributeData(
 );
 ```
 
-Because `ValidationAttributeData` uses `MatchByInheritance = true`, it matches any attribute that derives from `ValidationAttribute`, including `RequiredAttribute`.
+The nested model is read from the outer attribute's arguments, using its own `[Argument]`/`[Property]` mappings, without checking its own `TargetAttribute`. The outer attribute does not have to derive from the nested model's target; it only needs the same constructor parameter and property names. The nested model always has `Exists` set to `true`, and a mapped argument the outer attribute does not declare takes the nested model's `DefaultValue`. `ValidationAttributeData` also uses `MatchByInheritance = true`, so it can be used on its own against any attribute deriving from `ValidationAttribute`.
 
 ### Generic type arguments
 

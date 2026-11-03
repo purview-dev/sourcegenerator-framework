@@ -311,6 +311,18 @@ static class AttributeDataModelLibrary
 				continue;
 			}
 
+			if (AttributeDataModelDiagnosticRules.GeneratedMemberNames.Contains(propertyName))
+			{
+				diagnostics.Add(
+					ReportableDiagnostic.Create(
+						AttributeDataModelDiagnosticRules.PropertyNameConflictsWithGeneratedMember,
+						isBlocking: true,
+						parameter,
+						propertyName
+					)
+				);
+			}
+
 			if (info.IsNestedModel && !IsGeneratedAttributeModel(propertyType))
 			{
 				diagnostics.Add(
@@ -456,6 +468,12 @@ static class AttributeDataModelLibrary
 				sources.Add(new PropertySource(AttributePropertySource.ConstructorName, ctorName, -1));
 			else if (ctorIndex >= 0)
 				sources.Add(new PropertySource(AttributePropertySource.ConstructorIndex, null, ctorIndex));
+			else
+			{
+				// A bare [Argument] names the constructor parameter after the model property, camel-cased
+				// (MessageTemplate -> messageTemplate), as ArgumentAttribute.Name documents.
+				sources.Add(new PropertySource(AttributePropertySource.ConstructorName, ToCamelCase(propertyName), -1));
+			}
 
 			if (ctorDefaultValue is not null)
 			{
@@ -1295,6 +1313,9 @@ static class AttributeDataModelLibrary
 		}
 		return builder.ToString();
 	}
+
+	static string ToCamelCase(string value) =>
+		string.IsNullOrEmpty(value) ? value : char.ToLowerInvariant(value[0]) + value.Substring(1);
 }
 
 /// <summary>

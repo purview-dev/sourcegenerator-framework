@@ -433,10 +433,12 @@ public readonly partial record struct RequiredAttributeData(
 
 Supported mapping attributes:
 - `[Property]` — reads a named attribute property (the property name is inferred from the parameter name unless overridden with `Name = ...`).
-- `[Argument]` — reads a constructor argument by parameter name.
-- `[Argument(int index)]` — reads a constructor argument by position.
-- `[NestedModel]` — populates a nested `[Generate]`-annotated attribute-data model type.
+- `[Argument]` — reads the constructor parameter named after the record parameter, camel-cased; `[Argument("name")]` names it explicitly.
+- `[Argument(int index)]` — reads a constructor argument by position. Prefer a name: an index moves when overloads change.
+- `[NestedModel]` — populates a nested `[Generate]`-annotated attribute-data model type from the same attribute's arguments, matched by name.
 - `[GenericTypeArgument]` — reads a generic type argument of the attribute class.
+
+Names are matched case-sensitively at run time and a missing name yields the default value, so the bundled `AttributeDataModelNamingAnalyzer` (`ADM0011`–`ADM0015`) reports mappings the generated code would never find. Test a model against real applications with `AttributeDataFactory` and the attribute-argument assertions in the testing packages.
 
 You can also target an attribute by fully-qualified name, which is useful when the attribute type is not available in the generator project (e.g., `LengthAttribute` in .NET 8+ or a self-generated attribute):
 
