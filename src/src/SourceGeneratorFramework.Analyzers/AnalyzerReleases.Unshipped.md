@@ -5,6 +5,11 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
+ADM0011 | Naming | Warning | Mapped name differs from the attribute member only by case
+ADM0012 | Naming | Warning | Mapped attribute member does not exist
+ADM0013 | Naming | Info | Nested model property is not declared on the outer attribute
+ADM0014 | Naming | Error | Property name conflicts with a generated member
+ADM0015 | Naming | Warning | Nested model constructor index names a different parameter on the outer attribute
 PSGFR30 | Purview.SourceGeneratorFramework | Warning | Prefer static lambdas in incremental generator pipelines
 PSGFR31 | Purview.SourceGeneratorFramework | Warning | Prefer TargetSymbol over GetDeclaredSymbol(TargetNode)
 PSGFR32 | Purview.SourceGeneratorFramework | Warning | Avoid NormalizeWhitespace when generating source

@@ -6,10 +6,14 @@ namespace Purview.SourceGeneratorFramework.Examples;
 /// <remarks>
 /// <c>MatchByInheritance = true</c> makes this model accept derived attribute types too, so it can read a
 /// <see cref="DebugAttribute"/> application through the same extraction logic.
+/// <para>
+/// <see cref="LogAttribute.Message"/> has a private setter, so it can only be supplied through the
+/// <c>message</c> constructor parameter; a <c>[Property]</c> mapping would never be read (ADM0012).
+/// </para>
 /// </remarks>
 [Generate(typeof(LogAttribute), MatchByInheritance = true)]
 public readonly partial record struct LogAttributeData(
-	[Property] string? Message,
+	[Argument("message")] string? Message,
 	[Property] int EventId,
 	[Property] string? CategoryName,
 	[Property(DefaultValue = LogLevel.Information)] LogLevel Level

@@ -208,6 +208,9 @@ All assertion extensions are under `Purview.SourceGeneratorFramework.Testing.TUn
 - `HasDiagnostic` / `HasDiagnostics` / `HasNoDiagnostics` / `DoesNotHaveDiagnostic` /
   `HasNoErrorDiagnostics`.
 - `HasSymbol(TypeIdentity)` / `HasSymbol("Namespace.Type")`.
+- `HasConstructorArgument(ordinal | parameterName, expected[, form])` / `DoesNotHaveConstructorArgument` /
+  `HasNamedArgument` / `DoesNotHaveNamedArgument` — on an `AttributeData`; see
+  [Attribute argument assertions](#attribute-argument-assertions).
 - `GeneratesCode(expected)` / `ContainsGeneratedCode(expected)` (whitespace-flattened).
 
 The `CodeQuery` assertions operate on a `CodeQuery` directly, so they accept a query from any test
@@ -231,6 +234,32 @@ CodeQueryResult<ClassDeclarationSyntax> attributeClass = await Assert.That(query
 await Assert.That(attributeClass).HasPropertyOfType("Name", query.MakeNullable(TypeLibrary.System.String));
 ```
 
+### Attribute argument assertions
+
+`AttributeDataAssertions` assert on an `AttributeData`, typically one compiled by `AttributeDataFactory`
+from the Testing package. They are the way to test attribute parsing — usually a generated attribute-data
+model — against real input: pin the application first, then the model, so a failure says which half is
+wrong.
+
+```csharp
+var attribute = AttributeDataFactory.FromUsage("[InfoEvent(\"custom {Value}\", Name = \"N\")]", options);
+
+await Assert.That(attribute).HasConstructorArgument(0, "custom {Value}");                     // by ordinal
+await Assert.That(attribute).HasConstructorArgument("messageTemplate", "custom {Value}");     // by parameter name
+await Assert.That(attribute).HasConstructorArgument("eventId", -1, AttributeArgumentForm.Defaulted);
+await Assert.That(attribute).HasNamedArgument("Name", "N");
+await Assert.That(attribute).DoesNotHaveNamedArgument("EventId");
+
+var model = InfoEventAttributeData.FromAttributeData(attribute);
+await Assert.That(model.Log.MessageTemplate).IsEqualTo("custom {Value}");
+```
+
+Names are matched case-sensitively, as generated models match them. Values compare with
+`AttributeArgument.ValueEquals`: numbers across numeric types, enums by value or member name (`"High"`,
+`"Level.High"`, `"Sample.Level.High"`), `typeof` arguments by `Type`, `TypeIdentity` or name, arrays
+element-wise. Each assertion returns the matched `AttributeArgument`, and a failure lists every argument of
+the application, for example
+`[InfoEventAttribute(#0 messageTemplate: "custom {Value}", Name = "N")]`.
 ## Incremental cache tests
 
 `GenerateIncrementalAsync` proves the pipeline caches stage-by-stage (first run `New`, identical rerun

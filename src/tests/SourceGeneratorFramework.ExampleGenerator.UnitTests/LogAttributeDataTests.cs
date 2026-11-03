@@ -47,7 +47,7 @@ public class LogAttributeDataTests
 		await Assert.That(debugGenerated).Contains("global::Sample.LogAttributeData Log");
 		await Assert
 			.That(debugGenerated)
-			.Contains("var log = global::Sample.LogAttributeData.FromAttributeData(attributeData);");
+			.Contains("var log = global::Sample.LogAttributeData.FromAttributeDataUnchecked(attributeData);");
 		await Assert
 			.That(debugGenerated)
 			.Contains(
@@ -68,6 +68,33 @@ public class LogAttributeDataTests
 				"attributeData.GetNamedArgument<global::Purview.SourceGeneratorFramework.Examples.LogLevel>(\"Level\", (global::Purview.SourceGeneratorFramework.Examples.LogLevel)2);"
 			);
 	}
+
+	[Test]
+	public async Task LogAttributeData_PositionalMessage_IsRead()
+	{
+		// LogAttribute.Message has a private setter, so the message only ever arrives through the constructor.
+		var attribute = AttributeDataFactory.FromUsage("[Log(\"hello\", EventId = 3)]", ExamplesOptions);
+
+		var model = Examples.LogAttributeData.FromAttributeData(attribute);
+
+		await Assert.That(model.Message).IsEqualTo("hello");
+		await Assert.That(model.EventId).IsEqualTo(3);
+		await Assert.That(model.Level).IsEqualTo(LogLevel.Information);
+	}
+
+	[Test]
+	public async Task DebugAttributeData_PositionalMessage_FlowsIntoNestedModel()
+	{
+		var attribute = AttributeDataFactory.FromUsage("[Debug(\"hi\")]", ExamplesOptions);
+
+		var model = Examples.DebugAttributeData.FromAttributeData(attribute);
+
+		await Assert.That(model.Log.Message).IsEqualTo("hi");
+		await Assert.That(model.Level).IsEqualTo(LogLevel.Debug);
+	}
+
+	static LogAttributeDataTestOptions ExamplesOptions =>
+		new() { AdditionalNamespaces = ["Purview.SourceGeneratorFramework.Examples"] };
 
 	static async Task<string?> GetGeneratedStringAsync(
 		DriverRunResult result,

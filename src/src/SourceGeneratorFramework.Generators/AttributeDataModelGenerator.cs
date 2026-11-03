@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Purview.SourceGeneratorFramework.Generators.Helpers;
 using Purview.SourceGeneratorFramework.Logging;
 
@@ -129,6 +130,7 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 			// AttributeData extraction methods
 			FromAttributeDataMethod(writer, target);
 			TryFromAttributeDataMethod(writer, target);
+			FromAttributeDataUncheckedMethod(writer, target);
 		}
 	}
 
@@ -513,21 +515,52 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 				}
 				w.Block(null, body => body.Line("return Empty;"));
 
-				foreach (var property in target.Properties)
-				{
-					PropertyExtraction(w, property);
-				}
-
-				List<string> returnValues = ["true"];
-				foreach (var property in target.Properties)
-				{
-					var value = ToCamelCase(property.PropertyName);
-					returnValues.Add(property.IsNonNullableReferenceType ? value + "!" : value);
-				}
-
-				w.Line($"return new({string.Join(", ", returnValues)});");
+				w.Return("FromAttributeDataUnchecked(attributeData)");
 			}
 		);
+	}
+
+	// The extraction body, without the TargetAttribute check. [NestedModel] parameters call this: the outer
+	// model has already matched its own attribute, and the nested model's TargetAttribute is usually a different
+	// type, so going through the guarded FromAttributeData would always return Empty.
+	static void FromAttributeDataUncheckedMethod(CodeWriter writer, AttributeDataModelTarget target)
+	{
+		MethodDeclarationOptions methodOptions = new(
+			"FromAttributeDataUnchecked",
+			TypeReference(target.StructName),
+			TypeDeclarationAccessibility.Public
+		)
+		{
+			IsStatic = true,
+			Parameters = [new("attributeData", TypeReference("global::Microsoft.CodeAnalysis.AttributeData"))],
+		};
+
+		writer
+			.XmlSummary(
+				"Reads the model from the attribute's constructor and named arguments without checking the attribute type against <see cref=\"TargetAttribute\"/>."
+			)
+			.XmlRemarks(
+				"Used to populate a <c>[NestedModel]</c> parameter from the outer model's attribute. The result always has <see cref=\"Exists\"/> set to <see langword=\"true\"/>, and arguments the attribute does not declare take their mapped default values."
+			)
+			.Method(
+				methodOptions,
+				w =>
+				{
+					foreach (var property in target.Properties)
+					{
+						PropertyExtraction(w, property);
+					}
+
+					List<string> returnValues = ["true"];
+					foreach (var property in target.Properties)
+					{
+						var value = ToLocalName(property.PropertyName);
+						returnValues.Add(property.IsNonNullableReferenceType ? value + "!" : value);
+					}
+
+					w.Line($"return new({string.Join(", ", returnValues)});");
+				}
+			);
 	}
 
 	static void TryFromAttributeDataMethod(CodeWriter writer, AttributeDataModelTarget target)
@@ -563,19 +596,7 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 				}
 				w.Block(null, body => body.Line("return false;"));
 
-				foreach (var property in target.Properties)
-				{
-					PropertyExtraction(w, property);
-				}
-
-				List<string> returnValues = ["true"];
-				foreach (var property in target.Properties)
-				{
-					var value = ToCamelCase(property.PropertyName);
-					returnValues.Add(property.IsNonNullableReferenceType ? value + "!" : value);
-				}
-
-				w.Assignment("attribute", $"new({string.Join(", ", returnValues)})");
+				w.Assignment("attribute", "FromAttributeDataUnchecked(attributeData)");
 
 				w.Return("attribute.Exists");
 			}
@@ -584,7 +605,7 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 
 	static void PropertyExtraction(CodeWriter writer, AttributeDataModelProperty property)
 	{
-		var variableName = ToCamelCase(property.PropertyName);
+		var variableName = ToLocalName(property.PropertyName);
 		var typeName = GetNonNullableTypeName(property.FullyQualifiedTypeName);
 		var localTypeName =
 			property.IsNullableValueType ? typeName
@@ -593,7 +614,9 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 
 		if (property.IsNestedModel)
 		{
-			writer.Line($"var {variableName} = {property.NestedModelTypeName}.FromAttributeData(attributeData);");
+			writer.Line(
+				$"var {variableName} = {property.NestedModelTypeName}.FromAttributeDataUnchecked(attributeData);"
+			);
 			return;
 		}
 
@@ -748,7 +771,7 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 	)
 	{
 		var typeName = "global::Microsoft.CodeAnalysis.TypedConstant";
-		var tempName = $"__{variableName}Tc";
+		var tempName = $"__{variableName.TrimStart('@')}Tc";
 
 		writer.Line($"{typeName} {tempName} = default;");
 
@@ -836,6 +859,21 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 
 	static string GetNonNullableTypeName(string typeName) =>
 		typeName.EndsWith("?", StringComparison.Ordinal) ? typeName.Substring(0, typeName.Length - 1) : typeName;
+
+	// Each property is read into a local named after it, so the camel-cased name must not be a keyword
+	// (Event -> event) or shadow the method's attributeData parameter.
+	static string ToLocalName(string propertyName)
+	{
+		var name = ToCamelCase(propertyName);
+		if (string.Equals(name, "attributeData", StringComparison.Ordinal))
+			return "__attributeData";
+
+		return
+			SyntaxFacts.GetKeywordKind(name) != SyntaxKind.None
+			|| SyntaxFacts.GetContextualKeywordKind(name) != SyntaxKind.None
+			? "@" + name
+			: name;
+	}
 
 	static string ToCamelCase(string value) =>
 		string.IsNullOrEmpty(value) ? value : char.ToLowerInvariant(value[0]) + value.Substring(1);

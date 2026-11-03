@@ -9,6 +9,68 @@ that version to nuget.org.
 This file was reconstructed from the conventional-commit history at 1.1.1, so entries before that
 release summarise what the commits recorded rather than what was written at the time.
 
+## [1.3.0] - 2026-11-03
+
+### Changed
+
+- A bare `[Argument]` on an attribute-data model parameter now reads the constructor parameter named after
+  the record parameter, camel-cased (`MessageTemplate` → `messageTemplate`), as `ArgumentAttribute` has
+  always documented. It previously added no constructor source at all, so the property fell back to reading
+  a *named* argument of the same name. A model relying on that should use `[Property]` instead; the naming
+  analyzer reports a bare `[Argument]` whose implied parameter does not exist (`ADM0012`).
+
+### Fixed
+
+- `AttributeDataModelGenerator` emitted a local variable named after each property, camel-cased, without
+  escaping it. A property whose camel-cased name is a C# keyword (`Event`, `Class`, `Default`) produced
+  `var event = …` and did not compile, and a property named `AttributeData` shadowed the parse method's
+  parameter. Keyword names are now emitted with `@`, and `AttributeData` gets a distinct local.
+- The example generator's `LogAttributeData` mapped `Message` with `[Property]`, but `LogAttribute.Message`
+  has a private setter, so the message only ever arrives through the constructor and `[Log("text")]` lost
+  it. It now reads the `message` constructor parameter.
+- The example generator's mirror of the emitted `GenerateServiceAttribute` declared `Name` with an
+  `internal init` setter, unlike the emitted attribute's public setter. Found by `ADM0012`.
+
+- `AttributeDataModelGenerator` populated a `[NestedModel]` parameter by calling the nested model's
+  public `FromAttributeData(AttributeData)`, which begins with its own `TargetAttribute` check. When the
+  outer attribute was not the nested model's target (directly or through `MatchByInheritance`), the check
+  always failed and the nested model was always `Empty`: every value was `default(T)` and no
+  `[Property]`/`[Argument]` `DefaultValue` was applied. A level-shortcut attribute such as `[Info("…")]`
+  nesting the model of a general `[Log]` attribute lost its message template, event ID and name. Every
+  generated model now has a `FromAttributeDataUnchecked(AttributeData)` method holding the argument
+  reading without the target check, and nested models call it. The nested model is read from the outer
+  attribute's constructor and named arguments, `Exists` is `true`, and a mapped argument the outer
+  attribute does not declare takes its `DefaultValue`. The guarded `FromAttributeData` and
+  `TryFromAttributeData` overloads keep their check and their behaviour; they now delegate to
+  `FromAttributeDataUnchecked` after it.
+
+### Added
+
+- **`AttributeDataModelNamingAnalyzer` (`ADM0011`–`ADM0015`).** The generated code reads names
+  case-sensitively and falls back to a default when a name is missing, so a mapping mistake compiled
+  cleanly and silently produced default values. The analyzer mirrors the generator's source resolution
+  and reports: a mapped name that matches an attribute member only by case (`ADM0011`, warning); a named
+  source that is not a public settable member, or a bare `[Argument]` whose implied parameter does not
+  exist (`ADM0012`, warning); a `[NestedModel]` property that reads only names the outer attribute lacks
+  (`ADM0013`, info); a property named like a generated member, for which generation is now skipped
+  (`ADM0014`, error); and a nested model reading a constructor index that names a different parameter on
+  the outer attribute (`ADM0015`, warning). `ADM0003` is unchanged.
+- **Attribute testing helpers in `Purview.SourceGeneratorFramework.Testing`.** `AttributeDataFactory`
+  compiles an attribute application (`FromUsage`, placed on a declaration its `AttributeUsage` allows) or
+  a source (`FromSource`) into real `AttributeData`, throwing on compilation errors. `AttributeArguments`
+  describes each argument as an `AttributeArgument` — name, ordinal, value, and `AttributeArgumentForm`
+  (`Positional`, `NamedParameter`, `Defaulted`, `NamedArgument`) — with case-sensitive lookups and
+  value comparison across numeric types, enum members, `typeof` arguments and arrays.
+- **`AttributeDataAssertions` in `Purview.SourceGeneratorFramework.Testing.TUnit`:**
+  `HasConstructorArgument` by ordinal or parameter name (optionally with the expected form),
+  `DoesNotHaveConstructorArgument`, `HasNamedArgument` and `DoesNotHaveNamedArgument`. A failure lists
+  every argument of the application.
+- The `purview-sourcegenerator-attribute-data-models` skill: mapping methodology, nesting, the `ADM`
+  rules and how to test a model. The diagnostics, testing and TUnit skills cover the new rules and helpers.
+- `LogEventAttribute` / `InfoEventAttribute` and their models in the example generator: a level-shortcut
+  attribute that does not derive from the attribute its nested model targets, with tests that use
+  `AttributeDataFactory` and the attribute-argument assertions against the generated models.
+
 ## [1.2.2] - 2026-10-27
 
 ### Fixed
@@ -152,6 +214,7 @@ release summarise what the commits recorded rather than what was written at the 
 - Removed the separate `Shared` assembly; its sources are link-compiled into the framework.
 
 [Unreleased]: https://github.com/purview-dev/sourcegenerator-framework/compare/v1.2.0...HEAD
+[1.3.0]: https://github.com/purview-dev/sourcegenerator-framework/compare/v1.2.2...v1.3.0
 [1.2.0]: https://github.com/purview-dev/sourcegenerator-framework/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/purview-dev/sourcegenerator-framework/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/purview-dev/sourcegenerator-framework/compare/v1.0.0...v1.1.0

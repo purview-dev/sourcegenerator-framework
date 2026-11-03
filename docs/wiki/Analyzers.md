@@ -79,11 +79,15 @@ Opt out with `PurviewSourceGeneratorFrameworkAnalyzerValidation=false` (`PRSGD00
 ## Type-library and attribute-model diagnostics
 
 The bundled generators carry their own diagnostic families, reported by the
-`TypeLibraryValidationAnalyzer` (`TLB0001`–`TLB0019`) and the attribute-data-model validation
-analyzers. These are documented on their feature pages:
+`TypeLibraryValidationAnalyzer` (`TLB0001`–`TLB0019`) and the attribute-data-model analyzers:
+`AttributeDataModelValidationAnalyzer` (`ADM0001`–`ADM0009`), `AttributeDataModelSymbolPropertyAnalyzer`
+(`ADM0010`) and `AttributeDataModelNamingAnalyzer` (`ADM0011`–`ADM0015`). The naming rules catch mapped
+names the generated code would never find at run time — a case-only mismatch, a named argument without a
+public setter, a `[NestedModel]` mapping the outer attribute does not declare — which otherwise compile
+cleanly and silently produce default values. These are documented on their feature pages:
 
 - [Type-Library.md](Type-Library.md#validation)
-- [Attribute-Data-Models.md](Attribute-Data-Models.md)
+- [Attribute-Data-Models.md](Attribute-Data-Models.md) ([naming analyzer](Attribute-Data-Models.md#naming-analyzer))
 
 ## Code fixes
 

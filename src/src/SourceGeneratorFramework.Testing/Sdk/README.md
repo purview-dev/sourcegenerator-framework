@@ -15,6 +15,9 @@ dotnet add package Purview.SourceGeneratorFramework.Testing
 - **`SourceGeneratorTestOptions`** — options for configuring references, namespaces, analyzer-config values, output kind, and whether to emit the output compilation to an assembly.
 - **`DriverRunResult`** — wrapper around `GeneratorDriverRunResult` that exposes generated trees, the output compilation, emitted assembly, and log entries.
 - **`DriverRunResultExtensions`** — assertion helpers such as `AssertNoCompilationErrors`, `AssertNoGenerationExceptions`, `AssertSingleGeneratedSource`, `AssertGeneratedSourceContains`, and more.
+- **`AttributeDataFactory`** / **`AttributeArguments`** — compile an attribute application into real
+  `AttributeData`, and inspect its arguments by ordinal, constructor parameter name and named argument,
+  with how each was supplied. See [Testing attribute applications](#testing-attribute-applications).
 - **`ITestOutput`** / **`NullTestOutput`** — abstraction for capturing generator log output during tests.
 
 ## Usage
@@ -234,6 +237,38 @@ var query = result.Generated();
 query.GetClass("Service").HasProperty("Name", query.MakeNullable(TypeReference.Create<string>()));
 ```
 
+## Testing attribute applications
+
+`AttributeDataFactory` compiles attribute applications into the `AttributeData` Roslyn produces, without
+running a generator, so attribute parsing — typically a generated attribute-data model — can be tested
+against real input:
+
+```csharp
+var options = new MyTestOptions { AdditionalNamespaces = ["My.Attributes"] };
+
+// One application, placed on a declaration its AttributeUsage allows; brackets optional.
+var attribute = AttributeDataFactory.FromUsage("[Log(\"text\", eventId: 7, Name = \"N\")]", options);
+
+// Every application on a type, or on one of its members.
+var onMember = AttributeDataFactory.FromSource(source, "Sample.IEvents", "Raised", options);
+
+var model = LogAttributeData.FromAttributeData(attribute);
+```
+
+References and usings come from the options (`AdditionalAssemblyTypes`, `AdditionalNamespaces`, and
+`AdditionalSources` for an attribute declared in the test). A compilation error throws
+`InvalidOperationException` listing the errors, so a misspelt argument name fails the test.
+
+`AttributeArguments.From(attribute)` describes every argument as an `AttributeArgument`: its name
+(constructor parameter or property), ordinal, value, and `AttributeArgumentForm` — `Positional`,
+`NamedParameter` (`message: "x"`), `Defaulted` (an optional parameter that was not written) or
+`NamedArgument` (`Name = "x"`). Look arguments up with `TryGetConstructorArgument(ordinal)`,
+`TryGetConstructorArgument(parameterName)` and `TryGetNamedArgument(name)`; names are case-sensitive, as
+generated models are. `AttributeArgument.ValueEquals` compares numbers across types, enums by value or member
+name, `typeof` arguments by `Type`, `TypeIdentity` or name, and arrays element-wise. `ToString()` gives
+`[LogAttribute(#0 message: "text", #1 eventId: 7 (by name), Name = "N")]`.
+
+The TUnit package wraps these in assertions (`HasConstructorArgument`, `HasNamedArgument`, …).
 ## Refactoring tests
 
 `RefactoringTestRunner<TRefactoring>` runs a `CodeRefactoringProvider` against a test document:
