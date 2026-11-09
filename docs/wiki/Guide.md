@@ -1269,12 +1269,12 @@ assigns a tracking name so tests can reference individual stages.
 
 ```csharp
 var result = await new SourceGeneratorTestRunner<ServiceRegistrationGenerator>().RunIncrementalAsync(
-	[
-		new IncrementalRunInput([firstSources]),
-		new IncrementalRunInput([changedSources]),
-	],
-	options,
-	cancellationToken
+ [
+  new IncrementalRunInput([firstSources]),
+  new IncrementalRunInput([changedSources]),
+ ],
+ options,
+ cancellationToken
 );
 
 await Assert.That(result.Runs[0]).AllStepsNew();
@@ -2052,7 +2052,7 @@ Extension classes should form a coherent, discoverable shape so that "which type
 The framework's analyzers enforce these rules:
 
 | Rule | What it enforces |
-|------|------------------|
+| ------ | ------------------ |
 | `PSGFR34` | Prefer `extension(...)` blocks over classic `this`-parameter methods (gated on the language version supporting extension blocks). |
 | `PSGFR35` | Class name matches the extended type (`{Receiver}Extensions`). |
 | `PSGFR36` | Class lives in the extended type's namespace. |
