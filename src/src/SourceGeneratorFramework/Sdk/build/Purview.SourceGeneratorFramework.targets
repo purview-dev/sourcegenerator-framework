@@ -2,8 +2,18 @@
 	<PropertyGroup>
 		<_PurviewSourceGeneratorFrameworkAssembly Condition="'$(_PurviewSourceGeneratorFrameworkAssembly)' == ''"
 			>$(MSBuildThisFileDirectory)..\lib\netstandard2.0\Purview.SourceGeneratorFramework.dll</_PurviewSourceGeneratorFrameworkAssembly>
+		<!--
+			The merge tool is a build-time executable, so it requires a .NET runtime on the machine
+			that builds a component. It targets .NET 10 and rolls forward to the latest installed major,
+			so .NET 10 and .NET 11 both work from a single tools/ folder. The default must stay in step
+			with the TFM the framework package packs under tools/ (MergeToolTFM in this repository's
+			src/Directory.Build.props).
+		-->
+		<_PurviewSourceGeneratorFrameworkMergeToolTargetFramework
+			Condition="'$(_PurviewSourceGeneratorFrameworkMergeToolTargetFramework)' == ''"
+			>net10.0</_PurviewSourceGeneratorFrameworkMergeToolTargetFramework>
 		<_PurviewSourceGeneratorFrameworkMergeTool Condition="'$(_PurviewSourceGeneratorFrameworkMergeTool)' == ''"
-			>$(MSBuildThisFileDirectory)..\tools\net10.0\Purview.SourceGeneratorFramework.MergeTool.dll</_PurviewSourceGeneratorFrameworkMergeTool>
+			>$(MSBuildThisFileDirectory)..\tools\$(_PurviewSourceGeneratorFrameworkMergeToolTargetFramework)\Purview.SourceGeneratorFramework.MergeTool.dll</_PurviewSourceGeneratorFrameworkMergeTool>
 		<PurviewEmbedSourceGeneratorFramework
 			Condition="'$(PurviewEmbedSourceGeneratorFramework)' == '' AND '$(IsRoslynComponent)' == 'true'"
 			>true</PurviewEmbedSourceGeneratorFramework>
@@ -171,7 +181,7 @@
 		<MSBuild
 			Projects="$(_PurviewSourceGeneratorFrameworkMergeToolProject)"
 			Targets="Build"
-			Properties="Configuration=$(Configuration);TargetFramework=net10.0"
+			Properties="Configuration=$(Configuration);TargetFramework=$(_PurviewSourceGeneratorFrameworkMergeToolTargetFramework)"
 		/>
 	</Target>
 

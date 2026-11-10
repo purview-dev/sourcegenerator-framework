@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFrameworks>$(MergeToolTFM)</TargetFrameworks>
+		<!-- The tool targets the .NET 10 floor; running the suite on net11.0 proves latest-major
+		     roll-forward and the .NET 11 runtime path, not just the TFM it was built for. -->
+		<TargetFrameworks>net10.0;net11.0</TargetFrameworks>
 	</PropertyGroup>
 
 	<ItemGroup>

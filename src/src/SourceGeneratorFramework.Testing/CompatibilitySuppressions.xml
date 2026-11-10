@@ -20,4 +20,25 @@
 		<Right>lib/netstandard2.0/Purview.SourceGeneratorFramework.Testing.dll</Right>
 		<IsBaselineSuppression>true</IsBaselineSuppression>
 	</Suppression>
+	<!--
+    2.0.0 no longer ships the net8.0 and net9.0 assets. A consumer that targeted either now resolves
+    lib/netstandard2.0, where System.Enum does not implement ISpanFormattable, so the inherited
+    interface on the public HintNameMatchMode enum disappears on that asset only. The net10.0 and
+    net11.0 assets still have it. Delete these entries once the baseline is a release that has already
+    dropped net8.0/net9.0.
+  -->
+	<Suppression>
+		<DiagnosticId>CP0008</DiagnosticId>
+		<Target>T:Purview.SourceGeneratorFramework.Testing.HintNameMatchMode</Target>
+		<Left>lib/net8.0/Purview.SourceGeneratorFramework.Testing.dll</Left>
+		<Right>lib/netstandard2.0/Purview.SourceGeneratorFramework.Testing.dll</Right>
+		<IsBaselineSuppression>true</IsBaselineSuppression>
+	</Suppression>
+	<Suppression>
+		<DiagnosticId>CP0008</DiagnosticId>
+		<Target>T:Purview.SourceGeneratorFramework.Testing.HintNameMatchMode</Target>
+		<Left>lib/net9.0/Purview.SourceGeneratorFramework.Testing.dll</Left>
+		<Right>lib/netstandard2.0/Purview.SourceGeneratorFramework.Testing.dll</Right>
+		<IsBaselineSuppression>true</IsBaselineSuppression>
+	</Suppression>
 </Suppressions>

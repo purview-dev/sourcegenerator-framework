@@ -11,6 +11,7 @@ A set of libraries for building and testing incremental C# source generators usi
 - [CodeWriter structured API reference](docs/wiki/Code-Writer.md)
 - [Step-cache tests for incremental generators](docs/wiki/Step-Cache-Tests.md)
 - [Benchmark results](docs/wiki/Performance.md)
+- [.NET 11 support and features](docs/wiki/DotNet-11.md)
 
 ## Packages
 
@@ -24,9 +25,10 @@ A set of libraries for building and testing incremental C# source generators usi
 
 ## Requirements
 
-- .NET SDK 10.0 or later
-- The test projects target `net8.0`, `net9.0`, and `net10.0`
+- .NET SDK 11.0 or later (the repository pins `11.0.100` in `global.json`)
+- The test projects target `net10.0` and `net11.0`; .NET 8 and .NET 9 are out of support
 - Source generators target `netstandard2.0`
+- The packaged merge tool targets `net10.0` and rolls forward, so it runs on the .NET 10 or .NET 11 runtime while a component is built
 
 ## Building
 

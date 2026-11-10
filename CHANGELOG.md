@@ -9,6 +9,49 @@ that version to nuget.org.
 This file was reconstructed from the conventional-commit history at 1.1.1, so entries before that
 release summarise what the commits recorded rather than what was written at the time.
 
+## [2.0.0] - 2026-11-10
+
+### Changed
+
+- **.NET 8 and .NET 9 are out of support.** The libraries still ship a `netstandard2.0` asset, so a
+  .NET 8 or .NET 9 consumer keeps working, but neither runtime is built against or tested. The test
+  matrix is `net10.0` and `net11.0`, and the benchmarks target the same pair. See
+  [docs/wiki/DotNet-11.md](docs/wiki/DotNet-11.md).
+- **The repository requires the .NET 11 SDK** (`11.0.100`, with `allowPrerelease` now `false` because
+  .NET 11 has shipped) and `Purview.BuildSdk` 2.0.0.
+- **The packaged merge tool supports .NET 10 and .NET 11 from one `tools/` folder.** It targets the
+  .NET 10 LTS floor with `RollForward=LatestMajor`, so `dotnet exec` uses the installed .NET 10 or
+  .NET 11 runtime and prefers 11 when both are present. `MergeToolTFM` selects both the build output
+  and the packed folder, and the merge-tool test suite runs on both runtimes.
+- **Roslyn is pinned to `Microsoft.CodeAnalysis` 5.9.0** instead of a floating `5.9.0+` range. A host
+  that loads the generators must ship Roslyn 5.9 or later; the .NET 11 SDK ships 5.12.
+- **`CodeQueryResultAssertion<T>` is `closed` on the `net11.0` asset (C# 15).** It is the public base
+  for the package's sealed assertion chain, not a consumer extension point, so deriving from it in
+  another assembly now fails with CS9382 there. Write a custom chained assertion against TUnit's
+  `Assertion<T>` instead. The `netstandard2.0` and `net10.0` assets keep the previous `abstract`
+  declaration, because the compiler attribute the modifier emits ships only with .NET 11.
+
+### Added
+
+- [docs/wiki/DotNet-11.md](docs/wiki/DotNet-11.md): the support matrix, the .NET 11 features that
+  `Purview.BuildSdk` enables for `net11.0` (Runtime Async, C# 15, memory-safety rules, `-mt`), and the
+  features that were evaluated and deliberately left off. It records why no union type was required
+  and the non-boxing `IUnion`/`HasValue`/`TryGetValue` pattern to use if one is added.
+- `dotnet test --results-directory-layout per-module` in the `just test` recipe. A multi-target run
+  previously had `net10.0` and `net11.0` overwrite each other's reports.
+- `minPublishAgeHours="24"` on the `nuget.org` source, the .NET 11 SDK setting that keeps a
+  just-published package out of automatic version selection until it has had a day of review.
+
+### Fixed
+
+- The merge tool's target framework disagreed with itself: the projects built `net11.0` but looked
+  for the tool under `bin/<Configuration>/net10.0`, and the packaged targets looked under
+  `tools/net10.0`. Both now flow from a single property.
+- Removed the redundant `System.Reflection.Metadata` package reference from the build-integration
+  tests, clearing NU1510 (the assembly is in the shared framework for `net10.0`/`net11.0`).
+- `just benchmark` now passes `--framework net11.0`; `dotnet run` cannot choose a target framework for
+  a multi-targeted project.
+
 ## [1.3.0] - 2026-11-03
 
 ### Changed

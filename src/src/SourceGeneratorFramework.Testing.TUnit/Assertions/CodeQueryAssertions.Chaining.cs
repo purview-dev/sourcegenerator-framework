@@ -488,29 +488,6 @@ public static partial class CodeQueryAssertions
 }
 
 /// <summary>
-/// Base class for node-chain assertions. The chain value is the matched
-/// <see cref="CodeQueryResult{T}"/>, and awaiting the assertion yields that same non-null result.
-/// </summary>
-/// <remarks>
-/// Initializes a new instance of the <see cref="CodeQueryResultAssertion{T}"/> class.
-/// </remarks>
-public abstract class CodeQueryResultAssertion<T>(AssertionContext<CodeQueryResult<T>> context)
-	: Assertion<CodeQueryResult<T>>(context)
-	where T : SyntaxNode
-{
-	/// <summary>
-	/// Awaits the assertion and returns the matched non-null <see cref="CodeQueryResult{T}"/>.
-	/// </summary>
-	public new TaskAwaiter<CodeQueryResult<T>> GetAwaiter() => ExecuteAndReturnResultAsync().GetAwaiter();
-
-	async Task<CodeQueryResult<T>> ExecuteAndReturnResultAsync()
-	{
-		var value = await AssertAsync();
-		return value!;
-	}
-}
-
-/// <summary>
 /// Asserts that the generated code contains a class, and moves the chain onto it.
 /// </summary>
 public sealed class HasGeneratedClassAssertion : CodeQueryResultAssertion<ClassDeclarationSyntax>

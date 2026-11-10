@@ -84,10 +84,10 @@ reference.
 
 For multi-target TUnit projects, the normal reference means the generator's Roslyn dependencies
 participate in reference resolution for every target. Build the generator against the Roslyn version
-that supports its API usage; this framework is built against Roslyn 5.0, which ships `net8.0` and
-`net9.0` package assets, so a .NET 8–10 test matrix still loads it. Compiler hosts that consume the
-generator as an analyzer must be Roslyn 5.0 or later (`.NET 10` SDK / Visual Studio 2026). Do not
-force a newer `System.Collections.Immutable` version through central package management.
+that supports its API usage; this framework is built against Roslyn 5.9, which ships `net10.0` and
+`netstandard2.0` package assets, so a .NET 10–11 test matrix still loads it. Compiler hosts that
+consume the generator as an analyzer must be Roslyn 5.9 or later (`.NET 11` SDK / Visual Studio 2026).
+Do not force a newer `System.Collections.Immutable` version through central package management.
 
 ## Which base class and method
 

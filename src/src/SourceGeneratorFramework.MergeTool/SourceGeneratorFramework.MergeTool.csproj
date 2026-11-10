@@ -3,6 +3,12 @@
 		<TargetFrameworks>$(MergeToolTFM)</TargetFrameworks>
 		<OutputType>Exe</OutputType>
 		<IsPackable>false</IsPackable>
+		<!--
+			The tool is launched by `dotnet exec` from a consumer build, so it must run on whichever
+			.NET runtime that machine has. The LTS target plus latest-major roll-forward covers .NET 10
+			and .NET 11 from a single tools/ folder.
+		-->
+		<RollForward>LatestMajor</RollForward>
 	</PropertyGroup>
 
 	<ItemGroup>

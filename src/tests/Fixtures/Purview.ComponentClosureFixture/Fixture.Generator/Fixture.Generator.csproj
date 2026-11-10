@@ -40,7 +40,7 @@
 	<PropertyGroup>
 		<!-- Mirrors the framework package's resolved lib/ path for a PackageReference consumer. -->
 		<_PurviewSourceGeneratorFrameworkAssembly>..\..\..\..\src\SourceGeneratorFramework\bin\$(Configuration)\netstandard2.0\Purview.SourceGeneratorFramework.dll</_PurviewSourceGeneratorFrameworkAssembly>
-		<_PurviewSourceGeneratorFrameworkMergeTool>..\..\..\..\src\SourceGeneratorFramework.MergeTool\bin\$(Configuration)\net10.0\Purview.SourceGeneratorFramework.MergeTool.dll</_PurviewSourceGeneratorFrameworkMergeTool>
+		<_PurviewSourceGeneratorFrameworkMergeTool>..\..\..\..\src\SourceGeneratorFramework.MergeTool\bin\$(Configuration)\$(MergeToolTFM)\Purview.SourceGeneratorFramework.MergeTool.dll</_PurviewSourceGeneratorFrameworkMergeTool>
 		<_PurviewSourceGeneratorFrameworkMergeToolProject>..\..\..\..\src\SourceGeneratorFramework.MergeTool\SourceGeneratorFramework.MergeTool.csproj</_PurviewSourceGeneratorFrameworkMergeToolProject>
 	</PropertyGroup>
 	<Import Project="..\..\..\..\src\SourceGeneratorFramework\Sdk\build\Purview.SourceGeneratorFramework.targets" />

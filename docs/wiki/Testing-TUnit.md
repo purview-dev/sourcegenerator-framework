@@ -89,10 +89,11 @@ not add `OutputItemType="Analyzer"` to the normal reference.
 
 For multi-target TUnit projects, the normal reference means the generator's Roslyn dependencies
 participate in reference resolution for every target. Build the generator against the Roslyn version
-that supports its API usage; this framework is built against Roslyn 5.0, which ships `net8.0` and
-`net9.0` package assets, so a .NET 8–10 test matrix still loads it. Compiler hosts that consume the
-generator as an analyzer must be Roslyn 5.0 or later (`.NET 10` SDK / Visual Studio 2026). Do not
-force a newer `System.Collections.Immutable` version through central package management.
+that supports its API usage; this framework is built against Roslyn 5.9, which ships `net10.0` and
+`netstandard2.0` package assets, so a .NET 10–11 test matrix still loads it. Compiler hosts that
+consume the generator as an analyzer must be Roslyn 5.9 or later (`.NET 11` SDK / Visual Studio
+2026). Do not force a newer `System.Collections.Immutable` version through central package
+management.
 
 ## Running a packaged (merged) generator in tests
 
@@ -211,6 +212,12 @@ All assertion extensions are under `Purview.SourceGeneratorFramework.Testing.TUn
 - `HasConstructorArgument(ordinal | parameterName, expected[, form])` / `DoesNotHaveConstructorArgument` /
   `HasNamedArgument` / `DoesNotHaveNamedArgument` — on an `AttributeData`; see
   [Attribute argument assertions](#attribute-argument-assertions).
+
+`CodeQueryResultAssertion<T>` is a `closed` class on the `net11.0` asset (C# 15): the chain is a fixed
+set owned by the package, so deriving from it in another assembly fails with CS9382 there. To add a
+custom chained assertion, derive from TUnit's `Assertion<T>` directly. The `netstandard2.0` and
+`net10.0` assets keep the previous `abstract` declaration, since only .NET 11 ships the attribute the
+modifier emits.
 - `GeneratesCode(expected)` / `ContainsGeneratedCode(expected)` (whitespace-flattened).
 
 The `CodeQuery` assertions operate on a `CodeQuery` directly, so they accept a query from any test

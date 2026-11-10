@@ -22,6 +22,9 @@ block fails fast; see [Code-Writer.md](Code-Writer.md#construction-and-scope-val
 - .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v3
 - Toolchain: InProcessEmitToolchain
 
+These numbers are the recorded .NET 10 baseline. The benchmark project also targets `net11.0`; pass
+`--framework net11.0` (the default in the `just benchmark` recipe) to measure the current runtime.
+
 ## CodeWriter
 
 | Method     | Mean     | Error    | StdDev   | Gen0      | Gen1     | Gen2    | Allocated |
@@ -94,8 +97,9 @@ block fails fast; see [Code-Writer.md](Code-Writer.md#construction-and-scope-val
 Run the benchmarks project and copy the generated reports into the tables above:
 
 ```bash
-dotnet run -c Release --project src/src/SourceGeneratorFramework.Benchmarks --framework net10.0
+dotnet run -c Release --project src/src/SourceGeneratorFramework.Benchmarks --framework net11.0
 ```
 
-Filter to a single benchmark with `--filter "*Name*"`. The Markdown reports are written to
-`BenchmarkDotNet.Artifacts/results/`.
+The benchmark project targets `net10.0` and `net11.0`; pass `--framework net10.0` to compare against
+the LTS runtime. Filter to a single benchmark with `--filter "*Name*"`. The Markdown reports are
+written to `BenchmarkDotNet.Artifacts/results/`.

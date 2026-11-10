@@ -104,10 +104,10 @@ duplicate framework types.
 Because the second reference is a normal assembly reference, the generator's Roslyn dependencies
 also become visible to the test compilation. For a multi-target test project, build the generator
 against the Roslyn version that supports its API usage and is compatible with the oldest test target.
-This framework is built against Roslyn 5.0 (C# 14 / .NET 10 generation), which ships `net8.0` and
-`net9.0` package assets, so a `.NET 8`–`.NET 10` test matrix still loads it. Compiler hosts must be
-Roslyn 5.0 or later (`.NET 10` SDK / Visual Studio 2026). Do not centrally pin
-`System.Collections.Immutable` to a newer runtime version merely to make the generator load.
+This framework is built against Roslyn 5.9, which ships `net10.0` and `netstandard2.0` package assets,
+so the `net10.0` and `net11.0` test targets both load it. Compiler hosts must be Roslyn 5.9 or later
+(`.NET 11` SDK / Visual Studio 2026). Do not centrally pin `System.Collections.Immutable` to a newer
+runtime version merely to make the generator load.
 
 ## Installation
 
