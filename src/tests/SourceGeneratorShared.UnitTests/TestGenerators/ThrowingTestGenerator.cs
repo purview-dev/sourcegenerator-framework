@@ -24,10 +24,8 @@ public sealed class ThrowingTestGenerator : IIncrementalGenerator
 			new GenerationSettings("ThrowingTestGenerator", "1.0.0")
 		);
 
-		context.RegisterSourceOutput(
-			targets,
-			generationContext,
-			static (spc, target, ctx) => throw new InvalidOperationException(FailureMessage)
+		context.RegisterSourceOutput(targets, generationContext, static (spc, target, ctx) =>
+			throw new InvalidOperationException(FailureMessage)
 		);
 	}
 }

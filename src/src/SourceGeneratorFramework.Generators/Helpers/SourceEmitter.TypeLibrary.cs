@@ -51,158 +51,144 @@ partial class SourceEmitter
 
 		return writer
 			.XmlSummary("Declares a type identity member for a generated type library.")
-			.AttributeClass(
-				new(GeneratorTypeLibrary.Attributes.TypeRefAttribute),
-				AttributeTargets.Field,
-				bodyWriter =>
-				{
-					bodyWriter
-						.XmlSummary("Declares a type library member whose type name matches the member name.")
-						.XmlParam("namespace", "The namespace of the target type.")
-						.XmlParam("arity", "The generic arity of the target type, or 0 for a non-generic type.")
-						.XmlParam(
-							"includeInGetTypes",
-							"Whether the member is included in the namespace's generated GetTypes() call."
-						)
-						.XmlParam(
-							"generateFullNameConst",
-							"Whether the member generates a full name constant; useful for compile-time usage, such as in Attribute Data Model generation."
-						)
-						.Constructor(
-							new(GeneratorTypeLibrary.Attributes.TypeRefAttribute, TypeDeclarationAccessibility.Public)
-							{
-								Parameters =
-								[
-									new("@namespace", PurviewTypeLibrary.System.String),
-									new("arity", PurviewTypeLibrary.System.Int32) { DefaultValue = "0" },
-									new("includeInGetTypes", PurviewTypeLibrary.System.Boolean)
-									{
-										DefaultValue = "false",
-									},
-									new("generateFullNameConst", PurviewTypeLibrary.System.Boolean)
-									{
-										DefaultValue = "false",
-									},
-								],
-							},
-							constructorWriter =>
-								constructorWriter
-									.Assignment("Namespace", "@namespace")
-									.Assignment("Arity", "arity")
-									.Assignment("IncludeInGetTypes", "includeInGetTypes")
-									.Assignment("GenerateFullNameConst", "generateFullNameConst")
-						);
+			.AttributeClass(new(GeneratorTypeLibrary.Attributes.TypeRefAttribute), AttributeTargets.Field, bodyWriter =>
+			{
+				bodyWriter
+					.XmlSummary("Declares a type library member whose type name matches the member name.")
+					.XmlParam("namespace", "The namespace of the target type.")
+					.XmlParam("arity", "The generic arity of the target type, or 0 for a non-generic type.")
+					.XmlParam(
+						"includeInGetTypes",
+						"Whether the member is included in the namespace's generated GetTypes() call."
+					)
+					.XmlParam(
+						"generateFullNameConst",
+						"Whether the member generates a full name constant; useful for compile-time usage, such as in Attribute Data Model generation."
+					)
+					.Constructor(
+						new(GeneratorTypeLibrary.Attributes.TypeRefAttribute, TypeDeclarationAccessibility.Public)
+						{
+							Parameters =
+							[
+								new("@namespace", PurviewTypeLibrary.System.String),
+								new("arity", PurviewTypeLibrary.System.Int32) { DefaultValue = "0" },
+								new("includeInGetTypes", PurviewTypeLibrary.System.Boolean) { DefaultValue = "false" },
+								new("generateFullNameConst", PurviewTypeLibrary.System.Boolean)
+								{
+									DefaultValue = "false",
+								},
+							],
+						},
+						constructorWriter =>
+							constructorWriter
+								.Assignment("Namespace", "@namespace")
+								.Assignment("Arity", "arity")
+								.Assignment("IncludeInGetTypes", "includeInGetTypes")
+								.Assignment("GenerateFullNameConst", "generateFullNameConst")
+					);
 
-					bodyWriter
-						.XmlSummary("Declares a type library member with an explicit target type.")
-						.XmlParam("type", "The target type, supplied as a typeof(...) value or a type-name string.")
-						.XmlParam("namespace", "The namespace of the target type, or null to infer it from the type.")
-						.XmlParam(
-							"arity",
-							"The generic arity of the target type; -1 infers it from the type when possible."
-						)
-						.XmlParam(
-							"includeInGetTypes",
-							"Whether the member is included in the namespace's generated GetTypes() call."
-						)
-						.XmlParam(
-							"generateFullNameConst",
-							"Whether the member generates a full name constant; useful for compile-time usage, such as in Attribute Data Model generation."
-						)
-						.Constructor(
-							new(GeneratorTypeLibrary.Attributes.TypeRefAttribute, TypeDeclarationAccessibility.Public)
-							{
-								Parameters =
-								[
-									new("type", PurviewTypeLibrary.System.Object.MakeNullable()),
-									new("@namespace", PurviewTypeLibrary.System.String.MakeNullable())
-									{
-										DefaultValue = "null",
-									},
-									new("arity", PurviewTypeLibrary.System.Int32) { DefaultValue = "-1" },
-									new("includeInGetTypes", PurviewTypeLibrary.System.Boolean)
-									{
-										DefaultValue = "false",
-									},
-									new("generateFullNameConst", PurviewTypeLibrary.System.Boolean)
-									{
-										DefaultValue = "false",
-									},
-								],
-							},
-							constructorWriter =>
-								constructorWriter
-									.Assignment("TargetType", "type")
-									.Assignment("Namespace", "@namespace")
-									.Assignment("Arity", "arity")
-									.Assignment("IncludeInGetTypes", "includeInGetTypes")
-									.Assignment("GenerateFullNameConst", "generateFullNameConst")
-						);
+				bodyWriter
+					.XmlSummary("Declares a type library member with an explicit target type.")
+					.XmlParam("type", "The target type, supplied as a typeof(...) value or a type-name string.")
+					.XmlParam("namespace", "The namespace of the target type, or null to infer it from the type.")
+					.XmlParam(
+						"arity",
+						"The generic arity of the target type; -1 infers it from the type when possible."
+					)
+					.XmlParam(
+						"includeInGetTypes",
+						"Whether the member is included in the namespace's generated GetTypes() call."
+					)
+					.XmlParam(
+						"generateFullNameConst",
+						"Whether the member generates a full name constant; useful for compile-time usage, such as in Attribute Data Model generation."
+					)
+					.Constructor(
+						new(GeneratorTypeLibrary.Attributes.TypeRefAttribute, TypeDeclarationAccessibility.Public)
+						{
+							Parameters =
+							[
+								new("type", PurviewTypeLibrary.System.Object.MakeNullable()),
+								new("@namespace", PurviewTypeLibrary.System.String.MakeNullable())
+								{
+									DefaultValue = "null",
+								},
+								new("arity", PurviewTypeLibrary.System.Int32) { DefaultValue = "-1" },
+								new("includeInGetTypes", PurviewTypeLibrary.System.Boolean) { DefaultValue = "false" },
+								new("generateFullNameConst", PurviewTypeLibrary.System.Boolean)
+								{
+									DefaultValue = "false",
+								},
+							],
+						},
+						constructorWriter =>
+							constructorWriter
+								.Assignment("TargetType", "type")
+								.Assignment("Namespace", "@namespace")
+								.Assignment("Arity", "arity")
+								.Assignment("IncludeInGetTypes", "includeInGetTypes")
+								.Assignment("GenerateFullNameConst", "generateFullNameConst")
+					);
 
-					bodyWriter
-						.XmlSummary("Gets the target type.")
-						.Property(
-							"TargetType",
-							PurviewTypeLibrary.System.Object.MakeNullable(),
+				bodyWriter
+					.XmlSummary("Gets the target type.")
+					.Property(
+						"TargetType",
+						PurviewTypeLibrary.System.Object.MakeNullable(),
+						TypeDeclarationAccessibility.Public
+					);
+
+				bodyWriter
+					.XmlSummary("Gets or sets the namespace of the target type.")
+					.Property(
+						new(
+							"Namespace",
+							PurviewTypeLibrary.System.String.MakeNullable(),
 							TypeDeclarationAccessibility.Public
-						);
-
-					bodyWriter
-						.XmlSummary("Gets or sets the namespace of the target type.")
-						.Property(
-							new(
-								"Namespace",
-								PurviewTypeLibrary.System.String.MakeNullable(),
-								TypeDeclarationAccessibility.Public
-							)
-							{
-								IsInitOnly = true,
-							}
-						);
-
-					bodyWriter
-						.XmlSummary(
-							"Gets or sets the generic arity of the target type; -1 infers it from the type when possible."
 						)
-						.Property(
-							new("Arity", PurviewTypeLibrary.System.Int32, TypeDeclarationAccessibility.Public)
-							{
-								IsInitOnly = true,
-							}
-						);
+						{
+							IsInitOnly = true,
+						}
+					);
 
-					bodyWriter
-						.XmlSummary(
-							"Gets or sets whether the member is included in the namespace's generated GetTypes() call."
-						)
-						.Property(
-							new(
-								"IncludeInGetTypes",
-								PurviewTypeLibrary.System.Boolean,
-								TypeDeclarationAccessibility.Public
-							)
-							{
-								IsInitOnly = true,
-							}
-						);
+				bodyWriter
+					.XmlSummary(
+						"Gets or sets the generic arity of the target type; -1 infers it from the type when possible."
+					)
+					.Property(
+						new("Arity", PurviewTypeLibrary.System.Int32, TypeDeclarationAccessibility.Public)
+						{
+							IsInitOnly = true,
+						}
+					);
 
-					bodyWriter
-						.XmlSummary("Gets or sets whether the member generates a full name constant.")
-						.XmlRemarks(
-							"This can be useful for compile-time usage, such as in Attribute Data Model generation."
+				bodyWriter
+					.XmlSummary(
+						"Gets or sets whether the member is included in the namespace's generated GetTypes() call."
+					)
+					.Property(
+						new("IncludeInGetTypes", PurviewTypeLibrary.System.Boolean, TypeDeclarationAccessibility.Public)
+						{
+							IsInitOnly = true,
+						}
+					);
+
+				bodyWriter
+					.XmlSummary("Gets or sets whether the member generates a full name constant.")
+					.XmlRemarks(
+						"This can be useful for compile-time usage, such as in Attribute Data Model generation."
+					)
+					.Property(
+						new(
+							"GenerateFullNameConst",
+							PurviewTypeLibrary.System.Boolean,
+							TypeDeclarationAccessibility.Public
 						)
-						.Property(
-							new(
-								"GenerateFullNameConst",
-								PurviewTypeLibrary.System.Boolean,
-								TypeDeclarationAccessibility.Public
-							)
-							{
-								IsInitOnly = true,
-							}
-						);
-				}
-			);
+						{
+							IsInitOnly = true,
+						}
+					);
+			});
 	}
 
 	static SourceText EnumValueAttribute()

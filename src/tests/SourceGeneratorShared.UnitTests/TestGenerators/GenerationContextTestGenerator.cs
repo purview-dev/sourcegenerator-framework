@@ -12,9 +12,8 @@ public sealed class GenerationContextTestGenerator : IIncrementalGenerator
 			new GenerationSettings("GenerationContextTestGenerator", "1.0.0")
 		);
 
-		context.RegisterSourceOutput(
-			generationContext,
-			static (spc, value) => spc.AddSource("Context.g.cs", $"// GenerationContextTestGenerator")
+		context.RegisterSourceOutput(generationContext, static (spc, value) =>
+			spc.AddSource("Context.g.cs", $"// GenerationContextTestGenerator")
 		);
 	}
 }

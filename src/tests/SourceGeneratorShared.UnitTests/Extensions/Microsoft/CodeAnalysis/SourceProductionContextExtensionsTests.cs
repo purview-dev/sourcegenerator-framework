@@ -27,21 +27,18 @@ public class SourceProductionContextExtensionsTests
 	{
 		public void Initialize(IncrementalGeneratorInitializationContext context)
 		{
-			context.RegisterSourceOutput(
-				context.CompilationProvider,
-				static (spc, _) =>
-				{
-					DiagnosticDescriptor descriptor = new(
-						"TEST001",
-						"Test",
-						"Test message",
-						"Test",
-						DiagnosticSeverity.Warning,
-						true
-					);
-					spc.ReportDiagnostic(ReportableDiagnostic.Create(descriptor, isBlocking: false));
-				}
-			);
+			context.RegisterSourceOutput(context.CompilationProvider, static (spc, _) =>
+			{
+				DiagnosticDescriptor descriptor = new(
+					"TEST001",
+					"Test",
+					"Test message",
+					"Test",
+					DiagnosticSeverity.Warning,
+					true
+				);
+				spc.ReportDiagnostic(ReportableDiagnostic.Create(descriptor, isBlocking: false));
+			});
 		}
 	}
 }

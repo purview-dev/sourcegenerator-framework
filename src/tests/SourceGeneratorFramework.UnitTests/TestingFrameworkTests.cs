@@ -30,12 +30,9 @@ public class TestingFrameworkTests
 				(ctx, _) => ctx.TargetSymbol.Name
 			);
 
-			context.RegisterSourceOutput(
-				provider,
-				static (spc, name) =>
-					spc.AddSource(
-						$"{name}.g.cs",
-						$@"
+			context.RegisterSourceOutput(provider, static (spc, name) => spc.AddSource(
+					$"{name}.g.cs",
+					$@"
 namespace Test
 {{
 	public static class Generated_{name}
@@ -44,8 +41,7 @@ namespace Test
 	}}
 }}
 "
-					)
-			);
+				));
 		}
 	}
 
@@ -90,21 +86,17 @@ namespace Test
 				}
 			);
 
-			context.RegisterSourceOutput(
-				validationValue,
-				static (output, value) =>
-					output.AddSource(
-						"ScopeValidation.g.cs",
-						$"internal static class ScopeValidation {{ internal const string Value = \"{value}\"; }}"
-					)
+			context.RegisterSourceOutput(validationValue, static (output, value) =>
+				output.AddSource(
+					"ScopeValidation.g.cs",
+					$"internal static class ScopeValidation {{ internal const string Value = \"{value}\"; }}"
+				)
 			);
-			context.RegisterSourceOutput(
-				customValue,
-				static (output, value) =>
-					output.AddSource(
-						"CustomOption.g.cs",
-						$"internal static class CustomOption {{ internal const string Value = \"{value}\"; }}"
-					)
+			context.RegisterSourceOutput(customValue, static (output, value) =>
+				output.AddSource(
+					"CustomOption.g.cs",
+					$"internal static class CustomOption {{ internal const string Value = \"{value}\"; }}"
+				)
 			);
 		}
 	}

@@ -25,26 +25,23 @@ public sealed class TypeLibraryGenerator : IIncrementalGenerator
 
 		var outputPipeline = targetPipeline.CombineWithContext(contextPipeline);
 
-		context.RegisterSourceOutput(
-			outputPipeline,
-			static (spc, outputContext) =>
+		context.RegisterSourceOutput(outputPipeline, static (spc, outputContext) =>
+		{
+			var (target, generationContext) = outputContext;
+
+			if (generationContext.Settings.IsSourceGeneratorDisabled)
 			{
-				var (target, generationContext) = outputContext;
-
-				if (generationContext.Settings.IsSourceGeneratorDisabled)
-				{
-					generationContext.Info("TypeLibraryGenerator is disabled.");
-					return;
-				}
-
-				// Validation diagnostics (TLB0001-TLB0010) are reported by the analyzers; the generator
-				// only skips processing targets that carry a blocking error.
-				if (!target.ShouldProcess)
-					return;
-
-				GenerateTypeLibrary(spc, target.Value, generationContext);
+				generationContext.Info("TypeLibraryGenerator is disabled.");
+				return;
 			}
-		);
+
+			// Validation diagnostics (TLB0001-TLB0010) are reported by the analyzers; the generator
+			// only skips processing targets that carry a blocking error.
+			if (!target.ShouldProcess)
+				return;
+
+			GenerateTypeLibrary(spc, target.Value, generationContext);
+		});
 	}
 
 	static void GenerateTypeLibrary(

@@ -73,12 +73,11 @@ public sealed class MissingGeneratorAttributeAnalyzer : DiagnosticAnalyzer
 		if (RoslynComponentDiscovery.HasAttribute(type, generatorAttributeType))
 			return;
 
-		var interfaceName =
-			type.AllInterfaces.FirstOrDefault(i =>
-					SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, incrementalGeneratorType)
-					|| SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, legacyGeneratorType)
-				)
-				?.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
+		var interfaceName = type.AllInterfaces.FirstOrDefault(i =>
+				SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, incrementalGeneratorType)
+				|| SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, legacyGeneratorType)
+			)
+			?.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
 			?? "a generator interface";
 
 		context.ReportDiagnostic(

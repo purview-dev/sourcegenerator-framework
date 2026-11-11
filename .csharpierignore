@@ -2,8 +2,3 @@
 **/obj/
 **/generated/**
 **/Resources/**
-
-# CSharpier 1.3.0 (the latest release) parses with a Roslyn version that predates C# 15 and reports
-# a syntax error for the `closed` modifier. This file holds only the closed assertion base so the
-# rest of the assertion chain stays formatted. Remove this entry once CSharpier understands C# 15.
-src/src/SourceGeneratorFramework.Testing.TUnit/Assertions/CodeQueryResultAssertion.cs

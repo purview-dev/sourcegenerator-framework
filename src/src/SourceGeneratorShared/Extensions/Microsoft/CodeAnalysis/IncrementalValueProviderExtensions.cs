@@ -126,9 +126,8 @@ public static class IncrementalValueProviderExtensions
 	)
 		where TOutput : notnull
 	{
-		return valuesProvider.CombineWith(
-			contextProvider,
-			static (output, generationContext, _) => (output, generationContext)
+		return valuesProvider.CombineWith(contextProvider, static (output, generationContext, _) =>
+			(output, generationContext)
 		);
 	}
 }

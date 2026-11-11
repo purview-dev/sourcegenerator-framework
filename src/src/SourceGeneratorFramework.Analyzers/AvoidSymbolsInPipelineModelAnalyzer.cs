@@ -144,8 +144,7 @@ public sealed class AvoidSymbolsInPipelineModelAnalyzer : DiagnosticAnalyzer
 			return;
 
 		// An extension method's receiver is its first argument; an instance method's is Instance.
-		var receiver =
-			invocation.Instance
+		var receiver = invocation.Instance
 			?? (
 				invocation.TargetMethod.IsExtensionMethod && invocation.Arguments.Length > 0
 					? invocation.Arguments[0].Value

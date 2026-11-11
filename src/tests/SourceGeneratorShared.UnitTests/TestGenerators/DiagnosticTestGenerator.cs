@@ -35,15 +35,11 @@ public sealed class DiagnosticTestGenerator : IIncrementalGenerator
 			new GenerationSettings("DiagnosticTestGenerator", "1.0.0")
 		);
 
-		context.RegisterSourceOutput(
-			targets,
-			generationContext,
-			static (spc, target, ctx) =>
-			{
-				var writer = ctx.CreateCodeWriter();
-				writer.Line($"partial class {target.Name} {{ }}");
-				spc.AddSource($"{target.Name}.g.cs", writer.ToString());
-			}
-		);
+		context.RegisterSourceOutput(targets, generationContext, static (spc, target, ctx) =>
+		{
+			var writer = ctx.CreateCodeWriter();
+			writer.Line($"partial class {target.Name} {{ }}");
+			spc.AddSource($"{target.Name}.g.cs", writer.ToString());
+		});
 	}
 }

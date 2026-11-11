@@ -142,8 +142,7 @@ public static class AttributeDataFactory
 		var compilation = Compile(source, options ?? SourceGeneratorTestOptions.Default);
 		ThrowOnErrors(compilation, null);
 
-		var type =
-			compilation.GetTypeByMetadataName(typeMetadataName)
+		var type = compilation.GetTypeByMetadataName(typeMetadataName)
 			?? throw new InvalidOperationException($"Type '{typeMetadataName}' was not found in the compilation.");
 
 		if (memberName is null)

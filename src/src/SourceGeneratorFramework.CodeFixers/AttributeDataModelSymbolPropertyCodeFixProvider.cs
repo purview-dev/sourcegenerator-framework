@@ -160,9 +160,8 @@ public sealed class AttributeDataModelSymbolPropertyCodeFixProvider : CodeFixPro
 			if (replacements.Count == 0)
 				return document;
 
-			var newRoot = root.ReplaceNodes(
-				replacements.Select(static r => r.oldNode),
-				(original, _) => replacements.First(r => r.oldNode == original).newNode
+			var newRoot = root.ReplaceNodes(replacements.Select(static r => r.oldNode), (original, _) =>
+				replacements.First(r => r.oldNode == original).newNode
 			);
 
 			return document.WithSyntaxRoot(newRoot);

@@ -417,28 +417,25 @@ public sealed class SourceGeneratorTestRunner<TGenerator>
 
 	static Func<string, Action<string, int>, IDisposable>? GetEmbeddedSinkRegistration(Assembly generatorAssembly)
 	{
-		return EmbeddedSinkRegistrationCache.GetOrAdd(
-			generatorAssembly,
-			static assembly =>
-			{
-				var embeddedLoggingType = assembly.GetType(
-					"Purview.SourceGeneratorFramework.Logging.SourceGenLogging",
-					throwOnError: false
-				);
-				if (embeddedLoggingType is null || embeddedLoggingType == typeof(SourceGenLogging))
-					return null;
+		return EmbeddedSinkRegistrationCache.GetOrAdd(generatorAssembly, static assembly =>
+		{
+			var embeddedLoggingType = assembly.GetType(
+				"Purview.SourceGeneratorFramework.Logging.SourceGenLogging",
+				throwOnError: false
+			);
+			if (embeddedLoggingType is null || embeddedLoggingType == typeof(SourceGenLogging))
+				return null;
 
-				var registerSink = embeddedLoggingType.GetMethod(
-					"RegisterSinkCore",
-					BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
-				);
+			var registerSink = embeddedLoggingType.GetMethod(
+				"RegisterSinkCore",
+				BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
+			);
 
-				return registerSink is null
-					? null
-					: (Func<string, Action<string, int>, IDisposable>)
-						Delegate.CreateDelegate(typeof(Func<string, Action<string, int>, IDisposable>), registerSink);
-			}
-		);
+			return registerSink is null
+				? null
+				: (Func<string, Action<string, int>, IDisposable>)
+					Delegate.CreateDelegate(typeof(Func<string, Action<string, int>, IDisposable>), registerSink);
+		});
 	}
 
 	sealed class LoggingRegistrations(List<IDisposable> registrations) : IDisposable

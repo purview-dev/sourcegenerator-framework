@@ -29,26 +29,23 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 
 		var outputPipeline = targetPipeline.CombineWithContext(contextPipeline);
 
-		context.RegisterSourceOutput(
-			outputPipeline,
-			static (spc, outputContext) =>
+		context.RegisterSourceOutput(outputPipeline, static (spc, outputContext) =>
+		{
+			var (target, generationContext) = outputContext;
+
+			if (generationContext.Settings.IsSourceGeneratorDisabled)
 			{
-				var (target, generationContext) = outputContext;
-
-				if (generationContext.Settings.IsSourceGeneratorDisabled)
-				{
-					generationContext.Info("AttributeDataModelGenerator is disabled.");
-					return;
-				}
-
-				// Validation diagnostics (ADM0001-ADM0010) are reported by the analyzers; the generator only
-				// skips processing targets that carry a blocking error.
-				if (!target.ShouldProcess)
-					return;
-
-				GenerateAttributeDataModel(spc, target.Value, generationContext);
+				generationContext.Info("AttributeDataModelGenerator is disabled.");
+				return;
 			}
-		);
+
+			// Validation diagnostics (ADM0001-ADM0010) are reported by the analyzers; the generator only
+			// skips processing targets that carry a blocking error.
+			if (!target.ShouldProcess)
+				return;
+
+			GenerateAttributeDataModel(spc, target.Value, generationContext);
+		});
 	}
 
 	static void GenerateAttributeDataModel(
@@ -230,22 +227,16 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 			],
 		};
 
-		writer.Method(
-			methodOptions,
-			body =>
+		writer.Method(methodOptions, body =>
+		{
+			body.Line("for (var i = 0; i < attributes.Length; i++)");
+			body.Block(null, loopBody =>
 			{
-				body.Line("for (var i = 0; i < attributes.Length; i++)");
-				body.Block(
-					null,
-					loopBody =>
-					{
-						loopBody.Line("var instance = FromAttributeData(attributes[i]);");
-						loopBody.Line("if (instance.Exists)");
-						loopBody.Block(null, matchBody => matchBody.Line("yield return (instance, attributes[i]);"));
-					}
-				);
-			}
-		);
+				loopBody.Line("var instance = FromAttributeData(attributes[i]);");
+				loopBody.Line("if (instance.Exists)");
+				loopBody.Block(null, matchBody => matchBody.Line("yield return (instance, attributes[i]);"));
+			});
+		});
 	}
 
 	static void AllAttributeDataSymbolMethod(CodeWriter writer, AttributeDataModelTarget target)
@@ -283,23 +274,17 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 			],
 		};
 
-		writer.Method(
-			methodOptions,
-			w =>
+		writer.Method(methodOptions, w =>
+		{
+			w.Line("for (var i = 0; i < attributes.Length; i++)");
+			w.Block(null, body =>
 			{
-				w.Line("for (var i = 0; i < attributes.Length; i++)");
-				w.Block(
-					null,
-					body =>
-					{
-						body.Line("var result = FromAttributeData(attributes[i]);");
-						body.Line("if (result.Exists)");
-						body.Block(null, inner => inner.Line("return result;"));
-					}
-				);
-				w.Line("return Empty;");
-			}
-		);
+				body.Line("var result = FromAttributeData(attributes[i]);");
+				body.Line("if (result.Exists)");
+				body.Block(null, inner => inner.Line("return result;"));
+			});
+			w.Line("return Empty;");
+		});
 	}
 
 	static void FromAttributeDataSymbolMethod(CodeWriter writer, AttributeDataModelTarget target)
@@ -354,31 +339,22 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 			],
 		};
 
-		writer.Method(
-			methodOptions,
-			w =>
+		writer.Method(methodOptions, w =>
+		{
+			w.Line("attribute = null;");
+			w.Line("for (var i = 0; i < attributes.Length; i++)");
+			w.Block(null, body =>
 			{
-				w.Line("attribute = null;");
-				w.Line("for (var i = 0; i < attributes.Length; i++)");
-				w.Block(
-					null,
-					body =>
-					{
-						body.Line("var result = FromAttributeData(attributes[i]);");
-						body.Line("if (result.Exists)");
-						body.Block(
-							null,
-							inner =>
-							{
-								inner.Line("attribute = attributes[i];");
-								inner.Line("return result;");
-							}
-						);
-					}
-				);
-				w.Line("return Empty;");
-			}
-		);
+				body.Line("var result = FromAttributeData(attributes[i]);");
+				body.Line("if (result.Exists)");
+				body.Block(null, inner =>
+				{
+					inner.Line("attribute = attributes[i];");
+					inner.Line("return result;");
+				});
+			});
+			w.Line("return Empty;");
+		});
 	}
 
 	static void TryFromAttributeDataArrayWithOutMethod(CodeWriter writer, AttributeDataModelTarget target)
@@ -406,34 +382,25 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 			],
 		};
 
-		writer.Method(
-			methodOptions,
-			w =>
-			{
-				w.Assignment("attributeData", "Empty");
-				w.Assignment("attribute", "null");
+		writer.Method(methodOptions, w =>
+		{
+			w.Assignment("attributeData", "Empty");
+			w.Assignment("attribute", "null");
 
-				w.Line("for (var i = 0; i < attributes.Length; i++)");
-				w.Block(
-					null,
-					body =>
-					{
-						body.Line("var result = FromAttributeData(attributes[i]);");
-						body.Line("if (result.Exists)");
-						body.Block(
-							null,
-							inner =>
-							{
-								inner.Line("attribute = attributes[i];");
-								inner.Line("attributeData = result;");
-								inner.Line("return true;");
-							}
-						);
-					}
-				);
-				w.Line("return false;");
-			}
-		);
+			w.Line("for (var i = 0; i < attributes.Length; i++)");
+			w.Block(null, body =>
+			{
+				body.Line("var result = FromAttributeData(attributes[i]);");
+				body.Line("if (result.Exists)");
+				body.Block(null, inner =>
+				{
+					inner.Line("attribute = attributes[i];");
+					inner.Line("attributeData = result;");
+					inner.Line("return true;");
+				});
+			});
+			w.Line("return false;");
+		});
 	}
 
 	static void FromAttributeDataSymbolWithOutMethod(CodeWriter writer, AttributeDataModelTarget target)
@@ -499,25 +466,22 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 			Parameters = [new("attributeData", TypeReference("global::Microsoft.CodeAnalysis.AttributeData"))],
 		};
 
-		writer.Method(
-			methodOptions,
-			w =>
+		writer.Method(methodOptions, w =>
+		{
+			if (target.MatchByInheritance)
 			{
-				if (target.MatchByInheritance)
-				{
-					w.Line(
-						"if (attributeData.AttributeClass is null || (!TargetAttribute.Equals(attributeData.AttributeClass) && !global::Purview.SourceGeneratorFramework.Helpers.TypeHelpers.InheritsFrom(attributeData.AttributeClass, TargetAttribute)))"
-					);
-				}
-				else
-				{
-					w.Line("if (!TargetAttribute.Equals(attributeData.AttributeClass))");
-				}
-				w.Block(null, body => body.Line("return Empty;"));
-
-				w.Return("FromAttributeDataUnchecked(attributeData)");
+				w.Line(
+					"if (attributeData.AttributeClass is null || (!TargetAttribute.Equals(attributeData.AttributeClass) && !global::Purview.SourceGeneratorFramework.Helpers.TypeHelpers.InheritsFrom(attributeData.AttributeClass, TargetAttribute)))"
+				);
 			}
-		);
+			else
+			{
+				w.Line("if (!TargetAttribute.Equals(attributeData.AttributeClass))");
+			}
+			w.Block(null, body => body.Line("return Empty;"));
+
+			w.Return("FromAttributeDataUnchecked(attributeData)");
+		});
 	}
 
 	// The extraction body, without the TargetAttribute check. [NestedModel] parameters call this: the outer
@@ -542,25 +506,22 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 			.XmlRemarks(
 				"Used to populate a <c>[NestedModel]</c> parameter from the outer model's attribute. The result always has <see cref=\"Exists\"/> set to <see langword=\"true\"/>, and arguments the attribute does not declare take their mapped default values."
 			)
-			.Method(
-				methodOptions,
-				w =>
+			.Method(methodOptions, w =>
+			{
+				foreach (var property in target.Properties)
 				{
-					foreach (var property in target.Properties)
-					{
-						PropertyExtraction(w, property);
-					}
-
-					List<string> returnValues = ["true"];
-					foreach (var property in target.Properties)
-					{
-						var value = ToLocalName(property.PropertyName);
-						returnValues.Add(property.IsNonNullableReferenceType ? value + "!" : value);
-					}
-
-					w.Line($"return new({string.Join(", ", returnValues)});");
+					PropertyExtraction(w, property);
 				}
-			);
+
+				List<string> returnValues = ["true"];
+				foreach (var property in target.Properties)
+				{
+					var value = ToLocalName(property.PropertyName);
+					returnValues.Add(property.IsNonNullableReferenceType ? value + "!" : value);
+				}
+
+				w.Line($"return new({string.Join(", ", returnValues)});");
+			});
 	}
 
 	static void TryFromAttributeDataMethod(CodeWriter writer, AttributeDataModelTarget target)
@@ -579,28 +540,25 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 			],
 		};
 
-		writer.Method(
-			methodOptions,
-			w =>
+		writer.Method(methodOptions, w =>
+		{
+			w.Assignment("attribute", "Empty");
+			if (target.MatchByInheritance)
 			{
-				w.Assignment("attribute", "Empty");
-				if (target.MatchByInheritance)
-				{
-					w.Line(
-						"if (attributeData.AttributeClass is null || (!TargetAttribute.Equals(attributeData.AttributeClass) && !global::Purview.SourceGeneratorFramework.Helpers.TypeHelpers.InheritsFrom(attributeData.AttributeClass, TargetAttribute)))"
-					);
-				}
-				else
-				{
-					w.Line("if (!TargetAttribute.Equals(attributeData.AttributeClass))");
-				}
-				w.Block(null, body => body.Line("return false;"));
-
-				w.Assignment("attribute", "FromAttributeDataUnchecked(attributeData)");
-
-				w.Return("attribute.Exists");
+				w.Line(
+					"if (attributeData.AttributeClass is null || (!TargetAttribute.Equals(attributeData.AttributeClass) && !global::Purview.SourceGeneratorFramework.Helpers.TypeHelpers.InheritsFrom(attributeData.AttributeClass, TargetAttribute)))"
+				);
 			}
-		);
+			else
+			{
+				w.Line("if (!TargetAttribute.Equals(attributeData.AttributeClass))");
+			}
+			w.Block(null, body => body.Line("return false;"));
+
+			w.Assignment("attribute", "FromAttributeDataUnchecked(attributeData)");
+
+			w.Return("attribute.Exists");
+		});
 	}
 
 	static void PropertyExtraction(CodeWriter writer, AttributeDataModelProperty property)

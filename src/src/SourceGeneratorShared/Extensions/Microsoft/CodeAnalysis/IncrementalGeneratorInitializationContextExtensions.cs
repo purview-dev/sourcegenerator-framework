@@ -96,28 +96,25 @@ public static class IncrementalGeneratorInitializationContextExtensions
 				.CombineWith(contextProvider, static (output, ctx, _) => (Output: output, Context: ctx))
 				.WithTrackingName(trackingName ?? $"RegisterSourceOutput_{typeof(TOutput).Name}");
 
-			context.RegisterSourceOutput(
-				combined,
-				(spc, item) =>
-				{
-					if (item.Output.HasDiagnostics)
-						spc.ReportDiagnostics(item.Output.Diagnostics);
+			context.RegisterSourceOutput(combined, (spc, item) =>
+			{
+				if (item.Output.HasDiagnostics)
+					spc.ReportDiagnostics(item.Output.Diagnostics);
 
-					if (!item.Output.ShouldProcess)
-						return;
+				if (!item.Output.ShouldProcess)
+					return;
 
-					// Guarded rather than called directly: an exception escaping here is a CS8785 that
-					// discards every file this generator produced for the compilation, so the consumer sees
-					// a wall of "type or namespace not found" on top of a stack trace through code they do
-					// not own. Reported as a diagnostic instead, the rest of the output still arrives.
-					ComponentGuard.Run(
-						spc,
-						ComponentGuard.ResolveComponentType(generate, typeof(TOutput)),
-						() => generate(spc, item.Output.Value, item.Context),
-						item.Context.Settings?.FailureOptions
-					);
-				}
-			);
+				// Guarded rather than called directly: an exception escaping here is a CS8785 that
+				// discards every file this generator produced for the compilation, so the consumer sees
+				// a wall of "type or namespace not found" on top of a stack trace through code they do
+				// not own. Reported as a diagnostic instead, the rest of the output still arrives.
+				ComponentGuard.Run(
+					spc,
+					ComponentGuard.ResolveComponentType(generate, typeof(TOutput)),
+					() => generate(spc, item.Output.Value, item.Context),
+					item.Context.Settings?.FailureOptions
+				);
+			});
 
 			return context;
 		}
