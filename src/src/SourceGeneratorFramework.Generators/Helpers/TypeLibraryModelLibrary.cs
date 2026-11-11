@@ -278,8 +278,7 @@ static class TypeLibraryModelLibrary
 	/// </summary>
 	static bool GetIncludeInGetTypes(AttributeData typeRef)
 	{
-		var named =
-			GetNamedArgument(typeRef, "IncludeInGetTypes", (bool?)null)
+		var named = GetNamedArgument(typeRef, "IncludeInGetTypes", (bool?)null)
 			?? GetNamedArgument(typeRef, "includeInGetTypes", (bool?)null);
 		if (named is not null)
 			return named.Value;
@@ -303,8 +302,7 @@ static class TypeLibraryModelLibrary
 	/// </summary>
 	static bool GetGenerateFullNameConstant(AttributeData typeRef)
 	{
-		var named =
-			GetNamedArgument(typeRef, "GenerateFullNameConst", (bool?)null)
+		var named = GetNamedArgument(typeRef, "GenerateFullNameConst", (bool?)null)
 			?? GetNamedArgument(typeRef, "generateFullNameConst", (bool?)null);
 		if (named is not null)
 			return named.Value;
@@ -1183,8 +1181,9 @@ static class TypeLibraryModelLibrary
 		}
 #pragma warning restore format
 
-		var resolvedNamespace =
-			namedNamespace ?? GetConstructorArgument(typeRef, 1, (string?)null) ?? inferredNamespace;
+		var resolvedNamespace = namedNamespace
+			?? GetConstructorArgument(typeRef, 1, (string?)null)
+			?? inferredNamespace;
 		if (string.IsNullOrWhiteSpace(resolvedNamespace))
 		{
 			diagnostics.Add(

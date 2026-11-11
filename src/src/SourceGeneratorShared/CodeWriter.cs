@@ -1836,14 +1836,11 @@ public sealed partial class CodeWriter
 		for (var index = 0; index < fields.Length; index++)
 			ValidateEnumFieldDeclaration(fields[index]);
 
-		return Enum(
-			declaration,
-			body =>
-			{
-				for (var index = 0; index < fields.Length; index++)
-					body.EnumField(fields[index]);
-			}
-		);
+		return Enum(declaration, body =>
+		{
+			for (var index = 0; index < fields.Length; index++)
+				body.EnumField(fields[index]);
+		});
 	}
 
 	/// <summary>
@@ -4295,8 +4292,7 @@ public sealed partial class CodeWriter
 
 		for (var typeIndex = 0; typeIndex < declaration.GenericTypes.Length; typeIndex++)
 		{
-			var genericType =
-				declaration.GenericTypes[typeIndex]
+			var genericType = declaration.GenericTypes[typeIndex]
 				?? throw new ArgumentException(
 					"Generic type parameters cannot contain null values.",
 					nameof(declaration)

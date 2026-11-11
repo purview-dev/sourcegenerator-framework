@@ -20,6 +20,7 @@ analysers that guide generators back to best practice.
 - [Step-Cache Tests](Step-Cache-Tests.md)
 - [Packaging](Packaging.md)
 - [Performance](Performance.md)
+- [.NET 11 support and features](DotNet-11.md)
 - [Release Flow](Release-Flow.md)
 
 ## Packages
@@ -60,11 +61,14 @@ analysers that guide generators back to best practice.
 
 ## Requirements
 
-- .NET SDK 10.0 or later to build the framework.
-- The framework is built against Roslyn 5.0 (`Microsoft.CodeAnalysis` 5.x), so compiler hosts that
-  load the generator, analyser, and testing assemblies must be Roslyn 5.0 or later (`.NET 10` SDK /
-  Visual Studio 2026 18.0).
-- Source generators target `netstandard2.0`; test projects target `net8.0`, `net9.0`, and `net10.0`.
+- .NET SDK 11.0 or later to build the framework.
+- The framework is built against Roslyn 5.9 (`Microsoft.CodeAnalysis` 5.x), so compiler hosts that
+  load the generator, analyser, and testing assemblies must be Roslyn 5.9 or later (`.NET 11` SDK /
+  Visual Studio 2026).
+- Source generators target `netstandard2.0`; test projects target `net10.0` and `net11.0`. .NET 8 and
+  .NET 9 are out of support.
+- The packaged merge tool targets `net10.0` and rolls forward, so it runs on the .NET 10 or .NET 11
+  runtime while a component is built. See [.NET 11 support and features](DotNet-11.md).
 
 ## Repository layout
 

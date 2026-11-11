@@ -55,13 +55,11 @@ static class AttributeDataModelLibrary
 		);
 
 		return attributeCandidates
-			.CombineWith(
-				typeLibrarySpecData,
-				static (structSymbol, specData, _) => (Symbol: structSymbol, Specs: specData)
+			.CombineWith(typeLibrarySpecData, static (structSymbol, specData, _) =>
+				(Symbol: structSymbol, Specs: specData)
 			)
-			.CombineWith(
-				context.CompilationProvider,
-				static (pair, compilation, ct) => BuildTarget(pair.Symbol, pair.Specs, compilation, ct)
+			.CombineWith(context.CompilationProvider, static (pair, compilation, ct) =>
+				BuildTarget(pair.Symbol, pair.Specs, compilation, ct)
 			)
 			.WithTrackingName("GetAttributeDataTargets");
 	}
@@ -237,20 +235,19 @@ static class AttributeDataModelLibrary
 		CancellationToken cancellationToken
 	)
 	{
-		var arguments =
-			structSymbol
-				.DeclaringSyntaxReferences.Select(reference => reference.GetSyntax(cancellationToken))
-				.OfType<TypeDeclarationSyntax>()
-				.Select(static declaration => declaration.ParameterList)
-				.FirstOrDefault(static parameterList => parameterList is not null)
-				?.Parameters.Select(parameter =>
-				{
-					var propertyName = ToPascalCase(parameter.Identifier.ValueText);
-					return explicitProperties.Any(property => property.PropertyName == propertyName)
-						? propertyName
-						: $"default({parameter.Type})";
-				})
-				.ToImmutableArray()
+		var arguments = structSymbol
+			.DeclaringSyntaxReferences.Select(reference => reference.GetSyntax(cancellationToken))
+			.OfType<TypeDeclarationSyntax>()
+			.Select(static declaration => declaration.ParameterList)
+			.FirstOrDefault(static parameterList => parameterList is not null)
+			?.Parameters.Select(parameter =>
+			{
+				var propertyName = ToPascalCase(parameter.Identifier.ValueText);
+				return explicitProperties.Any(property => property.PropertyName == propertyName)
+					? propertyName
+					: $"default({parameter.Type})";
+			})
+			.ToImmutableArray()
 			?? [];
 
 		return new(arguments);

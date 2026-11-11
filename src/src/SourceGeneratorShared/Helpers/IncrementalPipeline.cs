@@ -105,8 +105,8 @@ public static class IncrementalPipeline
 						ValidateCodeWriterScopes = configuration.ValidateCodeWriterScopes,
 						IsSourceGeneratorDisabled = configuration.IsSourceGeneratorDisabled,
 						IsLoggingEnabled = logger is not null,
-						IsNullableContextEnabled =
-							settings.IsNullableContextEnabled ?? IsNullableContextEnabled(compilation),
+						IsNullableContextEnabled = settings.IsNullableContextEnabled
+							?? IsNullableContextEnabled(compilation),
 						LanguageVersion = configuration.LanguageVersion ?? settings.LanguageVersion,
 					};
 

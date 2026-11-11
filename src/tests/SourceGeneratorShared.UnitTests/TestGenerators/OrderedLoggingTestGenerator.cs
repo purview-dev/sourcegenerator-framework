@@ -22,15 +22,12 @@ public sealed class OrderedLoggingTestGenerator : IIncrementalGenerator
 			new GenerationSettings("OrderedLoggingTestGenerator", "1.0.0")
 		);
 
-		context.RegisterSourceOutput(
-			generationContext,
-			static (spc, value) =>
-			{
-				foreach (var message in Messages)
-					value.Log(SourceGenLogLevel.Info, 0, message);
+		context.RegisterSourceOutput(generationContext, static (spc, value) =>
+		{
+			foreach (var message in Messages)
+				value.Log(SourceGenLogLevel.Info, 0, message);
 
-				spc.AddSource("OrderedLogging.g.cs", "// OrderedLoggingTestGenerator");
-			}
-		);
+			spc.AddSource("OrderedLogging.g.cs", "// OrderedLoggingTestGenerator");
+		});
 	}
 }

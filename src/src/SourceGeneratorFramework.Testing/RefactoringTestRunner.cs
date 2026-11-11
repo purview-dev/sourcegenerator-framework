@@ -32,12 +32,10 @@ public sealed class RefactoringTestRunner<TRefactoring> : RoslynTestRunner
 	{
 		options ??= new();
 		using var testProject = CreateProject(sources, options, typeof(TRefactoring).Assembly);
-		var compilation =
-			await testProject.Project.GetCompilationAsync(cancellationToken)
+		var compilation = await testProject.Project.GetCompilationAsync(cancellationToken)
 			?? throw new InvalidOperationException("Unable to create the test compilation.");
 
-		var document =
-			testProject.Project.Solution.GetDocument(testProject.DocumentIds[0])
+		var document = testProject.Project.Solution.GetDocument(testProject.DocumentIds[0])
 			?? throw new InvalidOperationException("Unable to locate the test document.");
 
 		var span = ResolveSpan(options, compilation);
@@ -46,16 +44,14 @@ public sealed class RefactoringTestRunner<TRefactoring> : RoslynTestRunner
 		CodeRefactoringContext context = new(document, span, actions.Add, cancellationToken);
 		await new TRefactoring().ComputeRefactoringsAsync(context);
 
-		var action =
-			(
-				options.EquivalenceKey is null
-					? actions.ElementAtOrDefault(options.CodeActionIndex)
-					: actions.FirstOrDefault(candidate => candidate.EquivalenceKey == options.EquivalenceKey)
-			) ?? throw new InvalidOperationException("The requested refactoring was not registered.");
+		var action = (
+			options.EquivalenceKey is null
+				? actions.ElementAtOrDefault(options.CodeActionIndex)
+				: actions.FirstOrDefault(candidate => candidate.EquivalenceKey == options.EquivalenceKey)
+		) ?? throw new InvalidOperationException("The requested refactoring was not registered.");
 
 		var operations = await action.GetOperationsAsync(cancellationToken);
-		var changedSolution =
-			operations.OfType<ApplyChangesOperation>().SingleOrDefault()?.ChangedSolution
+		var changedSolution = operations.OfType<ApplyChangesOperation>().SingleOrDefault()?.ChangedSolution
 			?? throw new InvalidOperationException("The refactoring did not produce an ApplyChangesOperation.");
 
 		var fixedSources = ImmutableDictionary.CreateBuilder<string, string>();

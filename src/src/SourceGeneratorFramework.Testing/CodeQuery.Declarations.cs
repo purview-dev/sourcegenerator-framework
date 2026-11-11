@@ -516,20 +516,16 @@ public sealed partial class CodeQuery
 	/// Gets a namespace declaration (block or file-scoped) by its dotted name.
 	/// </summary>
 	public CodeQueryResult<BaseNamespaceDeclarationSyntax> GetNamespace(string name) =>
-		FindByName<BaseNamespaceDeclarationSyntax>(
-			name,
-			null,
-			namespaceDeclaration => namespaceDeclaration.Name.ToString()
+		FindByName<BaseNamespaceDeclarationSyntax>(name, null, namespaceDeclaration =>
+			namespaceDeclaration.Name.ToString()
 		);
 
 	/// <summary>
 	/// Determines whether a namespace declaration with the given dotted name exists.
 	/// </summary>
 	public bool HasNamespace(string name) =>
-		HasByName<BaseNamespaceDeclarationSyntax>(
-			name,
-			null,
-			namespaceDeclaration => namespaceDeclaration.Name.ToString()
+		HasByName<BaseNamespaceDeclarationSyntax>(name, null, namespaceDeclaration =>
+			namespaceDeclaration.Name.ToString()
 		);
 
 	// ---------------------------------------------------------------------------------------------

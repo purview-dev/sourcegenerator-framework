@@ -33,10 +33,8 @@ public partial class ServiceRegistrationGenerator : IIncrementalGenerator
 		);
 
 		var model = generationContext
-			.CollectWith(
-				targets,
-				static (ctx, targetsArray, _) =>
-					new ServiceRegistrationGenerationModel(ctx, new EquatableArray<ServiceTarget>(targetsArray))
+			.CollectWith(targets, static (ctx, targetsArray, _) =>
+				new ServiceRegistrationGenerationModel(ctx, new EquatableArray<ServiceTarget>(targetsArray))
 			)
 			.CombineWith(emitServiceInfo, (m, emit, _) => m with { EmitServiceInfo = emit });
 

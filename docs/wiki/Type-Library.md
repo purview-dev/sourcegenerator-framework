@@ -338,7 +338,8 @@ generated class and member.
 ## Requirements
 
 The generated output uses C# 14 features (nested partial types, collection expressions), so consumers
-must compile with a C# 14 compiler (.NET SDK 10 / Roslyn 5.0 or later).
+must compile with a C# 14 compiler or later. The framework itself requires the .NET 11 SDK / Roslyn 5.9
+or later.
 
 ## Disabling
 

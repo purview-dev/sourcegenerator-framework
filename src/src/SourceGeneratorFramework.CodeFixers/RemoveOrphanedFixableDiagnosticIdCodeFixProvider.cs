@@ -28,8 +28,7 @@ public sealed class RemoveOrphanedFixableDiagnosticIdCodeFixProvider : CodeFixPr
 		foreach (var diagnostic in context.Diagnostics)
 		{
 			var node = root.FindNode(diagnostic.Location.SourceSpan);
-			var literal =
-				node.DescendantNodesAndSelf().OfType<LiteralExpressionSyntax>().FirstOrDefault()
+			var literal = node.DescendantNodesAndSelf().OfType<LiteralExpressionSyntax>().FirstOrDefault()
 				?? node.FirstAncestorOrSelf<LiteralExpressionSyntax>();
 			if (literal is null)
 				continue;

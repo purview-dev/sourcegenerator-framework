@@ -28,8 +28,7 @@ public sealed class DiagnosticAnalyzerTestRunner<TAnalyzer> : RoslynTestRunner
 	{
 		options ??= new();
 		using var testProject = CreateProject(sources, options, typeof(TAnalyzer).Assembly);
-		var compilation =
-			await testProject.Project.GetCompilationAsync(cancellationToken)
+		var compilation = await testProject.Project.GetCompilationAsync(cancellationToken)
 			?? throw new InvalidOperationException("Unable to create the test compilation.");
 		var diagnostics = await WithAnalyzers(compilation, [new TAnalyzer()], options)
 			.GetAnalyzerDiagnosticsAsync(cancellationToken);

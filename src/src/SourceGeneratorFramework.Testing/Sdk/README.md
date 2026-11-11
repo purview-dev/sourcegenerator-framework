@@ -90,11 +90,11 @@ The normal reference makes the generator's CLR type available to the testing API
 separate from the in-memory compilation created by `SourceGeneratorTestRunner`; source supplied to
 the runner is still compiled and generated independently.
 
-The normal reference also exposes the generator's assembly dependencies to every target framework
-of the test project. This framework is built against Roslyn 5.0, which ships `net8.0` and `net9.0`
-package assets, so tests targeting .NET 8, .NET 9, and .NET 10 can all load the test runner. The
+The normal reference also exposes the generator's assembly dependencies to every target framework of
+the test project. This framework is built against Roslyn 5.9, which ships `net10.0` and
+`netstandard2.0` package assets, so tests targeting .NET 10 and .NET 11 both load the test runner. The
 Roslyn version used to compile a generator establishes the minimum compiler-host requirement for
-projects that consume it as an analyzer — Roslyn 5.0 means `.NET 10` SDK / Visual Studio 2026 or
+projects that consume it as an analyzer — Roslyn 5.9 means `.NET 11` SDK / Visual Studio 2026 or
 later. Do not centrally pin `System.Collections.Immutable` to a newer runtime version merely to make
 the generator load.
 

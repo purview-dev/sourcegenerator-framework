@@ -51,8 +51,7 @@ public static partial class DiagnosticAssertions
 		if (expected is null)
 			return AssertionResult.Failed($"expected {nameof(DiagnosticDescriptor)} is null");
 
-		var matchingDiagnostic =
-			diagnostic.DriverResult.Diagnostics.FirstOrDefault(d => d.Id == expected.Id)
+		var matchingDiagnostic = diagnostic.DriverResult.Diagnostics.FirstOrDefault(d => d.Id == expected.Id)
 			?? diagnostic.AnalyzerResult?.Diagnostics.FirstOrDefault(d => d.Id == expected.Id);
 		return matchingDiagnostic is null
 			? (AssertionResult<Diagnostic>)
@@ -111,8 +110,7 @@ public static partial class DiagnosticAssertions
 		if (string.IsNullOrWhiteSpace(expected))
 			return AssertionResult.Failed($"expected {nameof(DiagnosticDescriptor.Id)} is null/ empty/ whitespace");
 
-		var matchedDiagnotics =
-			diagnostic.DriverResult.Diagnostics.FirstOrDefault(d => d.Id == expected)
+		var matchedDiagnotics = diagnostic.DriverResult.Diagnostics.FirstOrDefault(d => d.Id == expected)
 			?? diagnostic.AnalyzerResult?.Diagnostics.FirstOrDefault(d => d.Id == expected);
 		;
 		return matchedDiagnotics is null

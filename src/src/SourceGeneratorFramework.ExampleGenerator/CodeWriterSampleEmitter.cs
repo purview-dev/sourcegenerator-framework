@@ -98,9 +98,8 @@ static class CodeWriterSampleEmitter
 					options => options with { HasSetter = true, Initializer = PurviewTypeLibrary.System.Null }
 				);
 
-				body.HashDefines(
-					"NET",
-					conditional => conditional.Comment("This member is emitted only for .NET targets.")
+				body.HashDefines("NET", conditional =>
+					conditional.Comment("This member is emitted only for .NET targets.")
 				);
 
 				using (body.OpenPragmasScope("CS0618"))
@@ -167,28 +166,18 @@ static class CodeWriterSampleEmitter
 						},
 					methodBody =>
 					{
-						methodBody.Assignment(
-							"var hostKitOptions",
-							expression =>
-								expression.MethodCallChain(
-									"source.Trim",
-									[],
-									chain => chain.Method("ToUpper").Postfix(" ?? string.Empty")
-								)
+						methodBody.Assignment("var hostKitOptions", expression =>
+							expression.MethodCallChain("source.Trim", [], chain =>
+								chain.Method("ToUpper").Postfix(" ?? string.Empty")
+							)
 						);
-						methodBody.Assignment(
-							"var",
-							"optionsBuilder",
-							expression =>
-								expression.MethodCallChain(
-									"global::System.Array.Empty",
-									[],
-									chain => chain.Method("Clone"),
-									genericArguments:
-									[
-										new TypeReference(new TypeIdentity("global::System.String", null)),
-									]
-								)
+						methodBody.Assignment("var", "optionsBuilder", expression =>
+							expression.MethodCallChain(
+								"global::System.Array.Empty",
+								[],
+								chain => chain.Method("Clone"),
+								genericArguments: [new TypeReference(new TypeIdentity("global::System.String", null))]
+							)
 						);
 						methodBody.MethodCallOn("onBuilt", "Invoke", [], nullConditional: true);
 						methodBody.Return("hostKitOptions");
@@ -207,14 +196,11 @@ static class CodeWriterSampleEmitter
 						},
 					methodBody =>
 					{
-						methodBody.Assignment(
-							"var builder",
-							expression => expression.New("global::System.Text.StringBuilder", "onBuilt")
+						methodBody.Assignment("var builder", expression =>
+							expression.New("global::System.Text.StringBuilder", "onBuilt")
 						);
-						methodBody.Assignment(
-							"global::System.Text.StringBuilder",
-							"options",
-							expression => expression.New(["onBuilt"])
+						methodBody.Assignment("global::System.Text.StringBuilder", "options", expression =>
+							expression.New(["onBuilt"])
 						);
 						methodBody.Return("options.ToString()");
 					}

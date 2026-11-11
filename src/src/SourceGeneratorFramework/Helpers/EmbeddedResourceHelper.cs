@@ -27,8 +27,7 @@ public static class EmbeddedResourceHelper
 		assembly ??= Assembly.GetCallingAssembly();
 
 		var resolvedName = ResolveResourceName(resourceName, assembly);
-		var stream =
-			assembly.GetManifestResourceStream(resolvedName)
+		var stream = assembly.GetManifestResourceStream(resolvedName)
 			?? throw new InvalidOperationException(
 				$"Embedded resource '{resolvedName}' was not found in assembly '{assembly.FullName}'."
 			);

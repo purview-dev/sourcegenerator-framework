@@ -974,8 +974,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 					return false;
 
 				typeName = typeSymbol.Name;
-				memberNamespace =
-					namedNamespace
+				memberNamespace = namedNamespace
 					?? GetConstructorArgument(typeRef, 1, (string?)null)
 					?? typeSymbol.ContainingNamespace.ToDisplayString();
 

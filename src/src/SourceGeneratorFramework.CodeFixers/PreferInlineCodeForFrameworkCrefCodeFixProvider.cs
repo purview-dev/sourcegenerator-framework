@@ -167,9 +167,8 @@ public sealed class PreferInlineCodeForFrameworkCrefCodeFixProvider : CodeFixPro
 
 			// Replace all the <see cref="..."/> and <seealso cref="..."/> elements with inline <c>...</c> elements.
 			return document.WithSyntaxRoot(
-				root.ReplaceNodes(
-					owners,
-					static (original, _) => BuildInlineCodeElement(original, GetCrefText(original))
+				root.ReplaceNodes(owners, static (original, _) =>
+					BuildInlineCodeElement(original, GetCrefText(original))
 				)
 			);
 		}

@@ -378,12 +378,14 @@ generation is:
 | 4.8 | VS 2022 17.8 | C# 12 / .NET 8 |
 | 4.12 | VS 2022 17.12 | C# 13 / .NET 9 |
 | 5.0 | VS 2026 18.0 | C# 14 / .NET 10 |
+| 5.12 | VS 2026 18.x | C# 15 / .NET 11 |
 
-> **This framework is built against Roslyn 5.0.** The generator, analyzer, and testing assemblies in
+> **This framework is built against Roslyn 5.9.** The generator, analyzer, and testing assemblies in
 > `Purview.SourceGeneratorFramework*` are compiled against `Microsoft.CodeAnalysis` 5.x, so compiler
-> hosts that load them must be Roslyn 5.0 or later (`.NET 10` SDK / Visual Studio 2026 18.0). The
-> testing packages multi-target `net8.0`–`net10.0`; Roslyn 5.x ships `net8.0`/`net9.0` package assets,
-> so those test targets still load the test runner.
+> hosts that load them must ship Roslyn 5.9 or later (`.NET 11` SDK / Visual Studio 2026). The .NET 11
+> SDK ships Roslyn 5.12, which satisfies that floor. The testing packages multi-target
+> `netstandard2.0`, `net10.0`, and `net11.0`; Roslyn 5.9 ships `net10.0`/`netstandard2.0` package
+> assets, so both test targets load the test runner.
 
 See [Guide.md](Guide.md) sections 14–18 for the full discussion of Roslyn versioning, multi-version
 packaging strategies, and the recommended generator project configuration.

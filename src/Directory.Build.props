@@ -1,8 +1,27 @@
 <Project>
 	<PropertyGroup>
-		<TestingTargetFrameworks>net8.0;net9.0;net10.0;net11.0;</TestingTargetFrameworks>
+		<!--
+			Supported targets: the latest LTS (.NET 10) plus the current release (.NET 11). .NET 8 and
+			.NET 9 are out of support and are no longer built or tested; consumers on either still
+			resolve the netstandard2.0 assets of the libraries, they are just not part of the matrix.
+		-->
+		<TestingTargetFrameworks>net10.0;net11.0;</TestingTargetFrameworks>
 		<TargetFrameworks>netstandard2.1;$(TestingTargetFrameworks)</TargetFrameworks>
+		<!--
+			The merge tool is a build-time executable: the framework package ships it under tools/ and
+			runs it with `dotnet exec` while a consumer builds a component. It targets the .NET 10 LTS
+			floor and sets RollForward=LatestMajor, so it runs on the installed .NET 10 or .NET 11
+			runtime (preferring 11 when both are present) without shipping two tools or a selector.
+			This value must match the tools/ folder packed by SourceGeneratorFramework.csproj and the
+			default in Sdk/build/Purview.SourceGeneratorFramework.targets.
+		-->
 		<MergeToolTFM>net10.0</MergeToolTFM>
+		<!--
+			The net11.0 leg is compiled with the .NET 11 feature set supplied by Purview.BuildSdk
+			2.0.0: C# 15 (LangVersion=latest), runtime-async=on and the updated memory-safety rules.
+			runtime-async and the memory-safety rules require net11.0, so shared sources must stay free
+			of APIs that only exist there; the netstandard2.0 and net10.0 legs still compile them.
+		-->
 		<NamespacePrefix>Purview.SourceGeneratorFramework</NamespacePrefix>
 		<ExcludePurviewTelemetry>true</ExcludePurviewTelemetry>
 		<RepositoryUrl>https://github.com/purview-dev/sourcegenerator-framework</RepositoryUrl>

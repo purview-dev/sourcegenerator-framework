@@ -82,7 +82,7 @@ build *args:
 test filter=default_test_filter *args:
     echo "Running tests for {{ BLUE }}{{ solution }}{{ NORMAL }} with configuration {{ YELLOW }}{{ build_configuration }}{{ NORMAL }}"
     echo "  and filter {{ GREEN }}{{ filter }}{{ NORMAL }}."
-    dotnet test {{ solution }} -c {{ build_configuration }} --treenode-filter "{{ filter }}" {{ args }}
+    dotnet test {{ solution }} -c {{ build_configuration }} --treenode-filter "{{ filter }}" --results-directory-layout per-module {{ args }}
 
 # Run unit tests only
 [group('Build and Test')]
@@ -93,7 +93,7 @@ test-unit *args:
 [group('Build and Test')]
 benchmark *args:
     echo "Running benchmarks for {{ BLUE }}{{ solution }}{{ NORMAL }}"
-    dotnet run --project {{ benchmark }} --configuration Release --no-build {{ args }}
+    dotnet run --project {{ benchmark }} --configuration Release --framework net11.0 --no-build {{ args }}
 
 # Clean all projects with the specified configuration, defaulting to "Debug"
 [group('Build and Test')]

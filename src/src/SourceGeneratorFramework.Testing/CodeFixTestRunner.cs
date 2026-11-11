@@ -24,24 +24,20 @@ public sealed class CodeFixTestRunner<TAnalyzer, TCodeFix> : RoslynTestRunner
 	{
 		options ??= new();
 		using var testProject = CreateProject([source], options, typeof(TAnalyzer).Assembly);
-		var compilation =
-			await testProject.Project.GetCompilationAsync(cancellationToken)
+		var compilation = await testProject.Project.GetCompilationAsync(cancellationToken)
 			?? throw new InvalidOperationException("Unable to create the test compilation.");
 		var diagnostics = await WithAnalyzers(compilation, [new TAnalyzer()], options)
 			.GetAnalyzerDiagnosticsAsync(cancellationToken);
-		var diagnostic =
-			diagnostics.FirstOrDefault(diagnostic => diagnostic.Location.IsInSource)
+		var diagnostic = diagnostics.FirstOrDefault(diagnostic => diagnostic.Location.IsInSource)
 			?? throw new InvalidOperationException("The analyzer did not report a source diagnostic.");
 		var document = testProject.Project.Solution.GetDocument(testProject.DocumentIds[0])!;
 		var actions = RegisterActions(document, diagnostic, cancellationToken);
 		var action = SelectAction(actions, options);
 
 		var operations = await action.GetOperationsAsync(cancellationToken);
-		var changedSolution =
-			operations.OfType<ApplyChangesOperation>().SingleOrDefault()?.ChangedSolution
+		var changedSolution = operations.OfType<ApplyChangesOperation>().SingleOrDefault()?.ChangedSolution
 			?? throw new InvalidOperationException("The code action did not produce an ApplyChangesOperation.");
-		var changedDocument =
-			changedSolution.GetDocument(document.Id)
+		var changedDocument = changedSolution.GetDocument(document.Id)
 			?? throw new InvalidOperationException("The code action removed the source document.");
 		var fixedSource = (await changedDocument.GetTextAsync(cancellationToken)).ToString();
 
@@ -60,8 +56,7 @@ public sealed class CodeFixTestRunner<TAnalyzer, TCodeFix> : RoslynTestRunner
 	{
 		options ??= new();
 		using var testProject = CreateProject(sources, options, typeof(TAnalyzer).Assembly);
-		var compilation =
-			await testProject.Project.GetCompilationAsync(cancellationToken)
+		var compilation = await testProject.Project.GetCompilationAsync(cancellationToken)
 			?? throw new InvalidOperationException("Unable to create the test compilation.");
 		var diagnostics = await WithAnalyzers(compilation, [new TAnalyzer()], options)
 			.GetAnalyzerDiagnosticsAsync(cancellationToken);
@@ -70,20 +65,22 @@ public sealed class CodeFixTestRunner<TAnalyzer, TCodeFix> : RoslynTestRunner
 			throw new InvalidOperationException("The analyzer did not report a source diagnostic.");
 
 		var firstDiagnostic = sourceDiagnostics[0];
-		var document =
-			await GetDocumentForDiagnosticAsync(testProject, firstDiagnostic, cancellationToken)
+		var document = await GetDocumentForDiagnosticAsync(testProject, firstDiagnostic, cancellationToken)
 			?? throw new InvalidOperationException("Unable to locate the document containing the diagnostic.");
 		var actions = RegisterActions(document, firstDiagnostic, cancellationToken);
 		var action = SelectAction(actions, options);
 
 		TCodeFix codeFixProvider = new();
-		var fixAllAction =
-			await RunFixAllProviderAsync(document, codeFixProvider, action, sourceDiagnostics, cancellationToken)
-			?? throw new InvalidOperationException("The FixAllProvider did not produce a code action.");
+		var fixAllAction = await RunFixAllProviderAsync(
+			document,
+			codeFixProvider,
+			action,
+			sourceDiagnostics,
+			cancellationToken
+		) ?? throw new InvalidOperationException("The FixAllProvider did not produce a code action.");
 
 		var operations = await fixAllAction.GetOperationsAsync(cancellationToken);
-		var changedSolution =
-			operations.OfType<ApplyChangesOperation>().SingleOrDefault()?.ChangedSolution
+		var changedSolution = operations.OfType<ApplyChangesOperation>().SingleOrDefault()?.ChangedSolution
 			?? throw new InvalidOperationException("The fix-all action did not produce an ApplyChangesOperation.");
 
 		var fixedSources = ImmutableDictionary.CreateBuilder<string, string>();
@@ -107,8 +104,7 @@ public sealed class CodeFixTestRunner<TAnalyzer, TCodeFix> : RoslynTestRunner
 		CancellationToken cancellationToken
 	)
 	{
-		var fixAllProvider =
-			codeFixProvider.GetFixAllProvider()
+		var fixAllProvider = codeFixProvider.GetFixAllProvider()
 			?? throw new InvalidOperationException("The code fix provider has no FixAllProvider.");
 
 		FixAllContext fixAllContext = new(

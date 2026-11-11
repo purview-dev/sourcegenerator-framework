@@ -100,8 +100,7 @@ public static class DriverRunResultExtensions
 		if (result == null)
 			throw new ArgumentNullException(nameof(result));
 
-		var tree =
-			result.PrimarySyntaxTrees.SingleOrDefault()
+		var tree = result.PrimarySyntaxTrees.SingleOrDefault()
 			?? throw new InvalidOperationException("Expected a single generated source but found none.");
 
 		return tree.GetText().ToString();

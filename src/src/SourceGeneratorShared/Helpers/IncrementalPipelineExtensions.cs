@@ -44,10 +44,8 @@ public static class IncrementalPipelineExtensions
 			IncrementalGeneratorInitializationContext context,
 			GenerationSettings settings
 		) =>
-			IncrementalPipeline.GenerationContextValueProvider(
-				context,
-				settings,
-				static (_, _, _, _) => EmptyCapabilities.Instance
+			IncrementalPipeline.GenerationContextValueProvider(context, settings, static (_, _, _, _) =>
+				EmptyCapabilities.Instance
 			);
 
 		/// <summary>
