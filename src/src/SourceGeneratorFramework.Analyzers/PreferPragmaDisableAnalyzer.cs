@@ -20,7 +20,7 @@ public sealed class PreferPragmaDisableAnalyzer : DiagnosticAnalyzer
 		"Prefer PragmaDisable for warning suppression",
 		"'{0}' with a pragma warning directive should use 'PragmaDisable' or 'OpenPragmasScope'",
 		"Purview.SourceGeneratorFramework",
-		DiagnosticSeverity.Info,
+		DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
 		description: "Emitting #pragma warning directives through raw text bypasses the structured PragmaDisable/OpenPragmasScope APIs."
 	);

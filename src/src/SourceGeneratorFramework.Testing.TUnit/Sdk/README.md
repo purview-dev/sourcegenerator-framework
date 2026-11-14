@@ -165,7 +165,7 @@ for you.
 
 To assert a nullable expected type, use the test-only `query.MakeNullable(...)` extension: it resolves the
 annotation against the query's compilation and, unlike `TypeReference.Nullable()`/`TypeIdentity.MakeNullable()`,
-does not trigger the `PSGFR16` context-overload suggestion (tests have no generation context to pass).
+does not trigger the `PSGFR16` context-overload warning (tests have no generation context to pass).
 
 ```csharp
 var query = result.Generated();

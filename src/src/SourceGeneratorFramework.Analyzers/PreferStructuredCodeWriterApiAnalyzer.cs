@@ -21,7 +21,7 @@ public sealed class PreferStructuredCodeWriterAPIAnalyzer : DiagnosticAnalyzer
 		"Prefer a structured CodeWriter declaration API",
 		"'{0}' with a declaration should use a structured API such as Class, Method, Property, or Field",
 		"Purview.SourceGeneratorFramework",
-		DiagnosticSeverity.Info,
+		DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
 		description: "Emitting declaration syntax through raw text bypasses the structured, deterministic declaration APIs on CodeWriter."
 	);

@@ -45,7 +45,7 @@ returns a **merged, self-contained** generator from its intermediate output, so 
 generator's own bin output stays unmerged, so its in-process test harness retains shared framework
 type identity. Specifying `Targets="GetSourceGeneratorAnalyzerFiles"` explicitly remains supported but
 is not required. Set `PurviewMergeSourceGeneratorFrameworkForAnalyzerFiles` to `false` only when the
-unmerged assembly + loose framework DLL shape is required (see [Packaging.md](Packaging.md)).
+unmerged assembly + loose framework DLL shape is required (see [Packaging.md](operations/Packaging.md)).
 
 ### A component that references another component
 
@@ -57,7 +57,7 @@ resolution copies it beside the dependent component's bin output, so that folder
 A project that references a component only as an analyzer never receives it. The dependent
 component's analyzer closure includes the referenced component's merged artifact — it is never
 IL-merged a second time, which would duplicate its types. See
-[Packaging.md](Packaging.md#a-component-that-references-another-component).
+[Packaging.md](operations/Packaging.md#a-component-that-references-another-component).
 
 Declare each MSBuild property the generator reads with
 `<PurviewGeneratorVisibleProperty Include="MyGenerator_Disable" />`; `PSGF0003` fails the build when
@@ -198,9 +198,9 @@ dotnet add package Purview.SourceGeneratorFramework.Testing.TUnit
 ## Next pages
 
 - [Source Generator & Analyser Best Practices](Guide.md)
-- [CodeWriter structured API reference](Code-Writer.md)
-- [Incremental Pipeline](Incremental-Pipeline.md)
+- [CodeWriter structured API reference](authoring/Code-Writer.md)
+- [Incremental Pipeline](authoring/Incremental-Pipeline.md)
 - [Testing](Testing.md)
-- [Testing with TUnit](Testing-TUnit.md)
-- [Step-Cache Tests](Step-Cache-Tests.md)
-- [Packaging](Packaging.md)
+- [Testing with TUnit](testing/Testing-TUnit.md)
+- [Step-Cache Tests](testing/Step-Cache-Tests.md)
+- [Packaging](operations/Packaging.md)

@@ -46,7 +46,7 @@ public sealed class OrphanedFixableDiagnosticIdAnalyzer : DiagnosticAnalyzer
 
 	static void AnalyzeCompilation(CompilationAnalysisContext context)
 	{
-		HashSet<string> descriptorIds = new(StringComparer.Ordinal);
+		HashSet<string> descriptorIds = [with(StringComparer.Ordinal)];
 		List<(string TypeName, Location Location, string Id)> fixerTargets = [];
 		var hasSourceAnalyzer = false;
 

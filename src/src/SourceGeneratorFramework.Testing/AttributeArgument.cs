@@ -51,7 +51,7 @@ public sealed record AttributeArgument(AttributeArgumentForm Form, string Name, 
 			AttributeArgumentForm.NamedArgument => $"{Name} = {value}",
 			AttributeArgumentForm.Defaulted => $"#{Ordinal} {Name}: {value} (defaulted)",
 			AttributeArgumentForm.NamedParameter => $"#{Ordinal} {Name}: {value} (by name)",
-			_ => $"#{Ordinal} {Name}: {value}",
+			AttributeArgumentForm.Positional or _ => $"#{Ordinal} {Name}: {value}",
 		};
 	}
 
@@ -95,6 +95,8 @@ public sealed record AttributeArgument(AttributeArgumentForm Form, string Name, 
 		if (value.IsNull)
 			return "null";
 
+		// Primitive and enum values, formatted as C# literals.
+#pragma warning disable IDE0072 // Add missing cases
 		return value.Kind switch
 		{
 			TypedConstantKind.Array => $"[{string.Join(", ", value.Values.Select(FormatValue))}]",
@@ -110,6 +112,7 @@ public sealed record AttributeArgument(AttributeArgumentForm Form, string Name, 
 				var other => ToInvariantString(other),
 			},
 		};
+#pragma warning restore IDE0072 // Add missing cases
 	}
 
 	static string? EnumMemberName(TypedConstant value)
@@ -149,6 +152,7 @@ public sealed record AttributeArgument(AttributeArgumentForm Form, string Name, 
 		if (type.ContainingType is { } containing)
 			return MetadataName(containing) + "+" + type.MetadataName;
 
+		// The containing namespace is null for a global namespace type, and the display string is empty for a global namespace.
 		return type.ContainingNamespace is { IsGlobalNamespace: false } ns
 			? ns.ToDisplayString() + "." + type.MetadataName
 			: type.MetadataName;
@@ -163,6 +167,7 @@ public sealed record AttributeArgument(AttributeArgumentForm Form, string Name, 
 		if (!IsNumeric(actual) || !IsNumeric(expected))
 			return false;
 
+		// Floating-point values compare as double: decimal cannot hold their range.
 		return actual is float or double || expected is float or double
 			? Convert.ToDouble(actual, CultureInfo.InvariantCulture)
 				== Convert.ToDouble(expected, CultureInfo.InvariantCulture)

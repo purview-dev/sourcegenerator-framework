@@ -67,11 +67,12 @@ static class MergeToolRunner
 		Directory.CreateDirectory(stagingDirectory);
 		var stagingPath = Path.Combine(stagingDirectory, Path.GetFileName(outputPath));
 
-		HashSet<string> searchDirectories = new(StringComparer.OrdinalIgnoreCase)
-		{
+		HashSet<string> searchDirectories =
+		[
+			with(StringComparer.OrdinalIgnoreCase),
 			Path.GetDirectoryName(componentPath)!,
 			Path.GetDirectoryName(frameworkPath)!,
-		};
+		];
 
 		foreach (var searchPath in options.SearchPaths)
 		{

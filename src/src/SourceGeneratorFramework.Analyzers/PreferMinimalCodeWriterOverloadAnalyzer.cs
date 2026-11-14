@@ -21,7 +21,7 @@ public sealed class PreferMinimalCodeWriterOverloadAnalyzer : DiagnosticAnalyzer
 		"Prefer the minimal CodeWriter overload",
 		"'{0}' should use the minimal overload '{1}'",
 		"Purview.SourceGeneratorFramework",
-		DiagnosticSeverity.Info,
+		DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
 		description: "Constructing a declaration options value from only its primary-constructor arguments can be replaced by the minimal overload that takes those arguments directly."
 	);

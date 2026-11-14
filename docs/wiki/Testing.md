@@ -157,7 +157,7 @@ emitted assembly: inspect types, members and attributes without loading it into 
 executing any code. They are created lazily on first access. Dispose the result (or its
 `DriverRunResult`) to unload the collectible context and release the metadata view.
 
-[`PSGFR42`](Analyzers.md#rule-reference) enforces that: a `DriverRunResult` that is produced and never
+[`PSGFR42`](authoring/Analyzers.md#rule-reference) enforces that: a `DriverRunResult` that is produced and never
 disposed — including the indirect case where a helper creates a result, projects a value out of it and
 returns only the projection — is flagged, as a `warning` when the run syntactically compiles to an assembly
 and as `info` otherwise. `DisposeTestResultCodeFixProvider` inserts the `using`. Awaiting an assertion, or
@@ -233,7 +233,7 @@ Scoped results also expose node-inspection checks through `MemberQueryExtensions
 Tests asserting a nullable expected type can use the test-only `query.MakeNullable(type)` extension on
 a `CodeQuery` (it accepts a `TypeReference` or `TypeIdentity`). It resolves the annotation against the
 query's compilation and, unlike `TypeReference.Nullable()`/`TypeIdentity.MakeNullable()`, does not
-trigger the `PSGFR16` context-overload suggestion — tests have no generation context to pass.
+trigger the `PSGFR16` context-overload warning — tests have no generation context to pass.
 
 ```csharp
 var query = result.Generated();
@@ -323,7 +323,7 @@ Reference cache tests live in the `Purview.SourceGeneratorFramework` source repo
 `SourceGeneratorFramework.ExampleGenerator.UnitTests/StepCacheTests` (the canonical golden-matrix
 sample), and `.../ServiceRegistrationCacheTests` (an end-to-end generator) — and should be replicated
 into your own test project rather than copied from the package. See
-[Step-Cache-Tests.md](Step-Cache-Tests.md) for the full walkthrough.
+[Step-Cache-Tests.md](testing/Step-Cache-Tests.md) for the full walkthrough.
 
 ## License
 

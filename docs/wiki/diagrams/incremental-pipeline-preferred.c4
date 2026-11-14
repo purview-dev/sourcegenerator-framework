@@ -1,0 +1,31 @@
+specification {
+  element input
+  element transform
+  element model
+  element output
+}
+
+model {
+  input = input 'Roslyn input'
+  discovery = transform 'Cheap discovery'
+  extraction = transform 'Semantic extraction'
+  equatable = model 'Small equatable model'
+  validation = transform 'Validation / transformation'
+  generation = model 'Generation model'
+  source = output 'Source output'
+
+  input -> discovery
+  discovery -> extraction
+  extraction -> equatable
+  equatable -> validation
+  validation -> generation
+  generation -> source
+}
+
+views {
+  view preferredPipeline {
+    title 'Preferred incremental pipeline'
+    include *
+    autoLayout LeftRight
+  }
+}

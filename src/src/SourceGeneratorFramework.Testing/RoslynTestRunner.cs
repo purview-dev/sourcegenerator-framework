@@ -41,10 +41,7 @@ public abstract class RoslynTestRunner
 			{
 				return compilation.WithAnalyzers(
 					analyzers,
-					new AnalyzerOptions(
-						ImmutableArray<AdditionalText>.Empty,
-						new TestAnalyzerConfigOptionsProvider(analyzerConfigOptions)
-					)
+					new AnalyzerOptions([], new TestAnalyzerConfigOptionsProvider(analyzerConfigOptions))
 				);
 			}
 		}

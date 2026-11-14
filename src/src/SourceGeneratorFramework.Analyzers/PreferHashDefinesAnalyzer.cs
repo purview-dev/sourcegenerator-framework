@@ -20,7 +20,7 @@ public sealed class PreferHashDefinesAnalyzer : DiagnosticAnalyzer
 		"Prefer HashDefines for conditional compilation",
 		"'{0}' with a preprocessor directive should use 'HashDefines' or 'HashElse'",
 		"Purview.SourceGeneratorFramework",
-		DiagnosticSeverity.Info,
+		DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
 		description: "Emitting #if/#else/#endif directives through raw text bypasses the structured HashDefines/HashElse APIs that write directives at column zero."
 	);

@@ -9,6 +9,31 @@ that version to nuget.org.
 This file was reconstructed from the conventional-commit history at 1.1.1, so entries before that
 release summarise what the commits recorded rather than what was written at the time.
 
+## [Unreleased]
+
+### Added
+
+- **C# 15 construct support in `CodeWriter`.** `TypeDeclarationKind.Union` with
+  `TypeDeclarationOptions.UnionCaseTypes`, plus `Union`/`UnionScope` overloads, emits a
+  `union Name(CaseTypes)` declaration (semicolon-terminated or with a body). `IsClosed` emits the
+  `closed` modifier on a class or record class, suppressing the default `sealed`; `closed` combines
+  with `partial` and rejects `static`/`abstract`/non-class declarations. Reopening a containing type
+  with `TypeHelpers.CreatePartialTypeDeclarationOptions` detects the compiler's
+  `IsClosedTypeAttribute` and preserves `closed` instead of emitting `abstract`.
+- Code fixes for the structured-`CodeWriter` suggestions: single-line statements now rewrite to
+  `Return`, `Throw`, `MethodCall`, `MethodCallOn`, `AwaitedMethodCall`, `AwaitedMethodCallOn`,
+  `Assignment`, `Comment`, `Using`, or `UsingAlias` (`PSGFR19`); a bare `*DeclarationOptions`
+  construction moves to the minimal overload (`PSGFR20`); and `#pragma warning disable` rewrites to
+  `PragmaDisable` (`PSGFR22`).
+
+### Changed
+
+- **The structured-API suggestions are warnings.** `PSGFR16` and `PSGFR18`–`PSGFR23`, which recommend a
+  structured `CodeWriter` API (for example `Return` instead of `Line("return value;")`), and `PSGFR34`
+  for extension blocks, are now `Warning` rather than `Info`. A build that treats warnings as errors
+  now fails until the suggestion is adopted or explicitly suppressed. Informational findings such as a
+  duplicate enum value stay `Info`.
+
 ## [2.0.0] - 2026-11-10
 
 ### Changed
@@ -16,7 +41,7 @@ release summarise what the commits recorded rather than what was written at the 
 - **.NET 8 and .NET 9 are out of support.** The libraries still ship a `netstandard2.0` asset, so a
   .NET 8 or .NET 9 consumer keeps working, but neither runtime is built against or tested. The test
   matrix is `net10.0` and `net11.0`, and the benchmarks target the same pair. See
-  [docs/wiki/DotNet-11.md](docs/wiki/DotNet-11.md).
+  [docs/wiki/platform/DotNet-11.md](docs/wiki/platform/DotNet-11.md).
 - **The repository requires the .NET 11 SDK** (`11.0.100`, with `allowPrerelease` now `false` because
   .NET 11 has shipped) and `Purview.BuildSdk` 2.0.0.
 - **The packaged merge tool supports .NET 10 and .NET 11 from one `tools/` folder.** It targets the
@@ -33,7 +58,7 @@ release summarise what the commits recorded rather than what was written at the 
 
 ### Added
 
-- [docs/wiki/DotNet-11.md](docs/wiki/DotNet-11.md): the support matrix, the .NET 11 features that
+- [docs/wiki/platform/DotNet-11.md](docs/wiki/platform/DotNet-11.md): the support matrix, the .NET 11 features that
   `Purview.BuildSdk` enables for `net11.0` (Runtime Async, C# 15, memory-safety rules, `-mt`), and the
   features that were evaluated and deliberately left off. It records why no union type was required
   and the non-boxing `IUnion`/`HasValue`/`TryGetValue` pattern to use if one is added.
@@ -170,7 +195,7 @@ release summarise what the commits recorded rather than what was written at the 
   than to the framework: the id is derived from the component's namespace (`Acme.Widgets.Generators` →
   `AWG0001`), the title from the component kind, the category from the root namespace, and the severity is
   `Warning`. Every part is overridable through `ComponentFailureOptions`, including an opt-in stack trace.
-  See [`docs/wiki/Component-Failures.md`](docs/wiki/Component-Failures.md).
+  See [`docs/wiki/authoring/Component-Failures.md`](docs/wiki/authoring/Component-Failures.md).
 
   The framework's own `RegisterSourceOutput` now runs the emit callback through the guard, so a generator
   built on it is covered without changing a line. Its signature is unchanged — the overrides are declared on
@@ -208,7 +233,7 @@ release summarise what the commits recorded rather than what was written at the 
 
 ### Documentation
 
-- `docs/wiki/Step-Cache-Tests.md` documents the fresh-compilation default and the opt-out.
+- `docs/wiki/testing/Step-Cache-Tests.md` documents the fresh-compilation default and the opt-out.
 
 ## [1.1.1]
 

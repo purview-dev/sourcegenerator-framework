@@ -60,7 +60,7 @@ public sealed class AttributeArguments
 		var syntax = attribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken) as AttributeSyntax;
 
 		var positionalCount = 0;
-		HashSet<string> namedParameters = new(StringComparer.Ordinal);
+		HashSet<string> namedParameters = [with(StringComparer.Ordinal)];
 		if (syntax?.ArgumentList is { } argumentList)
 		{
 			foreach (var argument in argumentList.Arguments)

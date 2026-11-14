@@ -39,4 +39,14 @@ public enum TypeDeclarationKind
 	/// A delegate declaration.
 	/// </summary>
 	Delegate,
+
+	/// <summary>
+	/// A C# 15 union declaration, such as <c>public union Pet(Cat, Dog);</c>.
+	/// </summary>
+	/// <remarks>
+	/// A union is emitted as a struct-backed declaration with a fixed set of case types. Set
+	/// <see cref="TypeDeclarationOptions.UnionCaseTypes"/> to the case types; primary-constructor
+	/// parameters and a base type are not valid for a union declaration.
+	/// </remarks>
+	Union,
 }

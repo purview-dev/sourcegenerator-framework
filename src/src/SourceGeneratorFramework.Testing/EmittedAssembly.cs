@@ -105,7 +105,7 @@ sealed class EmittedAssembly : IDisposable
 
 	static HashSet<string> MetadataPaths(Compilation compilation)
 	{
-		HashSet<string> paths = new(StringComparer.OrdinalIgnoreCase);
+		HashSet<string> paths = [with(StringComparer.OrdinalIgnoreCase)];
 		paths.UnionWith(SourceGeneratorHelpers.TrustedAssemblies);
 
 		foreach (var reference in compilation.References.OfType<PortableExecutableReference>())

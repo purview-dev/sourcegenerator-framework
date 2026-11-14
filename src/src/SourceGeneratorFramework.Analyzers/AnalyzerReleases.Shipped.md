@@ -12,14 +12,14 @@ PSGFR11 | Purview.SourceGeneratorFramework | Warning | Prefer ForAttributeWithMe
 PSGFR12 | Purview.SourceGeneratorFramework | Warning | Use IIncrementalGenerator instead of ISourceGenerator
 PSGFR14 | Purview.SourceGeneratorFramework | Warning | Avoid RegisterImplementationSourceOutput
 PSGFR15 | Purview.SourceGeneratorFramework | Warning | Pipeline model collection lacks sequence equality
-PSGFR16 | Purview.SourceGeneratorFramework | Info | Prefer the nullable-context overload
+PSGFR16 | Purview.SourceGeneratorFramework | Warning | Prefer the nullable-context overload
 PSGFR17 | Purview.SourceGeneratorFramework | Warning | Consume CodeWriter scopes with a using statement
-PSGFR18 | Purview.SourceGeneratorFramework | Info | Prefer a structured CodeWriter declaration API
-PSGFR19 | Purview.SourceGeneratorFramework | Info | Prefer a structured CodeWriter statement API
-PSGFR20 | Purview.SourceGeneratorFramework | Info | Prefer the minimal CodeWriter overload
-PSGFR21 | Purview.SourceGeneratorFramework | Info | Prefer HashDefines for conditional compilation
-PSGFR22 | Purview.SourceGeneratorFramework | Info | Prefer PragmaDisable for warning suppression
-PSGFR23 | Purview.SourceGeneratorFramework | Info | Prefer the structured CodeWriter conditional API
+PSGFR18 | Purview.SourceGeneratorFramework | Warning | Prefer a structured CodeWriter declaration API
+PSGFR19 | Purview.SourceGeneratorFramework | Warning | Prefer a structured CodeWriter statement API
+PSGFR20 | Purview.SourceGeneratorFramework | Warning | Prefer the minimal CodeWriter overload
+PSGFR21 | Purview.SourceGeneratorFramework | Warning | Prefer HashDefines for conditional compilation
+PSGFR22 | Purview.SourceGeneratorFramework | Warning | Prefer PragmaDisable for warning suppression
+PSGFR23 | Purview.SourceGeneratorFramework | Warning | Prefer the structured CodeWriter conditional API
 PSGFR24 | Purview.SourceGeneratorFramework | Warning | CodeFixProvider is not marked with ExportCodeFixProvider
 PSGFR25 | Purview.SourceGeneratorFramework | Warning | DiagnosticAnalyzer is not marked with DiagnosticAnalyzer
 PSGFR26 | Purview.SourceGeneratorFramework | Error | Source generator is not marked with Generator

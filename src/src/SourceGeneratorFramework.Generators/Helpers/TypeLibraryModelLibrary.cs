@@ -80,7 +80,7 @@ static class TypeLibraryModelLibrary
 		var specDocumentation = ExtractDocumentation(specSymbol);
 
 		List<NamespaceNodeBuilder> root = [];
-		Dictionary<string, NamespaceNodeBuilder> nodeLookup = new(StringComparer.Ordinal);
+		Dictionary<string, NamespaceNodeBuilder> nodeLookup = [with(StringComparer.Ordinal)];
 
 		// The generated type library inherits the full framework PurviewTypeLibrary shape, so every
 		// framework member is present before the user's [TypeRef] members are merged in. The shape was
@@ -434,7 +434,7 @@ static class TypeLibraryModelLibrary
 			return EquatableArray<TypeLibraryNamespaceNode>.Empty;
 
 		List<NamespaceNodeBuilder> root = [];
-		Dictionary<string, NamespaceNodeBuilder> lookup = new(StringComparer.Ordinal);
+		Dictionary<string, NamespaceNodeBuilder> lookup = [with(StringComparer.Ordinal)];
 
 		foreach (var nestedType in frameworkType.GetTypeMembers())
 			AddFrameworkNode(root, lookup, nestedType);

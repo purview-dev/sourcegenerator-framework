@@ -737,6 +737,91 @@ partial class CodeWriter
 	}
 
 	/// <summary>
+	/// Writes a C# 15 union declaration using the minimal identifying properties and returns its body
+	/// scope.
+	/// </summary>
+	/// <param name="name">The union name.</param>
+	/// <param name="caseTypes">The case types written between the type name and the base list.</param>
+	/// <param name="accessibility">The optional accessibility.</param>
+	/// <param name="configure">An optional callback that configures the declaration.</param>
+	/// <returns>The union body scope.</returns>
+	/// <example><code>using (writer.UnionScope("Pet", [cat, dog])) { }</code></example>
+	public BlockScope UnionScope(
+		string name,
+		IEnumerable<TypeReference> caseTypes,
+		TypeDeclarationAccessibility? accessibility = null,
+		Func<TypeDeclarationOptions, TypeDeclarationOptions>? configure = null
+	)
+	{
+		if (caseTypes is null)
+			throw new ArgumentNullException(nameof(caseTypes));
+
+		TypeDeclarationOptions declaration = new(name, accessibility) { UnionCaseTypes = [.. caseTypes] };
+		if (configure is not null)
+			declaration = configure(declaration);
+
+		return UnionScope(declaration);
+	}
+
+	/// <summary>
+	/// Writes an empty C# 15 union declaration using the minimal identifying properties, terminated with a
+	/// semicolon instead of a body.
+	/// </summary>
+	/// <param name="name">The union name.</param>
+	/// <param name="caseTypes">The case types written between the type name and the base list.</param>
+	/// <param name="accessibility">The optional accessibility.</param>
+	/// <param name="configure">An optional callback that configures the declaration.</param>
+	/// <returns>The current writer.</returns>
+	/// <example><code>writer.Union("Pet", [cat, dog]); // public partial union Pet(Cat, Dog);</code></example>
+	public CodeWriter Union(
+		string name,
+		IEnumerable<TypeReference> caseTypes,
+		TypeDeclarationAccessibility? accessibility = null,
+		Func<TypeDeclarationOptions, TypeDeclarationOptions>? configure = null
+	)
+	{
+		if (caseTypes is null)
+			throw new ArgumentNullException(nameof(caseTypes));
+
+		TypeDeclarationOptions declaration = new(name, accessibility) { UnionCaseTypes = [.. caseTypes] };
+		if (configure is not null)
+			declaration = configure(declaration);
+
+		return Union(declaration);
+	}
+
+	/// <summary>
+	/// Writes a C# 15 union declaration using the minimal identifying properties and invokes a callback
+	/// for its body.
+	/// </summary>
+	/// <param name="name">The union name.</param>
+	/// <param name="caseTypes">The case types written between the type name and the base list.</param>
+	/// <param name="accessibility">The optional accessibility.</param>
+	/// <param name="configure">An optional callback that configures the declaration, or <see langword="null"/> for defaults.</param>
+	/// <param name="writeBody">The action that writes the union body.</param>
+	/// <returns>The current writer.</returns>
+	/// <example><code>writer.Union("Pet", [cat, dog], TypeDeclarationAccessibility.Public, null, _ =&gt; { });</code></example>
+	public CodeWriter Union(
+		string name,
+		IEnumerable<TypeReference> caseTypes,
+		TypeDeclarationAccessibility? accessibility,
+		Func<TypeDeclarationOptions, TypeDeclarationOptions>? configure,
+		Action<CodeWriter> writeBody
+	)
+	{
+		if (caseTypes is null)
+			throw new ArgumentNullException(nameof(caseTypes));
+		if (writeBody is null)
+			throw new ArgumentNullException(nameof(writeBody));
+
+		TypeDeclarationOptions declaration = new(name, accessibility) { UnionCaseTypes = [.. caseTypes] };
+		if (configure is not null)
+			declaration = configure(declaration);
+
+		return Union(declaration, writeBody);
+	}
+
+	/// <summary>
 	/// Writes an interface declaration using the minimal identifying properties and returns its body
 	/// scope.
 	/// </summary>

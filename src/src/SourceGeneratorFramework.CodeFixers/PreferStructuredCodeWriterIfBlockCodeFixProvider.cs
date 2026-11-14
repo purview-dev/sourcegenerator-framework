@@ -146,7 +146,7 @@ public sealed class PreferStructuredCodeWriterIfBlockCodeFixProvider : CodeFixPr
 		if (arguments.Count == 0)
 			return SyntaxFactory.SeparatedList<ArgumentSyntax>();
 
-		List<SyntaxNodeOrToken> nodesAndTokens = new((arguments.Count * 2) - 1);
+		List<SyntaxNodeOrToken> nodesAndTokens = [with((arguments.Count * 2) - 1)];
 		for (var index = 0; index < arguments.Count; index++)
 		{
 			if (index > 0)
