@@ -216,12 +216,12 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		// public spec leaves a public signature over a type the merge internalizes.
 		ReportSpecAccessibility(context, typeSymbol, typeLocation, mergesFramework);
 
-		Dictionary<string, HashSet<string>> memberNamesByPath = new(StringComparer.Ordinal);
-		Dictionary<string, HashSet<string>> enumMemberNamesByGroup = new(StringComparer.Ordinal);
-		Dictionary<string, HashSet<decimal>> enumValuesByGroup = new(StringComparer.Ordinal);
+		Dictionary<string, HashSet<string>> memberNamesByPath = [with(StringComparer.Ordinal)];
+		Dictionary<string, HashSet<string>> enumMemberNamesByGroup = [with(StringComparer.Ordinal)];
+		Dictionary<string, HashSet<decimal>> enumValuesByGroup = [with(StringComparer.Ordinal)];
 
 		// Plain [TypeRef] TypeIdentity markers declare the enum types that [EnumValue] members reference.
-		HashSet<string> typeRefMarkersByPath = new(StringComparer.Ordinal);
+		HashSet<string> typeRefMarkersByPath = [with(StringComparer.Ordinal)];
 		foreach (var field in typeSymbol.GetMembers().OfType<IFieldSymbol>())
 		{
 			var typeRef = GetAttribute(field, typeRefAttributeType);
@@ -413,7 +413,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		var pathKey = placementNamespace ?? string.Empty;
 		if (!memberNamesByPath.TryGetValue(pathKey, out var names))
 		{
-			names = new(StringComparer.Ordinal);
+			names = [with(StringComparer.Ordinal)];
 			memberNamesByPath[pathKey] = names;
 		}
 
@@ -508,7 +508,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 
 		if (!enumMemberNamesByGroup.TryGetValue(groupKey, out var memberNames))
 		{
-			memberNames = new(StringComparer.Ordinal);
+			memberNames = [with(StringComparer.Ordinal)];
 			enumMemberNamesByGroup[groupKey] = memberNames;
 		}
 
@@ -598,7 +598,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 		var groupKey = enumNamespace + "\0" + enumName;
 		if (!enumMemberNamesByGroup.TryGetValue(groupKey, out var memberNames))
 		{
-			memberNames = new(StringComparer.Ordinal);
+			memberNames = [with(StringComparer.Ordinal)];
 			enumMemberNamesByGroup[groupKey] = memberNames;
 		}
 
@@ -733,7 +733,7 @@ public sealed class TypeLibraryValidationAnalyzer : DiagnosticAnalyzer
 			return [];
 
 		List<GeneratedTypeLibraryInfo> libraries = [];
-		HashSet<string> seen = new(StringComparer.Ordinal);
+		HashSet<string> seen = [with(StringComparer.Ordinal)];
 
 		foreach (var spec in GetNamedTypes(compilation.Assembly.GlobalNamespace))
 		{

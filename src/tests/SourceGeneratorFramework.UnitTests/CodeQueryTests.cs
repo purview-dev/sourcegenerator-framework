@@ -325,15 +325,13 @@ public class CodeQueryTests
 		await Assert.That(query.GetAll<MethodDeclarationSyntax>().Length).IsEqualTo(3);
 		await Assert.That(query.GetAll(ValueStartsWith()).Length).IsEqualTo(1);
 
-		static Func<MethodDeclarationSyntax, bool> ValueStartsWith()
-		{
-			return static method => method.Identifier.ValueText
+		static Func<MethodDeclarationSyntax, bool> ValueStartsWith() =>
+			static method => method.Identifier.ValueText
 #if NET11_0_OR_GREATER
 				.StartsWith('C', StringComparison.Ordinal);
 #else
 				.StartsWith('C');
 #endif
-		}
 	}
 
 	[Test]

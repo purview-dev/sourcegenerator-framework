@@ -5,8 +5,9 @@ namespace Purview.SourceGeneratorFramework.Repository;
 /// <summary>
 /// Guards the skills installed from other repositories. They are installed by the skills CLI into the
 /// universal <c>.agents/skills/</c> folder only, and that folder and the CLI's <c>skills-lock.json</c>
-/// are committed, so the two must agree and no per-agent copy or instruction file may appear beside
-/// them.
+/// are committed, so the two must agree and no per-agent copy or instruction file may be committed
+/// beside them. A local <c>.claude/</c> folder is gitignored, so its presence is not a repository
+/// concern; the ignore rule itself is what the test guards.
 /// </summary>
 /// <remarks>
 /// <c>SkillTests</c> validates this repository's own skills in <c>skills/</c>; these are someone else's,
@@ -87,22 +88,25 @@ public sealed class InstalledSkillTests
 	}
 
 	[Test]
-	public async Task ClaudeFolder_GivenTheInstalledSkills_HoldsNoCopy(CancellationToken cancellationToken)
+	public async Task ClaudeFolder_GivenLocalAgentSkills_IsIgnoredByGit(CancellationToken cancellationToken)
 	{
 		// Arrange
 		cancellationToken.ThrowIfCancellationRequested();
-		var claudeSkills = Path.Combine(RepositoryRoot.Value, ".claude", "skills");
+		var ignoreFile = Path.Combine(RepositoryRoot.Value, ".gitignore");
+		var lines = await File.ReadAllLinesAsync(ignoreFile, cancellationToken);
 
 		// Act
-		var exists = Directory.Exists(claudeSkills);
+		var ignoresClaudeFolder = lines
+			.Select(static line => line.Trim())
+			.Any(static line => line is "/.claude/" or "/.claude" or ".claude/" or ".claude");
 
 		// Assert
 		await Assert
-			.That(exists)
-			.IsFalse()
+			.That(ignoresClaudeFolder)
+			.IsTrue()
 			.Because(
-				"skills are installed into .agents/skills/ only. A .claude/skills/ folder means the CLI ran without "
-					+ "`-a universal`; delete it and reinstall with `-a universal`"
+				".claude/ is a local, per-agent folder: it must stay gitignored so an installed copy can never "
+					+ "be committed. Keep the `/.claude/` rule in .gitignore."
 			);
 	}
 

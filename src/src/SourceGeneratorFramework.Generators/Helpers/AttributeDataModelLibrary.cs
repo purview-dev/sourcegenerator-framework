@@ -183,7 +183,7 @@ static class AttributeDataModelLibrary
 			);
 		}
 
-		HashSet<string> excludedNames = new(StringComparer.Ordinal);
+		HashSet<string> excludedNames = [with(StringComparer.Ordinal)];
 		var explicitProperties = ReadExplicitProperties(
 			structSymbol,
 			excludedNames,
@@ -628,7 +628,7 @@ static class AttributeDataModelLibrary
 			return [];
 
 		var discovered = ImmutableArray.CreateBuilder<AttributeDataModelProperty>();
-		HashSet<string> discoveredNames = new(StringComparer.Ordinal);
+		HashSet<string> discoveredNames = [with(StringComparer.Ordinal)];
 
 		foreach (var constructor in namedType.InstanceConstructors)
 		{

@@ -39,7 +39,7 @@ static class PipelineModelDiscovery
 		ImmutableArray<INamedTypeSymbol> collectionTypes
 	)
 	{
-		HashSet<INamedTypeSymbol> directModels = new(SymbolEqualityComparer.Default);
+		HashSet<INamedTypeSymbol> directModels = [with(SymbolEqualityComparer.Default)];
 
 		foreach (var typeSymbol in GetAllTypes(compilation.GlobalNamespace))
 		{
@@ -53,7 +53,7 @@ static class PipelineModelDiscovery
 			}
 		}
 
-		HashSet<INamedTypeSymbol> expanded = new(SymbolEqualityComparer.Default);
+		HashSet<INamedTypeSymbol> expanded = [with(SymbolEqualityComparer.Default)];
 		Queue<INamedTypeSymbol> worklist = new(directModels);
 
 		while (worklist.Count > 0)

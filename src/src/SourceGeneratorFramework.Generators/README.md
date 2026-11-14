@@ -27,7 +27,7 @@ The generator emits marker attributes into your compilation:
 - `[GenericTypeArgument(int index)]` — generic type argument by position.
 - `[GenericTypeArgument(string name)]` — generic type argument by type parameter name.
 
-Names are looked up case-sensitively at run time, and a name that is not found yields the default value, so a mapping mistake compiles cleanly. `AttributeDataModelNamingAnalyzer` (`ADM0011`–`ADM0015`) reports case-only mismatches, named sources that are not public settable members, generated-member name clashes, and `[NestedModel]` mappings the outer attribute does not line up with. See the [naming rules](../../../docs/wiki/Attribute-Data-Models.md#naming-rules).
+Names are looked up case-sensitively at run time, and a name that is not found yields the default value, so a mapping mistake compiles cleanly. `AttributeDataModelNamingAnalyzer` (`ADM0011`–`ADM0015`) reports case-only mismatches, named sources that are not public settable members, generated-member name clashes, and `[NestedModel]` mappings the outer attribute does not line up with. See the [naming rules](../../../docs/wiki/authoring/Attribute-Data-Models.md#naming-rules).
 
 ### Default values
 
@@ -207,7 +207,7 @@ Consumers then reference `MyTypeLibrary.GenerateMyAttribute`,
 `MyTypeLibrary.Microsoft.Extensions.Logging.ILogger`, and
 `MyTypeLibrary.System.Collections.Generic.Items` directly.
 
-See [docs/wiki/Type-Library.md](../../docs/wiki/Type-Library.md) for the full DSL and the member-accessibility rules.
+See [docs/wiki/authoring/Type-Library.md](../../docs/wiki/authoring/Type-Library.md) for the full DSL and the member-accessibility rules.
 
 ## License
 

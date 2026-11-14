@@ -121,11 +121,11 @@ public sealed class AttributeDataModelNamingAnalyzer : DiagnosticAnalyzer
 		if (source.Kind == MappedSourceKind.ConstructorIndex)
 			return;
 
-		var match = Match(source, targetAttribute);
-		if (match.Kind == MatchKind.Exact)
+		var (kind, actualName) = Match(source, targetAttribute);
+		if (kind == MatchKind.Exact)
 			return;
 
-		if (match.Kind == MatchKind.CaseOnly)
+		if (kind == MatchKind.CaseOnly)
 		{
 			context.ReportDiagnostic(
 				Diagnostic.Create(
@@ -133,7 +133,7 @@ public sealed class AttributeDataModelNamingAnalyzer : DiagnosticAnalyzer
 					location,
 					source.Name,
 					KindText(source),
-					match.ActualName,
+					actualName,
 					targetAttribute.Name
 				)
 			);
@@ -215,12 +215,12 @@ public sealed class AttributeDataModelNamingAnalyzer : DiagnosticAnalyzer
 					continue;
 				}
 
-				var match = Match(source, outerAttribute);
-				if (match.Kind == MatchKind.Exact)
+				var (kind, actualName) = Match(source, outerAttribute);
+				if (kind == MatchKind.Exact)
 				{
 					resolved = true;
 				}
-				else if (match.Kind == MatchKind.CaseOnly)
+				else if (kind == MatchKind.CaseOnly)
 				{
 					context.ReportDiagnostic(
 						Diagnostic.Create(
@@ -228,7 +228,7 @@ public sealed class AttributeDataModelNamingAnalyzer : DiagnosticAnalyzer
 							location,
 							source.Name,
 							KindText(source),
-							match.ActualName,
+							actualName,
 							outerAttribute.Name
 						)
 					);
@@ -395,6 +395,8 @@ public sealed class AttributeDataModelNamingAnalyzer : DiagnosticAnalyzer
 		if (generateAttribute.ConstructorArguments.Length == 0)
 			return null;
 
+		// The generator accepts either a type or a string, but the string is resolved to a type at compile time. The
+		// analyzer only needs the type to read its members, so it does not report a missing type.
 		return generateAttribute.ConstructorArguments[0].Value switch
 		{
 			INamedTypeSymbol type => type.IsUnboundGenericType ? type.OriginalDefinition : type,
@@ -491,6 +493,8 @@ public sealed class AttributeDataModelNamingAnalyzer : DiagnosticAnalyzer
 			if (generate is null)
 				return null;
 
+			// The other marker attributes are optional: the generator accepts the default behavior when they are missing, and
+			// the analyzer does not report a diagnostic when they are missing.
 			return new(
 				generate,
 				compilation.GetTypeByMetadataName(Namespace + "PropertyAttribute"),

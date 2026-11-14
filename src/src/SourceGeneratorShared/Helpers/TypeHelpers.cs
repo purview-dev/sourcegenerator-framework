@@ -634,6 +634,7 @@ public static class TypeHelpers
 
 		var kind = GetTypeDeclarationKind(containingType);
 		var isStatic = containingType.IsStatic;
+		var isClosed = includeOptionalParts && IsClosedType(containingType);
 
 		return new(containingType.Name)
 		{
@@ -645,8 +646,9 @@ public static class TypeHelpers
 				: null,
 			IsPartial = true,
 			IsStatic = isStatic,
-			IsSealed = includeOptionalParts && !isStatic && containingType.IsSealed,
-			IsAbstract = includeOptionalParts && !isStatic && containingType.IsAbstract,
+			IsClosed = isClosed,
+			IsSealed = includeOptionalParts && !isStatic && !isClosed && containingType.IsSealed,
+			IsAbstract = includeOptionalParts && !isStatic && !isClosed && containingType.IsAbstract,
 			IsReadOnly = containingType.IsReadOnly,
 			GenericTypes =
 			[
@@ -670,6 +672,13 @@ public static class TypeHelpers
 				nameof(typeSymbol)
 			),
 		};
+
+	static bool IsClosedType(INamedTypeSymbol typeSymbol) =>
+		typeSymbol
+			.GetAttributes()
+			.Any(static attribute =>
+				attribute.AttributeClass?.ToDisplayString() == "System.Runtime.CompilerServices.IsClosedTypeAttribute"
+			);
 
 	static GenericTypeParameterOptions CreateGenericTypeParameterOptions(
 		ITypeParameterSymbol typeParameter,

@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 namespace Purview.SourceGeneratorFramework;
 
 /// <summary>
-/// Describes a generated class, struct, record, interface, enum, or delegate declaration.
+/// Describes a generated class, struct, record, interface, enum, delegate, or union declaration.
 /// </summary>
 public sealed record TypeDeclarationOptions
 {
@@ -84,6 +84,13 @@ public sealed record TypeDeclarationOptions
 	public bool IsAbstract { get; init; }
 
 	/// <summary>
+	/// Gets whether the C# 15 <c>closed</c> modifier is emitted for a class or record class
+	/// declaration. A closed declaration is implicitly abstract, so it cannot also be static or
+	/// abstract, and <see cref="IsSealed"/> is ignored.
+	/// </summary>
+	public bool IsClosed { get; init; }
+
+	/// <summary>
 	/// Gets whether the <c>static</c> modifier is emitted for a class declaration.
 	/// </summary>
 	/// <remarks>
@@ -131,6 +138,14 @@ public sealed record TypeDeclarationOptions
 	/// Gets the interfaces implemented by the generated type, or inherited by an interface.
 	/// </summary>
 	public ImmutableArray<TypeReference> Interfaces { get; init; } = [];
+
+	/// <summary>
+	/// Gets the case types of a C# 15 union declaration, written between the type name and the base
+	/// list, for example <c>Cat</c> and <c>Dog</c> in <c>public union Pet(Cat, Dog);</c>. Only valid
+	/// when <see cref="Kind"/> is <see cref="TypeDeclarationKind.Union"/>, and at least one case type
+	/// is required.
+	/// </summary>
+	public ImmutableArray<TypeReference> UnionCaseTypes { get; init; } = [];
 
 	/// <summary>
 	/// Gets the generic type parameters and their constraints.

@@ -21,7 +21,7 @@ public sealed class PreferExtensionKeywordAnalyzer : DiagnosticAnalyzer
 		"Prefer extension blocks over classic extension methods",
 		"Method '{0}' is a classic extension method; prefer a C# 14 extension(Receiver) block",
 		"Purview.SourceGeneratorFramework",
-		DiagnosticSeverity.Info,
+		DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
 		description: "Use C# 14 extension(Receiver) blocks instead of classic static methods with a 'this' receiver parameter for a more coherent extension shape."
 	);

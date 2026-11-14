@@ -21,7 +21,7 @@ public sealed class PreferStructuredCodeWriterStatementAnalyzer : DiagnosticAnal
 		"Prefer a structured CodeWriter statement API",
 		"'{0}' with a statement should use '{1}'",
 		"Purview.SourceGeneratorFramework",
-		DiagnosticSeverity.Info,
+		DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
 		description: "Emitting statement syntax through raw text bypasses the structured, deterministic statement APIs on CodeWriter."
 	);

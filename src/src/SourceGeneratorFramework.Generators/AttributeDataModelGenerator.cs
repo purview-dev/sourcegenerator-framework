@@ -826,6 +826,7 @@ public sealed class AttributeDataModelGenerator : IIncrementalGenerator
 		if (string.Equals(name, "attributeData", StringComparison.Ordinal))
 			return "__attributeData";
 
+		// Prefixing keywords with @ is valid C# syntax, but it is not idiomatic. The generator uses the property name as-is when it is not a keyword, and prefixes it with @ when it is a keyword.
 		return
 			SyntaxFacts.GetKeywordKind(name) != SyntaxKind.None
 			|| SyntaxFacts.GetContextualKeywordKind(name) != SyntaxKind.None

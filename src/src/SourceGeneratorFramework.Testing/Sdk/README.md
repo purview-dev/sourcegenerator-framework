@@ -230,7 +230,7 @@ Scoped results also expose node-inspection checks through `MemberQueryExtensions
 Tests asserting a nullable expected type can use the test-only `query.MakeNullable(type)` extension on a
 `CodeQuery` (it accepts a `TypeReference` or `TypeIdentity`). It resolves the annotation against the query's
 compilation and, unlike `TypeReference.Nullable()`/`TypeIdentity.MakeNullable()`, does not trigger the
-`PSGFR16` context-overload suggestion — tests have no generation context to pass.
+`PSGFR16` context-overload warning — tests have no generation context to pass.
 
 ```csharp
 var query = result.Generated();
@@ -331,7 +331,7 @@ cache tests live in the `Purview.SourceGeneratorFramework` source repository —
 `SourceGeneratorShared.UnitTests/IncrementalPipelineCacheTests` (framework stages),
 `SourceGeneratorFramework.ExampleGenerator.UnitTests/StepCacheTests` (the canonical golden-matrix sample),
 and `.../ServiceRegistrationCacheTests` (an end-to-end generator) — and should be replicated into your own
-test project rather than copied from the package. See `docs/wiki/Step-Cache-Tests.md` for the full walkthrough.
+test project rather than copied from the package. See `docs/wiki/testing/Step-Cache-Tests.md` for the full walkthrough.
 
 ## Documentation
 

@@ -75,7 +75,7 @@ public class LogAttributeDataTests
 		// LogAttribute.Message has a private setter, so the message only ever arrives through the constructor.
 		var attribute = AttributeDataFactory.FromUsage("[Log(\"hello\", EventId = 3)]", ExamplesOptions);
 
-		var model = Examples.LogAttributeData.FromAttributeData(attribute);
+		var model = LogAttributeData.FromAttributeData(attribute);
 
 		await Assert.That(model.Message).IsEqualTo("hello");
 		await Assert.That(model.EventId).IsEqualTo(3);
@@ -87,7 +87,7 @@ public class LogAttributeDataTests
 	{
 		var attribute = AttributeDataFactory.FromUsage("[Debug(\"hi\")]", ExamplesOptions);
 
-		var model = Examples.DebugAttributeData.FromAttributeData(attribute);
+		var model = DebugAttributeData.FromAttributeData(attribute);
 
 		await Assert.That(model.Log.Message).IsEqualTo("hi");
 		await Assert.That(model.Level).IsEqualTo(LogLevel.Debug);

@@ -29,7 +29,7 @@
 
 ---
 
-# 1. Core Principles
+## 1. Core Principles
 
 The most important rules are:
 
@@ -50,7 +50,7 @@ The guiding principle for an incremental generator is:
 
 ---
 
-# 2. Analyser or Source Generator?
+## 2. Analyser or Source Generator?
 
 Analysers and generators have different responsibilities.
 
@@ -62,7 +62,7 @@ An `IIncrementalGenerator` answers:
 
 > Given valid source code, what source should be generated?
 
-## Decision Table
+### Decision Table
 
 | Requirement | Prefer | Reason |
 | --- | --- | --- |
@@ -104,13 +104,13 @@ A useful shorthand is:
 
 ---
 
-# 3. Choosing an Analyser Action
+## 3. Choosing an Analyser Action
 
 Use the narrowest analyser API that directly represents the thing being analysed.
 
 Do not start with a broad syntax scan if Roslyn already exposes the concept as a symbol or operation.
 
-## Analyser Action Decision Matrix
+### Analyser Action Decision Matrix
 
 | API | Use when | Examples | Recommendation |
 | --- | --- | --- | --- |
@@ -131,7 +131,7 @@ Do not start with a broad syntax scan if Roslyn already exposes the concept as a
 
 ---
 
-# 4. Syntax vs Symbol vs Operation
+## 4. Syntax vs Symbol vs Operation
 
 The most common analyser design decision is choosing between:
 
@@ -139,7 +139,7 @@ The most common analyser design decision is choosing between:
 - symbols;
 - operations.
 
-## Quick Decision
+### Quick Decision
 
 ```text
 Does exact source spelling/structure matter?
@@ -157,7 +157,7 @@ Does exact source spelling/structure matter?
 
 ---
 
-## Syntax
+### Syntax
 
 Use syntax when the literal structure of the user's source matters.
 
@@ -184,7 +184,7 @@ Do not ask the semantic model a question that can be answered directly from synt
 
 ---
 
-## Symbols
+### Symbols
 
 Use symbols when analysing declarations semantically.
 
@@ -217,7 +217,7 @@ should normally be used rather than reference equality.
 
 ---
 
-## Operations
+### Operations
 
 Use `IOperation` when analysing executable semantics.
 
@@ -275,7 +275,7 @@ for every invocation.
 
 ---
 
-## Common Operation Kinds
+### Common Operation Kinds
 
 | Requirement | Operation |
 | --- | --- |
@@ -296,9 +296,9 @@ Use the semantic operation rather than reconstructing equivalent information fro
 
 ---
 
-# 5. Analyser Best Practices
+## 5. Analyser Best Practices
 
-## Enable Concurrent Execution
+### Enable Concurrent Execution
 
 Analysers should normally enable concurrent execution:
 
@@ -321,7 +321,7 @@ Avoid shared mutable state.
 
 ---
 
-## Configure Generated Code Explicitly
+### Configure Generated Code Explicitly
 
 Do not leave generated-code handling implicit.
 
@@ -339,7 +339,7 @@ Only inspect generated code if the analyser explicitly needs to.
 
 ---
 
-## Resolve Known Types Once
+### Resolve Known Types Once
 
 If an analyser needs to repeatedly compare against known framework or library types, resolve them during compilation start.
 
@@ -367,7 +367,7 @@ Do not use `CompilationStart` merely to enumerate the entire compilation.
 
 ---
 
-## Prefer Narrow Registration
+### Prefer Narrow Registration
 
 Prefer:
 
@@ -393,7 +393,7 @@ over scanning an entire `SyntaxTree`.
 
 ---
 
-# 6. Incremental Generator Golden Rules
+## 6. Incremental Generator Golden Rules
 
 Implement:
 
@@ -411,7 +411,7 @@ But simply implementing `IIncrementalGenerator` does **not** make a generator me
 
 Incrementally depends on the equality behaviour of the values flowing through the pipeline.
 
-## The Golden Rule
+### The Golden Rule
 
 > **Pipeline values must be immutable and value-equatable.**
 
@@ -425,9 +425,9 @@ If the answer is yes, Roslyn can stop executing downstream stages and reuse cach
 
 ---
 
-# 7. Pipeline Value Equality
+## 7. Pipeline Value Equality
 
-## Pipeline Red List
+### Pipeline Red List
 
 These should not normally survive into your generator model.
 
@@ -451,7 +451,7 @@ These should not normally survive into your generator model.
 
 ---
 
-## Good Model
+### Good Model
 
 ```csharp
 internal sealed record TypeModel(
@@ -471,7 +471,7 @@ internal sealed record PropertyModel(
 
 ---
 
-## Bad Model
+### Bad Model
 
 ```csharp
 internal sealed record TypeModel(
@@ -486,7 +486,7 @@ Making the outer object a `record` does not magically make its members suitable 
 
 ---
 
-## `ImmutableArray<T>` Is Not Enough
+### `ImmutableArray<T>` Is Not Enough
 
 `ImmutableArray<T>` solves:
 
@@ -550,49 +550,37 @@ same contents => equal pipeline value
 
 ---
 
-# 8. Designing the Incremental Pipeline
+## 8. Designing the Incremental Pipeline
 
 Think of every transformation as a cache checkpoint.
 
 Prefer:
 
-```text
-Roslyn Input
-    │
-    ▼
-Cheap discovery
-    │
-    ▼
-Semantic extraction
-    │
-    ▼
-Small equatable model
-    │
-    ▼
-Validation/transformation
-    │
-    ▼
-Generation model
-    │
-    ▼
-Source output
+<!-- purview:likec4 file="./diagrams/incremental-pipeline-preferred.c4" view="preferredPipeline" title="Preferred incremental pipeline" -->
+```mermaid
+flowchart LR
+  input[Roslyn input] --> discovery[Cheap discovery]
+  discovery --> extraction[Semantic extraction]
+  extraction --> equatable[Small equatable model]
+  equatable --> validation[Validation / transformation]
+  validation --> generation[Generation model]
+  generation --> output[Source output]
 ```
+
+[LikeC4 model](./diagrams/incremental-pipeline-preferred.c4)
+<!-- /purview:likec4 -->
 
 Do not do:
 
-```text
-Roslyn Input
-    │
-    ▼
-Giant transform containing symbols + syntax + compilation
-    │
-    ▼
-Generate everything
+```mermaid
+flowchart LR
+  input[Roslyn input] --> giant[Giant transform<br/>symbols + syntax + compilation]
+  giant --> generate[Generate everything]
 ```
 
 ---
 
-## Project Early
+### Project Early
 
 The semantic transform should usually be the boundary where Roslyn objects disappear.
 
@@ -628,7 +616,7 @@ Everything downstream should receive `TypeModel`, not `INamedTypeSymbol`.
 
 ---
 
-## Prefer Static Lambdas
+### Prefer Static Lambdas
 
 Prefer:
 
@@ -645,7 +633,7 @@ Generator instances should not be treated as application services or state conta
 
 ---
 
-## Honour Cancellation
+### Honour Cancellation
 
 For non-trivial transformations:
 
@@ -662,41 +650,29 @@ Pass cancellation tokens into Roslyn APIs that accept them.
 
 ---
 
-## Split Transformations
+### Split Transformations
 
 Prefer:
 
-```text
-Syntax
-  ↓
-Symbol projection
-  ↓
-Type model
-  ↓
-Property models
-  ↓
-Generation model
-  ↓
-Output
+```mermaid
+flowchart LR
+  syntax[Syntax] --> symbol[Symbol projection] --> type[Type model] --> property[Property models] --> generation[Generation model] --> output[Output]
 ```
 
 over:
 
-```text
-Syntax
-  ↓
-Do absolutely everything
-  ↓
-Output
+```mermaid
+flowchart LR
+  syntax[Syntax] --> everything[Do absolutely everything] --> output[Output]
 ```
 
 More meaningful boundaries give Roslyn more opportunities to short-circuit downstream processing.
 
 ---
 
-# 9. Syntax Discovery
+## 9. Syntax Discovery
 
-## Prefer `ForAttributeWithMetadataName`
+### Prefer `ForAttributeWithMetadataName`
 
 Attribute-driven generation should normally start with:
 
@@ -728,7 +704,7 @@ For marker-attribute generators, this should be the default.
 
 ---
 
-## Use `CreateSyntaxProvider` When Syntax Is Actually the Trigger
+### Use `CreateSyntaxProvider` When Syntax Is Actually the Trigger
 
 Use:
 
@@ -777,7 +753,7 @@ Semantic work belongs in the transformation callback.
 
 ---
 
-## Avoid Indirect Discovery
+### Avoid Indirect Discovery
 
 Avoid designs that require discovering:
 
@@ -805,9 +781,9 @@ Generate everything somewhere downstream of IBaseSchemaThing
 
 ---
 
-# 10. `Collect`, `Combine`, and Invalidation
+## 10. `Collect`, `Combine`, and Invalidation
 
-## `Collect()`
+### `Collect()`
 
 `Collect()` transforms:
 
@@ -833,17 +809,19 @@ C ──► output C
 
 After collection:
 
-```text
-A ─┐
-B ─┼──► [A,B,C] ──► output
-C ─┘
+```mermaid
+flowchart LR
+  a[A] --> aggregate["A,B,C"]
+  b[B] --> aggregate
+  c[C] --> aggregate
+  aggregate --> output[output]
 ```
 
 Changing `B` changes the aggregate `[A,B,C]`.
 
 ---
 
-## Prefer Per-Item Output
+### Prefer Per-Item Output
 
 Prefer:
 
@@ -872,7 +850,7 @@ unless the generation genuinely requires the complete set.
 
 ---
 
-## Good Uses of `Collect()`
+### Good Uses of `Collect()`
 
 Use `Collect()` when generating something intrinsically global:
 
@@ -884,21 +862,18 @@ Use `Collect()` when generating something intrinsically global:
 
 A useful design is:
 
-```text
-                    ┌──► Per-type source
-Type Models ────────┤
-                    │
-                    └──► Collect()
-                            │
-                            ▼
-                     Global registry
+```mermaid
+flowchart LR
+  models[Type models] --> perType[Per-type source]
+  models --> collect["Collect()"]
+  collect --> registry[Global registry]
 ```
 
 Only the registry should pay the global invalidation cost.
 
 ---
 
-## `Combine()`
+### `Combine()`
 
 Use `Combine()` when one output logically depends on two providers.
 
@@ -911,17 +886,17 @@ var generationInput =
 
 That means:
 
-```text
-type changed ───────┐
-                    ├──► generation invalidated
-option changed ─────┘
+```mermaid
+flowchart LR
+  type[Type changed] --> invalidated[Generation invalidated]
+  option[Option changed] --> invalidated
 ```
 
 This is correct if either input should regenerate the output.
 
 ---
 
-## Be Very Careful Combining `CompilationProvider`
+### Be Very Careful Combining `CompilationProvider`
 
 This:
 
@@ -958,7 +933,7 @@ At least downstream equality can now short-circuit when the relevant capability 
 
 ---
 
-## `WithComparer()`
+### `WithComparer()`
 
 Roslyn provides:
 
@@ -995,9 +970,9 @@ The better solution is usually to redesign `Model`.
 
 ---
 
-# 11. Diagnostics
+## 11. Diagnostics
 
-## Prefer a Separate Analyser
+### Prefer a Separate Analyser
 
 Normal user validation belongs in a `DiagnosticAnalyser`.
 
@@ -1011,7 +986,7 @@ Benefits include:
 
 ---
 
-## Generator Diagnostics Are Still Valid
+### Generator Diagnostics Are Still Valid
 
 Generator diagnostics make sense for things such as:
 
@@ -1024,7 +999,7 @@ Do not turn the generator pipeline into an analyser pipeline by default.
 
 ---
 
-## Blocking vs Non-Blocking Generator Diagnostics
+### Blocking vs Non-Blocking Generator Diagnostics
 
 `GeneratorResult<T>.ShouldProcess` decides whether the output stage runs for a target. It is `true`
 when the result carries a value and none of its carried `ReportableDiagnostic` diagnostics are blocking.
@@ -1052,7 +1027,7 @@ non-blocking diagnostics when the partial output is still useful.
 
 ---
 
-## Location Handling
+### Location Handling
 
 Analysers should report diagnostics on the most useful user-authored `Location`.
 
@@ -1072,9 +1047,9 @@ But even this should only be carried downstream if generation actually depends o
 
 ---
 
-# 12. Output Generation
+## 12. Output Generation
 
-## Output Must Be Deterministic
+### Output Must Be Deterministic
 
 For the same generator model:
 
@@ -1096,7 +1071,7 @@ Avoid:
 
 ---
 
-## Deterministic Hint Names
+### Deterministic Hint Names
 
 Good:
 
@@ -1124,7 +1099,7 @@ Hint names must be:
 
 ---
 
-## Prefer Text Generation
+### Prefer Text Generation
 
 Do not build a complete Roslyn syntax tree merely to generate source unless there is a strong reason.
 
@@ -1147,7 +1122,7 @@ older hosts.
 
 ---
 
-## Post-Initialization Output
+### Post-Initialization Output
 
 Use:
 
@@ -1195,7 +1170,7 @@ context.RegisterPostInitializationOutput(
 
 ---
 
-# 13. Testing Incrementally
+## 13. Testing Incrementally
 
 Snapshot-testing generated source is not sufficient.
 
@@ -1211,7 +1186,7 @@ Incrementally
 
 ---
 
-## Test Cases
+### Test Cases
 
 At minimum test:
 
@@ -1228,7 +1203,7 @@ At minimum test:
 
 ---
 
-## Track Incremental Generator Steps
+### Track Incremental Generator Steps
 
 Create the generator driver with tracking enabled.
 
@@ -1261,7 +1236,7 @@ The important point is that tests should prove:
 
 > An unrelated edit does not rerun expensive downstream generation.
 
-### Framework support
+#### Framework support
 
 The framework's testing packages make step-cache tests first-class. `SourceGeneratorTestRunner.RunIncrementalAsync`
 runs one shared driver over a sequence of source sets with step tracking enabled, and every pipeline helper
@@ -1284,12 +1259,12 @@ await Assert.That(result.Runs[1]).StepIsModified("GetGenerationConfiguration");
 
 Assertions on `IncrementalCacheRun` (`AllStepsNew`, `AllStepsCachedOrUnchanged`, `StepIsCached`,
 `StepIsModified`, `HasStepReason`) plus `GetStepReasons()` cover the golden matrix. See
-[Step-Cache-Tests.md](Step-Cache-Tests.md) for the full walkthrough and the canonical
+[Step-Cache-Tests.md](testing/Step-Cache-Tests.md) for the full walkthrough and the canonical
 `StepCacheTests.cs` sample in the ExampleGenerator unit tests.
 
 ---
 
-# 14. Roslyn Version Compatibility
+## 14. Roslyn Version Compatibility
 
 The most important packaging rule is:
 
@@ -1307,7 +1282,7 @@ Analyser/generator code executes inside a compiler/IDE host.
 
 ---
 
-## Roslyn / Visual Studio Compatibility
+### Roslyn / Visual Studio Compatibility
 
 Microsoft's published compatibility baseline is:
 
@@ -1350,7 +1325,7 @@ That is incorrect.
 
 ---
 
-## Example
+### Example
 
 A project may target:
 
@@ -1380,9 +1355,9 @@ The compiler host did.
 
 ---
 
-# 15. Visual Studio, .NET SDK, and Rider
+## 15. Visual Studio, .NET SDK, and Rider
 
-## Safe Roslyn Baselines
+### Safe Roslyn Baselines
 
 Choose the oldest Roslyn version containing the APIs you require.
 
@@ -1401,7 +1376,7 @@ If you compile against a later package, you have deliberately raised your minimu
 
 ---
 
-## .NET SDK
+### .NET SDK
 
 The .NET SDK contains a compiler toolchain.
 
@@ -1436,7 +1411,7 @@ The relevant variable is the compiler host.
 
 ---
 
-## Rider
+### Rider
 
 Rider supports:
 
@@ -1472,11 +1447,11 @@ Build-time compiler compatibility and Rider IDE integration should be tested ind
 
 ---
 
-# 16. Multi-Version Roslyn Packaging
+## 16. Multi-Version Roslyn Packaging
 
 This area is frequently misunderstood.
 
-## NuGet Analyser Assets Are Not Normal TFM Assets
+### NuGet Analyser Assets Are Not Normal TFM Assets
 
 Normal runtime/library assets support selection such as:
 
@@ -1509,9 +1484,9 @@ Do not place multiple Roslyn-targeted implementations into the ordinary analyser
 
 ---
 
-## Strategy 1 — One Conservative Binary
+### Strategy 1 — One Conservative Binary
 
-### Recommended Default
+#### Recommended Default
 
 Compile against the oldest Roslyn version required by your implementation.
 
@@ -1549,7 +1524,7 @@ For most public generators, this is the correct approach.
 
 ---
 
-## Strategy 2 — Raise the Package Baseline
+### Strategy 2 — Raise the Package Baseline
 
 If a newer Roslyn feature materially improves the generator, it may be better to explicitly raise the minimum compiler version.
 
@@ -1569,7 +1544,7 @@ This is much easier for users to reason about than hidden runtime selection.
 
 ---
 
-## Strategy 3 — Separate Packages
+### Strategy 3 — Separate Packages
 
 For significantly different implementations:
 
@@ -1594,7 +1569,7 @@ Disadvantages:
 
 ---
 
-## Strategy 4 — MSBuild-Selected Binary
+### Strategy 4 — MSBuild-Selected Binary
 
 Advanced packages can store binaries outside the automatically discovered analyser directory:
 
@@ -1660,7 +1635,7 @@ Design-time builds, Visual Studio, Rider, CI, and explicit compiler toolsets all
 
 ---
 
-## Multi-Targeting the Generator Is Not Automatic Selection
+### Multi-Targeting the Generator Is Not Automatic Selection
 
 This:
 
@@ -1685,7 +1660,7 @@ Building multiple binaries and selecting analyser assets are separate problems.
 
 ---
 
-## Recommended Rule
+### Recommended Rule
 
 Unless there is a compelling requirement:
 
@@ -1695,7 +1670,7 @@ This remains the most robust distribution strategy.
 
 ---
 
-# 17. `Microsoft.CodeAnalysis.Analysers`
+## 17. `Microsoft.CodeAnalysis.Analysers`
 
 Do not confuse:
 
@@ -1713,7 +1688,7 @@ They serve different purposes.
 
 ---
 
-## `Microsoft.CodeAnalysis.CSharp`
+### `Microsoft.CodeAnalysis.CSharp`
 
 Provides Roslyn compiler APIs used to implement your analyser/generator.
 
@@ -1730,7 +1705,7 @@ IOperation
 
 ---
 
-## `Microsoft.CodeAnalysis.Analysers`
+### `Microsoft.CodeAnalysis.Analysers`
 
 This is a **meta-analyser package**.
 
@@ -1742,7 +1717,7 @@ It does not define your source-generator API baseline.
 
 ---
 
-## Current Package Version
+### Current Package Version
 
 As of August 2026, the current stable package is:
 
@@ -1786,7 +1761,7 @@ Microsoft.CodeAnalysis.Analysers
 
 ---
 
-## Transitive Availability
+### Transitive Availability
 
 Roslyn compiler packages already bring `Microsoft.CodeAnalysis.Analysers` into the dependency graph as development tooling.
 
@@ -1799,7 +1774,7 @@ You may nevertheless explicitly reference it when:
 
 ---
 
-## `PrivateAssets="all"`
+### `PrivateAssets="all"`
 
 Roslyn development dependencies should normally use:
 
@@ -1825,7 +1800,7 @@ Your consumer should not gain ordinary runtime Roslyn package dependencies simpl
 
 ---
 
-## `EnforceExtendedAnalyserRules`
+### `EnforceExtendedAnalyserRules`
 
 Analyser and generator projects should normally enable:
 
@@ -1843,7 +1818,7 @@ First determine what compiler-host invariant the rule is protecting.
 
 ---
 
-## RS1035
+### RS1035
 
 `RS1035` bans APIs considered inappropriate for analysers.
 
@@ -1863,7 +1838,7 @@ Configuration should normally arrive through explicit compiler inputs such as:
 
 ---
 
-## RS2008
+### RS2008
 
 `RS2008` relates to analyser diagnostic release tracking.
 
@@ -1880,7 +1855,7 @@ Diagnostic IDs are effectively part of your public API.
 
 ---
 
-## Treat Diagnostic Descriptors as Public Contracts
+### Treat Diagnostic Descriptors as Public Contracts
 
 Changing:
 
@@ -1912,7 +1887,7 @@ should be treated as a compatibility decision.
 
 ---
 
-# 18. Recommended Project Configuration
+## 18. Recommended Project Configuration
 
 A broadly-compatible generator project might start with:
 
@@ -1973,7 +1948,7 @@ The exact Roslyn baseline is a product-support decision.
 
 ---
 
-## ProjectReference During Development
+### ProjectReference During Development
 
 A consuming project can reference the generator as:
 
@@ -1986,7 +1961,7 @@ A consuming project can reference the generator as:
 
 ---
 
-## Separate Runtime Contracts From Compiler Tooling
+### Separate Runtime Contracts From Compiler Tooling
 
 Prefer:
 
@@ -2016,7 +1991,7 @@ This prevents Roslyn dependencies leaking into runtime package assets.
 
 ---
 
-## Roslyn Component Discovery
+### Roslyn Component Discovery
 
 The compiler host only loads a source generator, diagnostic analyser, or code fix provider when
 three conditions hold. Missing any one means the component is **silently ignored**, which is why
@@ -2038,7 +2013,7 @@ restart Visual Studio or reload the project for the fixes to appear.
 
 ---
 
-# 19. Extension Class Conventions
+## 19. Extension Class Conventions
 
 Extension classes should form a coherent, discoverable shape so that "which type does this extend?" and
 "where does it live?" are answerable from the file path alone.
@@ -2070,9 +2045,9 @@ moves the class under `Extensions/{ReceiverNamespace}/` and updates referencing 
 
 ---
 
-# 20. Review Checklist
+## 20. Review Checklist
 
-## Analyser
+### Analyser
 
 - [ ] Is this rule actually validation rather than generation?
 - [ ] Am I using the narrowest appropriate analyser action?
@@ -2091,7 +2066,7 @@ moves the class under `Extensions/{ReceiverNamespace}/` and updates referencing 
 
 ---
 
-## Incremental Generator
+### Incremental Generator
 
 - [ ] Uses `IIncrementalGenerator`.
 - [ ] Uses `ForAttributeWithMetadataName` where appropriate.
@@ -2124,7 +2099,7 @@ moves the class under `Extensions/{ReceiverNamespace}/` and updates referencing 
 
 ---
 
-## Packaging
+### Packaging
 
 - [ ] Generator/analyser binaries are packed as analyser assets.
 - [ ] Compiler tooling is not accidentally shipped as runtime `lib` output.
@@ -2142,7 +2117,7 @@ moves the class under `Extensions/{ReceiverNamespace}/` and updates referencing 
 
 ---
 
-# Summary
+## Summary
 
 The shortest version of this guide is:
 

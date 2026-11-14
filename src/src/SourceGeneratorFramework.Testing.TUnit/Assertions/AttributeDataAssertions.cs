@@ -163,6 +163,7 @@ public static partial class AttributeDataAssertions
 		if (form is not null && argument.Form != form)
 			return AssertionResult.Failed($"'{argument.Name}' was supplied as {argument.Form} in {arguments}");
 
+		// The argument matches the expected value and form, so the assertion passes.
 		return AssertionResult<AttributeArgument>.Passed(argument);
 	}
 }

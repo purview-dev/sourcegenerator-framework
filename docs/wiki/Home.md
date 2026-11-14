@@ -10,18 +10,18 @@ analysers that guide generators back to best practice.
 
 - [Getting Started](Getting-Started.md)
 - [Source Generator & Analyser Best Practices](Guide.md)
-- [CodeWriter structured API reference](Code-Writer.md)
-- [TypeLibraryGenerator](Type-Library.md)
-- [Attribute Data Models](Attribute-Data-Models.md)
-- [Incremental Pipeline](Incremental-Pipeline.md)
-- [Analyzers](Analyzers.md)
+- [CodeWriter structured API reference](authoring/Code-Writer.md)
+- [TypeLibraryGenerator](authoring/Type-Library.md)
+- [Attribute Data Models](authoring/Attribute-Data-Models.md)
+- [Incremental Pipeline](authoring/Incremental-Pipeline.md)
+- [Analyzers](authoring/Analyzers.md)
 - [Testing](Testing.md)
-- [Testing with TUnit](Testing-TUnit.md)
-- [Step-Cache Tests](Step-Cache-Tests.md)
-- [Packaging](Packaging.md)
-- [Performance](Performance.md)
-- [.NET 11 support and features](DotNet-11.md)
-- [Release Flow](Release-Flow.md)
+- [Testing with TUnit](testing/Testing-TUnit.md)
+- [Step-Cache Tests](testing/Step-Cache-Tests.md)
+- [Packaging](operations/Packaging.md)
+- [Performance](operations/Performance.md)
+- [.NET 11 support and features](platform/DotNet-11.md)
+- [Release Flow](operations/Release-Flow.md)
 
 ## Packages
 
@@ -38,26 +38,26 @@ analysers that guide generators back to best practice.
 - **`CodeWriter`** — an allocation-conscious writer for generated C# source with indentation,
   namespace/type declarations, structured statements, XML documentation, conditional compilation
   blocks, and deterministic output. Declarations and statements are structured values rather than raw
-  text; see [Code-Writer.md](Code-Writer.md).
+  text; see [Code-Writer.md](authoring/Code-Writer.md).
 - **`IncrementalPipeline`** — extension methods for composing `IncrementalValueProvider<T>` /
   `IncrementalValuesProvider<T>` pipelines, including attribute-based discovery, generation-context
-  creation, and disable-property checks; see [Incremental-Pipeline.md](Incremental-Pipeline.md).
+  creation, and disable-property checks; see [Incremental-Pipeline.md](authoring/Incremental-Pipeline.md).
 - **`GenerationContext`** — a base execution-services context carrying the Roslyn `Compilation`,
   immutable generator settings, optional logging, and a factory for independently owned `CodeWriter`
   instances.
 - **`GeneratorResult<T>`** — a value-or-diagnostics result type for incremental transforms, with
   explicit per-diagnostic `IsBlocking` control over whether generation continues.
 - **`AttributeDataModelGenerator`** — bundled generator that emits `readonly record struct` attribute
-  parser models from `[Generate]` declarations; see [Attribute-Data-Models.md](Attribute-Data-Models.md).
+  parser models from `[Generate]` declarations; see [Attribute-Data-Models.md](authoring/Attribute-Data-Models.md).
 - **`TypeLibraryGenerator`** — generates a self-contained `public static partial` type library from a
-  small declarative spec; see [Type-Library.md](Type-Library.md).
+  small declarative spec; see [Type-Library.md](authoring/Type-Library.md).
 - **Bundled analysers and code fixes** — `PSGFR11`–`PSGFR38` diagnostics for Roslyn best practice,
-  plus code fixes; see [Analyzers.md](Analyzers.md).
+  plus code fixes; see [Analyzers.md](authoring/Analyzers.md).
 - **Testing framework** — `SourceGeneratorTestRunner<TGenerator>`, `CodeQuery` syntax-node
   assertions, refactoring tests, and incremental cache tests; see [Testing.md](Testing.md) and
-  [Testing-TUnit.md](Testing-TUnit.md).
+  [Testing-TUnit.md](testing/Testing-TUnit.md).
 - **Step-cache tests** — prove a generator caches correctly stage-by-stage; see
-  [Step-Cache-Tests.md](Step-Cache-Tests.md).
+  [Step-Cache-Tests.md](testing/Step-Cache-Tests.md).
 
 ## Requirements
 
@@ -68,7 +68,7 @@ analysers that guide generators back to best practice.
 - Source generators target `netstandard2.0`; test projects target `net10.0` and `net11.0`. .NET 8 and
   .NET 9 are out of support.
 - The packaged merge tool targets `net10.0` and rolls forward, so it runs on the .NET 10 or .NET 11
-  runtime while a component is built. See [.NET 11 support and features](DotNet-11.md).
+  runtime while a component is built. See [.NET 11 support and features](platform/DotNet-11.md).
 
 ## Repository layout
 
@@ -81,4 +81,4 @@ analysers that guide generators back to best practice.
 - `src/src/SourceGeneratorFramework.Testing.TUnit` — TUnit testing integration.
 - `src/src/SourceGeneratorFramework.ExampleGenerator` — reference generator implementation.
 - `src/src/SourceGeneratorFramework.Benchmarks` — BenchmarkDotNet benchmarks (see
-  [Performance.md](Performance.md)).
+  [Performance.md](operations/Performance.md)).

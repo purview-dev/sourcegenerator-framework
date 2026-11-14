@@ -1757,6 +1757,48 @@ public sealed partial class CodeWriter
 			: TypeDeclaration(declaration with { Kind = TypeDeclarationKind.RecordStruct });
 
 	/// <summary>
+	/// Writes a C# 15 union declaration from structured options and returns its body scope.
+	/// </summary>
+	/// <param name="declaration">The union declaration options. <see cref="TypeDeclarationOptions.UnionCaseTypes"/> must contain at least one case type.</param>
+	/// <returns>The union body scope.</returns>
+	/// <example><code>using (writer.UnionScope(new TypeDeclarationOptions("Pet") { UnionCaseTypes = [cat, dog, bird] })) { }</code></example>
+	public BlockScope UnionScope(TypeDeclarationOptions declaration)
+	{
+		return declaration is null
+			? throw new ArgumentNullException(nameof(declaration))
+			: TypeScope(declaration with { Kind = TypeDeclarationKind.Union });
+	}
+
+	/// <summary>
+	/// Writes a C# 15 union declaration from structured options and invokes a callback for its body.
+	/// </summary>
+	/// <param name="declaration">The union declaration options.</param>
+	/// <param name="bodyWriter">The action that writes the body of the union.</param>
+	/// <returns>The current writer.</returns>
+	/// <example><code>writer.Union(new TypeDeclarationOptions("Pet") { UnionCaseTypes = [cat, dog] }, _ =&gt; { });</code></example>
+	public CodeWriter Union(TypeDeclarationOptions declaration, Action<CodeWriter> bodyWriter)
+	{
+		if (bodyWriter is null)
+			throw new ArgumentNullException(nameof(bodyWriter));
+
+		using (UnionScope(declaration))
+			bodyWriter(this);
+
+		return this;
+	}
+
+	/// <summary>
+	/// Writes an empty C# 15 union declaration, terminated with a semicolon instead of a body.
+	/// </summary>
+	/// <param name="declaration">The union declaration options.</param>
+	/// <returns>The current writer.</returns>
+	/// <example><code>writer.Union(new TypeDeclarationOptions("Pet") { UnionCaseTypes = [cat, dog] }); // public partial union Pet(Cat, Dog);</code></example>
+	public CodeWriter Union(TypeDeclarationOptions declaration) =>
+		declaration is null
+			? throw new ArgumentNullException(nameof(declaration))
+			: TypeDeclaration(declaration with { Kind = TypeDeclarationKind.Union });
+
+	/// <summary>
 	/// Writes an interface declaration and returns its body scope.
 	/// </summary>
 	/// <example><code>using (writer.InterfaceScope(new TypeDeclarationOptions("IService"))) { }</code></example>
@@ -1914,8 +1956,8 @@ public sealed partial class CodeWriter
 	/// <summary>
 	/// Writes a structured type declaration with an empty body, terminating it with a semicolon instead of
 	/// opening a block. Produces declarations such as <c>public sealed partial class C;</c> or, with a primary
-	/// constructor, <c>public sealed class C(string value);</c>. Valid for classes, structs, records and
-	/// interfaces; delegates always terminate with a semicolon, and enums require a body.
+	/// constructor, <c>public sealed class C(string value);</c>. Valid for classes, structs, records,
+	/// interfaces and unions; delegates always terminate with a semicolon, and enums require a body.
 	/// </summary>
 	/// <param name="declaration">The structured type declaration options.</param>
 	/// <returns>The current writer.</returns>
@@ -1954,7 +1996,8 @@ public sealed partial class CodeWriter
 					is TypeDeclarationKind.Class
 						or TypeDeclarationKind.Struct
 						or TypeDeclarationKind.RecordClass
-						or TypeDeclarationKind.RecordStruct,
+						or TypeDeclarationKind.RecordStruct
+						or TypeDeclarationKind.Union,
 				includeEmbeddedAttribute: declaration.IncludeEmbeddedAttribute == true
 			);
 		}
@@ -1964,13 +2007,19 @@ public sealed partial class CodeWriter
 		if (ResolveAccessibility(declaration.Accessibility, DefaultTypeAccessibility) is { } accessibility)
 			Accessibility(accessibility).Write(' ');
 
-		var isStruct = declaration.Kind is TypeDeclarationKind.Struct or TypeDeclarationKind.RecordStruct;
+		var isStruct =
+			declaration.Kind
+			is TypeDeclarationKind.Struct
+				or TypeDeclarationKind.RecordStruct
+				or TypeDeclarationKind.Union;
 		var isClass = declaration.Kind is TypeDeclarationKind.Class or TypeDeclarationKind.RecordClass;
 
 		if (declaration.IsStatic)
 			Write("static ");
 		else if (isStruct && declaration.IsReadOnly)
 			Write("readonly ");
+		else if (declaration.IsClosed)
+			Write("closed ");
 		else if (isClass && declaration.IsAbstract)
 			Write("abstract ");
 		else if (isClass && declaration.IsSealed)
@@ -1997,6 +2046,7 @@ public sealed partial class CodeWriter
 					TypeDeclarationKind.RecordStruct => "record struct ",
 					TypeDeclarationKind.Interface => "interface ",
 					TypeDeclarationKind.Enum => "enum ",
+					TypeDeclarationKind.Union => "union ",
 					TypeDeclarationKind.Delegate => string.Empty,
 					_ => throw new ArgumentOutOfRangeException(nameof(declaration)),
 				}
@@ -2006,6 +2056,8 @@ public sealed partial class CodeWriter
 		GenericTypeParameters(declaration.GenericTypes);
 		if (declaration.Kind == TypeDeclarationKind.Delegate)
 			ParametersWithHeuristic(declaration.DelegateParameters);
+		else if (declaration.Kind == TypeDeclarationKind.Union)
+			UnionCaseTypes(declaration.UnionCaseTypes);
 		else
 			ParameterList(declaration.PrimaryConstructorParameters, declaration.ConstructorParametersOnSeparateLines);
 		BaseTypes(declaration);
@@ -4203,6 +4255,19 @@ public sealed partial class CodeWriter
 		Write(')');
 	}
 
+	void UnionCaseTypes(ImmutableArray<TypeReference> caseTypes)
+	{
+		Write('(');
+		for (var index = 0; index < caseTypes.Length; index++)
+		{
+			if (index != 0)
+				Write(", ");
+
+			TypeReference(caseTypes[index]);
+		}
+		Write(')');
+	}
+
 	void BaseTypes(TypeDeclarationOptions declaration)
 	{
 		var hasBaseType = declaration.BaseType is { IsEmpty: false };
@@ -4266,7 +4331,11 @@ public sealed partial class CodeWriter
 
 	static void ValidateTypeDeclaration(TypeDeclarationOptions declaration)
 	{
-		var isStruct = declaration.Kind is TypeDeclarationKind.Struct or TypeDeclarationKind.RecordStruct;
+		var isStruct =
+			declaration.Kind
+			is TypeDeclarationKind.Struct
+				or TypeDeclarationKind.RecordStruct
+				or TypeDeclarationKind.Union;
 		var supportsPrimaryConstructor =
 			declaration.Kind
 			is TypeDeclarationKind.Class
@@ -4286,6 +4355,8 @@ public sealed partial class CodeWriter
 		{
 			ValidateTypeReference(declaration.Interfaces[index], nameof(declaration));
 		}
+
+		ValidateUnionCaseTypes(declaration);
 
 		if (declaration.GenericTypes.IsDefaultOrEmpty)
 			return;
@@ -4311,6 +4382,31 @@ public sealed partial class CodeWriter
 		}
 	}
 
+	static void ValidateUnionCaseTypes(TypeDeclarationOptions declaration)
+	{
+		if (declaration.Kind != TypeDeclarationKind.Union)
+		{
+			if (!declaration.UnionCaseTypes.IsDefaultOrEmpty)
+				throw new ArgumentException(
+					"UnionCaseTypes is only valid for union declarations.",
+					nameof(declaration)
+				);
+			return;
+		}
+
+		if (declaration.UnionCaseTypes.IsDefaultOrEmpty)
+			throw new ArgumentException("A union declaration requires at least one case type.", nameof(declaration));
+
+		for (var index = 0; index < declaration.UnionCaseTypes.Length; index++)
+		{
+			var caseType = declaration.UnionCaseTypes[index];
+			if (caseType.IsEmpty)
+				throw new ArgumentException("Union case types cannot be empty.", nameof(declaration));
+
+			ValidateTypeReference(caseType, nameof(declaration));
+		}
+	}
+
 	static void ValidateTypeDeclarationModifiers(TypeDeclarationOptions declaration, bool isStruct)
 	{
 		if (declaration.IsStatic && declaration.Kind != TypeDeclarationKind.Class)
@@ -4327,6 +4423,8 @@ public sealed partial class CodeWriter
 
 		if (declaration.IsAbstract && declaration.IsStatic)
 			throw new ArgumentException("A class cannot be both abstract and static.", nameof(declaration));
+
+		ValidateClosedModifier(declaration);
 
 		if (declaration.IsStatic && declaration.BaseType is { IsEmpty: false })
 			throw new ArgumentException("A static class cannot specify a base type.", nameof(declaration));
@@ -4357,6 +4455,24 @@ public sealed partial class CodeWriter
 
 		if (declaration.IsRefStruct && declaration.BaseType is { IsEmpty: false })
 			throw new ArgumentException("A ref struct cannot specify a base type.", nameof(declaration));
+	}
+
+	static void ValidateClosedModifier(TypeDeclarationOptions declaration)
+	{
+		if (!declaration.IsClosed)
+			return;
+
+		if (declaration.Kind is not TypeDeclarationKind.Class and not TypeDeclarationKind.RecordClass)
+			throw new ArgumentException("Only class and record class declarations can be closed.", nameof(declaration));
+
+		if (declaration.IsStatic)
+			throw new ArgumentException("A closed class cannot be static.", nameof(declaration));
+
+		if (declaration.IsAbstract)
+			throw new ArgumentException(
+				"A closed class is implicitly abstract and cannot also declare abstract.",
+				nameof(declaration)
+			);
 	}
 
 	static void ValidateAdditionalTypeKindOptions(TypeDeclarationOptions declaration, bool supportsPrimaryConstructor)

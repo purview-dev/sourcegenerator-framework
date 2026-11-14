@@ -1,0 +1,17 @@
+# previous: current — keep old slugs working after the docs reorganisation.
+redirects:
+  code-writer: authoring/code-writer
+  attribute-data-models: authoring/attribute-data-models
+  type-library: authoring/type-library
+  incremental-pipeline: authoring/incremental-pipeline
+  analyzers: authoring/analyzers
+  component-failures: authoring/component-failures
+
+  testing-tunit: testing/testing-tunit
+  step-cache-tests: testing/step-cache-tests
+
+  packaging: operations/packaging
+  performance: operations/performance
+  release-flow: operations/release-flow
+
+  dotnet-11: platform/dotnet-11

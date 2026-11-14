@@ -8,7 +8,16 @@ Do **not** suppress or mute compiler, analyser, or build warnings by adding `<No
 
 ## Documentation and Samples
 
-Any API change must update the corresponding documentation, including XML doc comments and `docs/wiki/` pages such as `docs/wiki/Code-Writer.md`. Samples (the `SourceGeneratorFramework.ExampleGenerator` reference implementation and benchmarks) must use the current best-practice APIs: the minimal-parameter `CodeWriter` overloads, structured statements (`MethodCall`, `Return`, `Assignment`, `Throw`, `Comment`, `NetConditionalReturn`) rather than raw text, and the current method names. Add or update a sample whenever an API addition or change warrants a demonstrable example, and cover it with unit tests.
+Any API change must update the corresponding documentation, including XML doc comments and `docs/wiki/` pages such as `docs/wiki/authoring/Code-Writer.md`. Samples (the `SourceGeneratorFramework.ExampleGenerator` reference implementation and benchmarks) must use the current best-practice APIs: the minimal-parameter `CodeWriter` overloads, structured statements (`MethodCall`, `Return`, `Assignment`, `Throw`, `Comment`, `NetConditionalReturn`) rather than raw text, and the current method names. Add or update a sample whenever an API addition or change warrants a demonstrable example, and cover it with unit tests.
+
+## Justfile
+
+The root `Justfile` holds only this repository's variables and own recipes. The shared recipes live in
+`.build/just/`, copied verbatim from the `purview-buildsdk-justfile` skill: change a shared recipe in
+the skill and copy it in, never edit `.build/just/` in place. The overrides in the root file are
+deliberate and commented — `test` adds `--results-directory-layout per-module`, `pipeline-local-release`
+formats first, and `skills_project` names the main package project because the Benchmarks project
+opts out of `Purview.BuildSdk`.
 
 ## Installed skills (`.agents/skills/`)
 
@@ -25,10 +34,11 @@ has them without running anything.
 
 This repository's own skills in `skills/` are authored for **consumers** of its packages, not for use while working on this repository. They are never installed into this repository's `.agents/skills/`, which holds only skills installed from other repositories; `InstalledSkillTests` enforces this.
 
-Skills are installed into the universal `.agents/skills/` location **only**. Never install copies
-into `.claude/` or any other per-agent folder, and never commit a `CLAUDE.md`: this repository is not
-agent-specific, and `AGENTS.md` is its one instruction file. `/.claude/` is gitignored for that
-reason. Pass `-a universal`, which writes `.agents/skills/` and nothing else:
+Skills are installed into the universal `.agents/skills/` location **only**. Never commit a copy into
+`.claude/` or any other per-agent folder, and never commit a `CLAUDE.md`: this repository is not
+agent-specific, and `AGENTS.md` is its one instruction file. `/.claude/` is gitignored, so a local
+folder created by an agent is harmless and is not treated as repository state. Pass `-a universal`,
+which writes `.agents/skills/` and nothing else:
 
 ```bash
 # add or update every skill from a source
@@ -48,8 +58,8 @@ it is restricted the same way rather than defaulting to every agent (`*`).
 
 `src/tests/Repository.UnitTests/InstalledSkillTests.cs` keeps this honest: every `skills-lock.json`
 entry has its `.agents/skills/<name>/SKILL.md`, every installed folder is in the lockfile, no
-authored `skills/` skill is copied into `.agents/skills/`, no `.claude/skills/` copy exists, and no
-`CLAUDE.md` is present.
+authored `skills/` skill is copied into `.agents/skills/`, `/.claude/` stays gitignored, and no
+tracked `CLAUDE.md` is present.
 
 ## Authoring skills
 

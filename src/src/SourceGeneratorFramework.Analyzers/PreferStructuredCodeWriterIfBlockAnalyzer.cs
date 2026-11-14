@@ -20,7 +20,7 @@ public sealed class PreferStructuredCodeWriterIfBlockAnalyzer : DiagnosticAnalyz
 		"Prefer the structured CodeWriter conditional API",
 		"'{0}' with a conditional block should use '{1}'",
 		"Purview.SourceGeneratorFramework",
-		DiagnosticSeverity.Info,
+		DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
 		description: "Emitting an if, else if, or else block through a generic block method bypasses the structured IfBlock, ElseIf, and Else APIs on CodeWriter."
 	);

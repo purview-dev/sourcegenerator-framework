@@ -704,6 +704,125 @@ public class CodeWriterTests
 	}
 
 	[Test]
+	public async Task Union_WithCaseTypes_WritesUnionDeclaration()
+	{
+		var writer = CodeWriter.CreateTestWriter();
+		TypeDeclarationOptions declaration = new("Pet", TypeDeclarationAccessibility.Public)
+		{
+			UnionCaseTypes = [Type("Cat"), Type("Dog"), Type("Bird")],
+		};
+
+		writer.Union(declaration);
+
+		await Assert.That(writer.ToString()).IsEqualTo("public partial union Pet(Cat, Dog, Bird);\n");
+	}
+
+	[Test]
+	public async Task Union_WithBody_WritesUnionBlock()
+	{
+		var writer = CodeWriter.CreateTestWriter();
+		TypeDeclarationOptions declaration = new("OneOrMore", TypeDeclarationAccessibility.Public)
+		{
+			UnionCaseTypes = [Type("T"), Type("IEnumerable").Identity.MakeGeneric(Type("T"))],
+			GenericTypes = [new("T")],
+			Interfaces = [Type("ITest")],
+		};
+
+		using (writer.UnionScope(declaration))
+		{
+			// Here to prevent IDE0055
+		}
+
+		await Assert
+			.That(writer.ToString())
+			.IsEqualTo("public partial union OneOrMore<T>(T, IEnumerable<T>) : ITest\n" + "{\n" + "}\n");
+	}
+
+	[Test]
+	public async Task Union_WithoutCaseTypes_Throws()
+	{
+		var writer = CodeWriterFactory.ForTests();
+
+		await Assert.That(() => writer.Union(new TypeDeclarationOptions("Pet"))).Throws<ArgumentException>();
+	}
+
+	[Test]
+	public async Task Union_GivenBaseType_Throws()
+	{
+		var writer = CodeWriterFactory.ForTests();
+		TypeDeclarationOptions declaration = new("Pet") { UnionCaseTypes = [Type("Cat")], BaseType = Type("Base") };
+
+		await Assert.That(() => writer.Union(declaration)).Throws<ArgumentException>();
+	}
+
+	[Test]
+	public async Task Union_GivenPrimaryConstructorParameters_Throws()
+	{
+		var writer = CodeWriterFactory.ForTests();
+		TypeDeclarationOptions declaration = new("Pet")
+		{
+			UnionCaseTypes = [Type("Cat")],
+			PrimaryConstructorParameters = [new("cat", Type("Cat"))],
+		};
+
+		await Assert.That(() => writer.Union(declaration)).Throws<ArgumentException>();
+	}
+
+	[Test]
+	public async Task Union_GivenClosedModifier_Throws()
+	{
+		var writer = CodeWriterFactory.ForTests();
+		TypeDeclarationOptions declaration = new("Pet") { UnionCaseTypes = [Type("Cat")], IsClosed = true };
+
+		await Assert.That(() => writer.Union(declaration)).Throws<ArgumentException>();
+	}
+
+	[Test]
+	public async Task ClosedClass_WritesClosedInsteadOfSealed()
+	{
+		var writer = CodeWriterFactory.ForTests();
+		TypeDeclarationOptions declaration = new("JobStatus", TypeDeclarationAccessibility.Public)
+		{
+			Kind = TypeDeclarationKind.RecordClass,
+			IsClosed = true,
+			IsSealed = true,
+		};
+
+		writer.RecordClass(declaration);
+
+		await Assert
+			.That(writer.ToString())
+			.IsEqualTo(GeneratedAttributes() + "public closed partial record class JobStatus;\n");
+	}
+
+	[Test]
+	public async Task ClosedClass_GivenStruct_Throws()
+	{
+		var writer = CodeWriterFactory.ForTests();
+		TypeDeclarationOptions declaration = new("Invalid") { IsClosed = true };
+
+		await Assert.That(() => writer.Struct(declaration)).Throws<ArgumentException>();
+	}
+
+	[Test]
+	public async Task ClosedClass_GivenStatic_Throws()
+	{
+		var writer = CodeWriterFactory.ForTests();
+		TypeDeclarationOptions declaration = new("Invalid") { IsClosed = true, IsStatic = true };
+
+		await Assert.That(() => writer.Class(declaration)).Throws<ArgumentException>();
+	}
+
+	[Test]
+	public async Task ClosedClass_GivenAbstract_Throws()
+	{
+		var writer = CodeWriterFactory.ForTests();
+		TypeDeclarationOptions declaration = new("Invalid") { IsClosed = true, IsAbstract = true };
+
+		await Assert.That(() => writer.Class(declaration)).Throws<ArgumentException>();
+	}
+
+	[Test]
 	public async Task Type_WithoutAccessibility_OmitsAccessibility()
 	{
 		var writer = CodeWriterFactory.ForTests();

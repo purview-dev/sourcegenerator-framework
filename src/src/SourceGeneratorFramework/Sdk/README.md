@@ -238,7 +238,7 @@ writer.Type(TypeIdentity.Create<string>().MakeNullable()); // "string" when null
 
 Composition and rendering both resolve `NullableDirectiveMode` together with `IsNullableContextEnabled`, so an `Always` mode keeps the `?` even for a nullable-disabled target, and a `Disable` mode strips it even when the target enables nullable.
 
-The analyzer `PSGFR16` (suggestion) flags bare `Nullable()`/`MakeNullable()` calls and its code fix passes the first in-scope `CodeWriter` or `GenerationSettings`, including project-wide "Fix all" support.
+The analyzer `PSGFR16` (warning) flags bare `Nullable()`/`MakeNullable()` calls and its code fix passes the first in-scope `CodeWriter` or `GenerationSettings`, including project-wide "Fix all" support.
 
 ### Comparing references with or without annotations
 
@@ -596,12 +596,14 @@ accessors, expression bodies, and callback-generated getter/setter bodies. Struc
 constructors return a disposable body scope; callback overloads are available when a complete
 member should be written in one call.
 
-`TypeDeclarationOptions.Kind` supports classes, structs, record classes, record structs,
-interfaces, enums, and delegates. The matching `Interface`, `Enum`, and `Delegate`
-helpers set the kind automatically. Interface inheritance is supplied through `Interfaces`, enums
-can specify `EnumUnderlyingType`, and delegates use `DelegateReturnType` and
-`DelegateParameters`. Generic delegate and interface constraints use the existing `GenericTypes`
-model.
+`TypeDeclarationOptions.Kind` supports classes, structs, record classes, record structs, C# 15
+unions, interfaces, enums, and delegates. The matching `Union`, `Interface`, `Enum`, and `Delegate`
+helpers set the kind automatically. A union supplies its case types through `UnionCaseTypes` (for
+example `writer.Union("Pet", [cat, dog])`); it rejects a base type and primary-constructor parameters
+because the case-type list occupies that position. Interface inheritance is supplied through
+`Interfaces`, enums can specify `EnumUnderlyingType`, and delegates use `DelegateReturnType` and
+`DelegateParameters`. Generic delegate, interface, and union constraints use the existing
+`GenericTypes` model.
 
 Attributes and parameters are structured as well; raw declaration fragments are not accepted:
 
@@ -671,6 +673,11 @@ remain strings because they are expressions rather than type syntax.
 Set `TypeDeclarationOptions.IsAbstract` for abstract classes or record classes. It takes precedence
 over the default `IsSealed = true`, so callers do not need to disable sealing explicitly. Abstract
 static classes and abstract non-class declarations are rejected.
+
+Set `TypeDeclarationOptions.IsClosed` on a class or record class to emit the C# 15 `closed` modifier.
+A closed type is implicitly abstract, so it rejects `IsStatic` and `IsAbstract`, and `IsSealed` is
+ignored rather than emitted alongside it. `TypeHelpers.CreatePartialTypeDeclarationOptions` preserves
+`closed` when it reopens a type the compiler marked with `IsClosedTypeAttribute`.
 
 Roslyn accessibility values can be converted in both directions:
 
@@ -1007,13 +1014,13 @@ The `Purview.SourceGeneratorFramework` package includes the `Purview.SourceGener
 | `PSGFR12` | Use `IIncrementalGenerator` / `RegisterSourceOutput` instead of `ISourceGenerator`. |
 | `PSGFR14` | Avoid `RegisterImplementationSourceOutput` unless implementation-only output is required. |
 | `PSGFR15` | Pipeline model collection members should use sequence equality (e.g. `EquatableArray<T>`). |
-| `PSGFR16` | Prefer the nullable-context `Nullable()`/`MakeNullable()` overload so annotations honour the target compilation. |
+| `PSGFR16` | Prefer the nullable-context `Nullable()`/`MakeNullable()` overload so annotations honour the target compilation (warning; has a code fix). |
 | `PSGFR17` | Consume `CodeWriter` scope-returning methods (`...Scope`, `IndentedScope`) with `using`. |
 | `PSGFR18` | Prefer structured declaration APIs (`Class`, `Method`, `Property`, `Field`) over raw declaration text. |
-| `PSGFR19` | Prefer structured statement APIs (`Return`, `MethodCall`, `Throw`, `Assignment`, `Using`, `Comment`) over raw statement text. |
-| `PSGFR20` | Prefer the minimal `CodeWriter` overloads over constructing `*DeclarationOptions` values manually. |
+| `PSGFR19` | Prefer structured statement APIs (`Return`, `MethodCall`, `Throw`, `Assignment`, `Using`, `Comment`) over raw statement text (warning; has a code fix for single-line statements). |
+| `PSGFR20` | Prefer the minimal `CodeWriter` overloads over constructing `*DeclarationOptions` values manually (warning; has a code fix). |
 | `PSGFR21` | Prefer `HashDefines`/`HashDefinesScope` for `#if`/`#endif` conditional-compilation directives. |
-| `PSGFR22` | Prefer `PragmaDisable`/`OpenPragmasScope` for `#pragma warning` directives. |
+| `PSGFR22` | Prefer `PragmaDisable`/`OpenPragmasScope` for `#pragma warning` directives (warning; `disable` has a code fix). |
 | `PSGFR23` | Prefer structured `IfBlock`/`ElseIf`/`Else` over raw `if` block text. |
 | `PSGFR24` | `CodeFixProvider` is not marked `[ExportCodeFixProvider]`; Visual Studio will never discover it. |
 | `PSGFR25` | `DiagnosticAnalyzer` is not marked `[DiagnosticAnalyzer]`; it will never run. |

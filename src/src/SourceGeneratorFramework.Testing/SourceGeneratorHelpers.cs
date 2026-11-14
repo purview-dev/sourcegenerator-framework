@@ -80,7 +80,7 @@ static class SourceGeneratorHelpers
 		// References are shared instances now, so the same assembly named twice yields the same object.
 		// Compilation.Create tolerates that, but Solution.AddMetadataReferences (the analyzer, code-fix and
 		// refactoring path) rejects duplicate items, so the additions are deduplicated here.
-		HashSet<string> addedPaths = new(StringComparer.OrdinalIgnoreCase);
+		HashSet<string> addedPaths = [with(StringComparer.OrdinalIgnoreCase)];
 		foreach (var type in options.AdditionalAssemblyTypes)
 		{
 			var location = type.Assembly.Location;

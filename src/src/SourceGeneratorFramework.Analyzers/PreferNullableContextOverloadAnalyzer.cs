@@ -21,7 +21,7 @@ public sealed class PreferNullableContextOverloadAnalyzer : DiagnosticAnalyzer
 		"Prefer the nullable-context overload",
 		"Pass GenerationSettings or CodeWriter to {0}() so the nullable annotation is emitted only when the target compilation supports it",
 		"Purview.SourceGeneratorFramework",
-		DiagnosticSeverity.Info,
+		DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
 		description: "Use Nullable(GenerationSettings)/Nullable(CodeWriter) or MakeNullable(GenerationSettings)/MakeNullable(CodeWriter) when a generation context is available."
 	);

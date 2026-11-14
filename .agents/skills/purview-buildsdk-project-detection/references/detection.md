@@ -5,6 +5,20 @@
 `Shared`, `SharedFramework`, `SharedInfrastructure`, `SharedInfra`, `SharedUtilities`,
 `SharedUtils`, `SharedLibrary`, `SharedLib`, `SharedHelpers`
 
+## ServerShared project names (exact)
+
+`ServerShared`, `ServerSharedFramework`, `ServerSharedInfrastructure`, `ServerSharedInfra`,
+`ServerSharedUtilities`, `ServerSharedUtils`, `ServerSharedLibrary`, `ServerSharedLib`,
+`ServerSharedHelpers`
+
+A `ServerShared` project is referenced automatically by every non-client-side project, and never by a
+WebAssembly client, a `PurviewBrowserSafe` library, a Razor class library, a project named with a
+client-side segment (`*.Client`, `*.ClientShared`, `*.Browser`, `*.Wasm`, `*.WebAssembly`,
+`*.Components`, or exactly `Components`/`ClientShared`), or a `Shared`/`SharedTesting` project.
+`IsClientSideProject` overrides the classification. `PRSHR0001` reports a client-side reference and
+`PRSHR0002` a `Shared` reference; `PurviewBrowserSafe="true"` on the reference records an accepted
+decision.
+
 ## Shared testing project names (exact)
 
 `SharedTestingFramework`, `SharedTestingInfrastructure`, `SharedTestingInfra`,
@@ -15,18 +29,19 @@ These are matched whole, not as substrings. `SharedModels` is not a shared proje
 
 A shared-testing project is forced to `PurviewSharedTestingOutputType` (default `Library`), with
 `IsTestProject` and `IsTestingPlatformApplication` cleared, because the test packages otherwise flip
-it into an executable test host. Set `PurviewSharedTestingOutputType=Exe` before the SDK import to
+it into an executable test host. Set `PurviewSharedTestingOutputType=Exe` to
 keep that package-driven shape.
 
 ## Packable projects
 
 Defaults applied only where the project supplied nothing: `GenerateDocumentationFile`,
-`IncludeSymbols`, `SymbolPackageFormat=snupkg`, `PublishRepositoryUrl`, `EmbedUntrackedSources`,
-`IncludeSource`, `DebugType=portable`.
+`IncludeSymbols`, `SymbolPackageFormat=snupkg`, `PublishRepositoryUrl`, `EmbedUntrackedSources` and
+`DebugType=portable`. `IncludeSource` stays `false`.
 
 - Portable PDBs ship in the `.snupkg`. The `.nupkg` receives none unless the project opts in.
-- The repository-root `README.md` is packed and registered as `PackageReadmeFile` when it exists and
-  nothing else is already being packed as one.
+- A README is packed and registered as `PackageReadmeFile` unless one is configured: the project's own
+  `README.md` wins, else the repository-root one; a README-named file already being packed (an
+  `Sdk/README.md`) is used instead.
 - Non-packable projects, web apps included, default `WarnOnPackingNonPackableProject=false`, so a
   solution-wide `dotnet pack` skips them silently.
 - `ContinuousIntegrationBuild` is set only by real CI environment variables. Packability alone never
@@ -62,9 +77,10 @@ dual-role component that wants normal library symbol packaging.
 | -- | -- |
 | CLI | `OutputType=Exe`, `appsettings*.json` included as content |
 | Container | `InvariantGlobalization`, `PublishAot`, Linux Docker defaults, container tooling packages |
-| Web SDK | `Microsoft.AspNetCore.OpenApi.Generated` added to `InterceptorsNamespaces`, unless marked as a separate web-project mode |
-| Aspire host | `OutputType=Exe` |
-| Blazor WebAssembly client | not packable, no container defaults, no automatic `Shared` reference, the browser-safe reference check - see [blazor.md](blazor.md) |
+| Web SDK | `Microsoft.AspNetCore.OpenApi.Generated` added to `InterceptorsNamespaces`, unless `IsWebProject=true` |
+| Aspire host | `OutputType=Exe` (unless a test or shared-testing project), `CA1515` suppressed |
+| Blazor WebAssembly client | not packable, no container defaults, no automatic `Shared`/`ServerShared` reference, the browser-safe reference check - see [blazor.md](blazor.md) |
+| ServerShared project | referenced automatically by every non-client-side project; never by a WebAssembly client, browser-safe library, Razor class library, client-side name, or `Shared`/`SharedTesting` project |
 | Blazor host | an automatic reference to its `<Name>.Client` - see [blazor.md](blazor.md) |
 | BFF | no packages, no OpenAPI interceptor unless it exposes an API, `PDS0008`/`PDS0009` - see [blazor.md](blazor.md) |
 | `PurviewBrowserSafe` library | `IsAotCompatible`, `SupportedPlatform browser`, trim/AOT/`CA1416` as errors - see [blazor.md](blazor.md) |
@@ -77,7 +93,7 @@ Two ship with the code-fix assembly, both serving the `PDS0002` convention:
   targeting several receiver types. It produces one `<ReceiverType>Extensions` class per receiver
   (a generic `this TBuilder where TBuilder : IHostApplicationBuilder` receiver becomes
   `HostApplicationBuilderExtensions`) and places each under `Extensions/<receiver namespace>/`.
-- **Move extensions class to conventional location** — offered on a misplaced single-receiver
-  extensions class. It re-paths the file to `Extensions/<receiver namespace>/`, fixes the namespace
+- **Move extensions class to conventional location** (or **Rename extensions class to '…'** when it is
+  already in place but not conventionally named) — offered on a single-receiver extensions class. It re-paths the file to `Extensions/<receiver namespace>/`, fixes the namespace
   to the receiver's, and updates `using` directives in other referencing documents so the move
   compiles.

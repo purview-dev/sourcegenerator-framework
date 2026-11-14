@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis;
 using Purview.SourceGeneratorFramework.Testing;
 using Purview.SourceGeneratorFramework.Testing.TUnit;
 
@@ -10,6 +11,16 @@ public sealed class PreferStructuredCodeWriterStatementAnalyzerTests
 	{
 		AdditionalAssemblyTypes = [typeof(CodeWriter), typeof(GenerationSettings)],
 	};
+
+	[Test]
+	public async Task Rule_GivenStructuredStatementSuggestion_IsWarning()
+	{
+		// A suggestion that a consumer is expected to act on must appear as a build warning rather than
+		// only as an IDE suggestion.
+		await Assert
+			.That(PreferStructuredCodeWriterStatementAnalyzer.Rule.DefaultSeverity)
+			.IsEqualTo(DiagnosticSeverity.Warning);
+	}
 
 	[Test]
 	public async Task Line_WithReturnStatement_ReportsDiagnostic(CancellationToken cancellationToken)

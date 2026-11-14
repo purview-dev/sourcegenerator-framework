@@ -489,6 +489,40 @@ public class TypeHelpersTests
 	}
 
 	[Test]
+	public async Task CreatePartialTypeDeclarationOptions_GivenClosedType_PreservesClosedModifier(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		const string source = """
+			namespace System.Runtime.CompilerServices
+			{
+				[System.AttributeUsage(System.AttributeTargets.Class)]
+				internal sealed class IsClosedTypeAttribute : System.Attribute { }
+			}
+
+			[System.Runtime.CompilerServices.IsClosedType]
+			public abstract partial class Container
+			{
+			}
+			""";
+		var symbol = await GetTypeSymbolAsync(source, "Container", cancellationToken);
+
+		// Act
+		var declaration = TypeHelpers.CreatePartialTypeDeclarationOptions(symbol);
+		var writer = CodeWriterFactory.ForTests();
+		using (writer.TypeScope(declaration))
+		{
+			// Intentionally empty.
+		}
+
+		// Assert
+		await Assert.That(declaration.IsClosed).IsTrue();
+		await Assert.That(declaration.IsAbstract).IsFalse();
+		await Assert.That(writer.ToString()).Contains("public closed partial class Container");
+	}
+
+	[Test]
 	public async Task IsAccessibleAsPublicOrInternal_PublicType_ReturnsTrue(CancellationToken cancellationToken)
 	{
 		var source = "public class MyClass { }";
