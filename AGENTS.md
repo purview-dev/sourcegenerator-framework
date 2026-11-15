@@ -23,9 +23,10 @@ opts out of `Purview.BuildSdk`.
 
 `Purview.BuildSdk` guidance — SDK configuration, project layout and detection, testing, skill
 installation and skill tests — is published by the repository that owns it, and installed here by the
-skills CLI. The installed skills are **committed**: `.agents/skills/**` and the CLI's
-`skills-lock.json` (source, skill path and content hash of every entry) are both in source, so a clone
-has them without running anything.
+skills CLI. Only the CLI's `skills-lock.json` (source, skill path and content hash of every entry) is
+committed: `.agents/skills/` is a local install, gitignored so a skill this repository installs but
+does not publish can never be found through `skills add purview-dev/sourcegenerator-framework`. A
+fresh clone restores the set with `just skills-install`.
 
 | Skill | Source | Load before |
 | --- | --- | --- |
@@ -36,9 +37,9 @@ This repository's own skills in `skills/` are authored for **consumers** of its 
 
 Skills are installed into the universal `.agents/skills/` location **only**. Never commit a copy into
 `.claude/` or any other per-agent folder, and never commit a `CLAUDE.md`: this repository is not
-agent-specific, and `AGENTS.md` is its one instruction file. `/.claude/` is gitignored, so a local
-folder created by an agent is harmless and is not treated as repository state. Pass `-a universal`,
-which writes `.agents/skills/` and nothing else:
+agent-specific, and `AGENTS.md` is its one instruction file. Both folders are gitignored, so neither
+an installed copy nor a per-agent one can be committed. Pass `-a universal`, which writes
+`.agents/skills/` and nothing else:
 
 ```bash
 # add or update every skill from a source
@@ -49,7 +50,8 @@ npx -y skills@1 add purview-dev/engineering-playbook -s '*' -a universal -y
 npx -y skills@1 experimental_install
 ```
 
-Commit the changed `.agents/skills/**` and `skills-lock.json` together, in their own `chore` commit.
+Commit the changed `skills-lock.json` in its own `chore` commit; `.agents/skills/` is gitignored and
+must not be committed.
 Do not edit anything under `.agents/skills/` by hand — the CLI is its only writer, and a hand edit no
 longer matches the lockfile's hash. This repository's *own* skills are never installed here; they
 live in `skills/` (below), and a second copy would drift. `Purview.BuildSdk`'s `InstallPurviewSkills`
