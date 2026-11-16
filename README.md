@@ -5,6 +5,8 @@
 
 A set of libraries for building and testing incremental C# source generators using Roslyn.
 
+**Documentation:** [SourceGenerator Framework documentation](https://purview.dev/docs/sourcegenerator-framework/)
+
 ## Documentation
 
 - [Source generator & analyser best practices](docs/wiki/Guide.md)
